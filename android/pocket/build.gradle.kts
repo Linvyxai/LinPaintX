@@ -5,7 +5,8 @@ plugins {
 
 android {
     namespace = "com.linpaintx.pocket"
-    compileSdk = 36
+    // the Compose BOM wants 37; the app still runs on what the tablet app does
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.linpaintx.pocket"
