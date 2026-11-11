@@ -12304,10 +12304,6 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun endAdjustment(commit: Boolean) {
 
-        // whatever the last swipe left waiting is applied before the adjustment goes
-
-        settleAdjust()
-
         liquifyRingAt = null
 
         if (adjustment == null) return
@@ -12414,13 +12410,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setBalance(k: Int, value: Float) {
 
-        coalesceAdjust {
+        session?.adjustmentBalance(k.coerceIn(0, 2).toUInt(), value)
 
-            session?.adjustmentBalance(k.coerceIn(0, 2).toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12638,13 +12630,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setNoiseValue(index: Int, value: Float) {
 
-        coalesceAdjust {
+        session?.adjustmentNoiseValue(index.coerceIn(0, 2).toUInt(), value)
 
-            session?.adjustmentNoiseValue(index.coerceIn(0, 2).toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12674,13 +12662,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setBloomValue(index: Int, value: Float) {
 
-        coalesceAdjust {
+        session?.adjustmentBloomValue(index.coerceIn(0, 2).toUInt(), value)
 
-            session?.adjustmentBloomValue(index.coerceIn(0, 2).toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12724,13 +12708,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (index < 0) return
 
-        coalesceAdjust {
+        session?.adjustmentChromaValue(index.toUInt(), value)
 
-            session?.adjustmentChromaValue(index.toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12752,13 +12732,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (index < 0) return
 
-        coalesceAdjust {
+        session?.adjustmentGlitchValue(index.toUInt(), value)
 
-            session?.adjustmentGlitchValue(index.toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12781,10 +12757,6 @@ fun applyStabilizer(mode: Int, level: Int) {
     /** Keeps what the adjustment did as one undo step and starts it again from there. */
 
     fun applyAdjustment() {
-
-        // a swipe still waiting its frame belongs to what is applied now
-
-        settleAdjust()
 
         if (adjustment == null) return
 
@@ -12844,10 +12816,6 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (adjustment == null) return
 
-        // a swipe still waiting for its frame must not come back over the reset
-
-        adjustDue = null
-
         val painted = adjustPencil
 
         session?.adjustmentReset()
@@ -12878,13 +12846,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setLiquifyValue(index: Int, value: Float) {
 
-        coalesceAdjust {
+        session?.adjustmentLiquifyValue(index.coerceIn(0, 3).toUInt(), value)
 
-            session?.adjustmentLiquifyValue(index.coerceIn(0, 3).toUInt(), value)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
@@ -12912,55 +12876,20 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
 
-    /** The adjustment's values slid and not yet redrawn: redrawn once a frame, however many come in one. */
-    private var adjustDue: (() -> Unit)? = null
-
-    /**
-     * Redraws the open adjustment at the next frame, unless a later [f] is given before it comes. A
-     * drag on a slider or the adjustment's bar sends values faster than a bloom, a glitch or a blur
-     * can repaint the layer, so each one used to queue its own full repaint: that backlog is the
-     * hitching felt while painting with an effect on. Only the newest value matters, so the rest go.
-     */
-    private fun coalesceAdjust(f: () -> Unit) {
-        val waiting = adjustDue != null
-        adjustDue = f
-        if (waiting) return
-        android.view.Choreographer.getInstance().postFrameCallback {
-            val run = adjustDue ?: return@postFrameCallback
-            adjustDue = null
-            run()
-        }
-    }
-
-    /** The value a drag last left, applied at once rather than at the next frame (its finger came up). */
-    fun settleAdjust() {
-        val run = adjustDue ?: return
-        adjustDue = null
-        run()
-    }
-
     fun setHsb(h: Float, s: Float, b: Float) {
 
-        coalesceAdjust {
+        session?.adjustmentHsb(h, s, b)
 
-            session?.adjustmentHsb(h, s, b)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
     /** The amount (0..1) set by its slider, not swiped across the canvas. */
     fun changeAdjustAmount(v: Float) {
 
-        coalesceAdjust {
+        session?.setAdjustmentAmount(v)
 
-            session?.setAdjustmentAmount(v)
-
-            readAdjust()
-
-        }
+        readAdjust()
 
     }
 
