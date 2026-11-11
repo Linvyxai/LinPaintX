@@ -9,4 +9,8 @@ replay_pid*.log
 # the iPad app's generated files: the core and its bindings (ios/build-rust.sh), the Xcode project
 # (XcodeGen)
 /ios/Generated/
-/ios/ProCraft.xcodeproj/
+/ios/LinPaintX.xcodeproj/
+
+# local packaging: WiX's extension cache and files built outside the release workflow
+/.wix/
+/dist-local/

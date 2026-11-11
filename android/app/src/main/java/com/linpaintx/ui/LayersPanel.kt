@@ -122,6 +122,8 @@ private val PickReach = 72.dp
 /** A picked row (the current one stays blue). */
 private val PickedRow = Color(0xFF2C5281)
 private val LockedLetter = Color(0xFF808080)
+// the empty box beside a row in the picking mode
+private val PickOutline = Color(0xFF8E8E93)
 /** The options never go higher than this from the window's top (the top bar and a gap). */
 private val OptionsTop = 57.dp
 
@@ -180,7 +182,9 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
         if (open != null) last[0] = open
         last[0]?.let { (l, row) -> LayerOptions(open != null, vm, l, row.center.y, onRename = { renaming = l.id }, onDone = { options = null }) }
         PanelHeader(
-            if (selectionMode) "Выбрано ${vm.layers.count { it.current || it.picked }}" else "Слои",
+            // only what was actually picked is counted: the current layer alone would read "1"
+            // before the user has tapped anything, which says nothing to do next
+            if (!selectionMode) "Слои" else if (vm.anyPicked) "Выбрано ${vm.layers.count { it.current || it.picked }}" else "Тапните слои",
             chevronOn = vm.anyPicked,
             onTitle = { titleMenu = !titleMenu },
             menu = {
@@ -208,17 +212,6 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                         Icon(PcIcons.PlusMedium, contentDescription = "Новый слой", tint = Pc.PanelGlyph, modifier = Modifier.requiredSize(41.dp))
                     }
                 }
-            }
-        }
-        if (selectionMode) {
-            Row(
-                Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 12.dp, vertical = 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                MultiLayerAction("Все", Modifier.weight(1f)) { vm.pickAllLayers() }
-                MultiLayerAction("Группа", Modifier.weight(1f), vm.anyPicked) { vm.groupPicked() }
-                MultiLayerAction("Объединить", Modifier.weight(1.35f), vm.anyPicked) { vm.mergePicked() }
-                MultiLayerAction("Удалить", Modifier.weight(1f), vm.anyPicked, danger = true) { deletingChosen = true }
             }
         }
         // a layer added at the top of what shows comes in there, the rows under it sliding down,
@@ -368,7 +361,7 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                     }
                     SwipeRow(vm, l, open = swiped == l.id, enabled = dragId == null, onOpen = { swiped = if (it) l.id else null }, onPick = { vm.pickLayer(l) }) {
                         if (l.kind == LayerType.GROUP) {
-                            GroupRow(vm, l, shape, name, onTap, indent) { vm.toggleCollapsed(l) }
+                            GroupRow(vm, l, shape, name, onTap, indent, onToggle = { vm.toggleCollapsed(l) }, picking = selectionMode)
                         } else LayerRow(
                             vm,
                             l,
@@ -389,6 +382,7 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                             onCube = if (vm.modelOpen && l.kind != LayerType.MASK) ({ vm.toggleChannelTray(l.id) }) else null,
                             cubeLit = vm.modelOpen && l.current && vm.channelTileChosen,
                             selected = l.current && !(vm.modelOpen && vm.channelTileChosen),
+                            picking = selectionMode,
                         )
                     }
                     if (vm.modelOpen && vm.channelTrayFor == l.id) ChannelTray(vm, l)
@@ -457,12 +451,26 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                 ) { BackgroundRow(vm) }
             }
         }
+        // what to do with the picked layers sits under the list rather than above it: the thumb
+        // reaches it without scrolling back up, and it stays there as the list scrolls
+        if (selectionMode) {
+            Row(
+                Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                MultiLayerAction("Все", Modifier.weight(0.8f)) { vm.pickAllLayers() }
+                MultiLayerAction("Снять", Modifier.weight(0.9f), vm.anyPicked) { vm.clearPickedLayers() }
+                MultiLayerAction("Группа", Modifier.weight(0.9f), vm.anyPicked) { vm.groupPicked() }
+                MultiLayerAction("Объединить", Modifier.weight(1.35f), vm.anyPicked) { vm.mergePicked() }
+                MultiLayerAction("Удалить", Modifier.weight(1f), vm.anyPicked, danger = true) { deletingChosen = true }
+            }
+        }
     }
     // Delete on a locked layer's row: why not, OK alone
     Alert(
         if (vm.lockedDeleteTold) Unit else null,
         title = { "Выбор заблокированного слоя" },
-        message = { "A locked layer can’t be deleted. Unlock it first." },
+        message = { "Заблокированный слой удалить нельзя. Сначала снимите блокировку." },
         action = "OK",
         icon = PcIcons.PageLocked,
         destructive = false,
@@ -711,6 +719,7 @@ private fun GroupRow(
     onTap: () -> Unit,
     indent: Dp,
     onToggle: () -> Unit,
+    picking: Boolean = false,
 ) {
     Row(
         Modifier.fillMaxWidth().height(GroupHeight).clip(shape)
@@ -720,6 +729,11 @@ private fun GroupRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val ink = if (l.current || l.picked) Color.White else Pc.PanelTitle
+        // its place in the choice, as a paint layer's row shows it
+        if (picking) {
+            Spacer(Modifier.width(8.dp))
+            CheckBox(l.current || l.picked, if (l.current || l.picked) Pc.Accent else PickOutline)
+        }
         Box(Modifier.padding(start = 4.dp).size(93.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(GroupLine))
         LockedName(l, ink, name, Modifier.weight(1f))
         Box(Modifier.offset(x = 8.dp).size(44.dp, GroupHeight).clickable(onClick = onToggle), contentAlignment = Alignment.Center) {
@@ -746,6 +760,7 @@ private fun LayerRow(
     onCube: (() -> Unit)? = null,
     cubeLit: Boolean = false,
     selected: Boolean = l.current,
+    picking: Boolean = false,
 ) {
     val mask = l.kind == LayerType.MASK
     val masked = vm.hasMask(l)
@@ -770,6 +785,12 @@ private fun LayerRow(
             mask -> 2.dp
             masked -> (-2).dp
             else -> 0.dp
+        }
+        // in the picking mode every row shows whether it is part of the choice: the current layer
+        // always is, so its box is filled too
+        if (picking) {
+            Spacer(Modifier.width(8.dp))
+            CheckBox(selected || l.picked, if (selected || l.picked) Pc.Accent else PickOutline)
         }
         Box(Modifier.padding(start = 4.dp).offset(y = shift)) { Thumb(vm, l, thumbShape) }
         // what the layer is, under its name (which stays in the middle): the reference layer, one

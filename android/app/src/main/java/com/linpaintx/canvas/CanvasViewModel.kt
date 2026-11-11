@@ -1168,7 +1168,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
             if (bytes == null) {
 
-                message = "This file can't be read."
+                message = "Этот файл нельзя прочитать."
 
                 return@launch
 
@@ -1228,7 +1228,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         if (forget == null) {
 
-            message = "This plugin couldn't be removed."
+            message = "Этот плагин не удалось удалить."
 
             return
 
@@ -1283,7 +1283,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
                 val wav = decodedSound(getApplication(), uri) ?: return@withContext false
                 plugins.setSoundFile(key, fileName(uri) ?: "Recording", wav)
             }
-            if (kept) pluginsChanged() else message = "This sound couldn't be used."
+            if (kept) pluginsChanged() else message = "Этот звук не удалось использовать."
         }
     }
 
@@ -2088,7 +2088,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         }
 
-        if (name == null) message = "This file isn't a color profile."
+        if (name == null) message = "Этот файл — не профиль цвета."
 
         return name
 
@@ -2790,7 +2790,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (image == null) {
 
-            message = "This picture can't be opened."
+            message = "Эту картинку нельзя открыть."
 
             return
 
@@ -2954,7 +2954,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         val s = session ?: return
 
-        if (!s.addModelLight()) message = "A model can have four lights at most."
+        if (!s.addModelLight()) message = "Модель может иметь не больше четырёх источников света."
 
         modelLights = s.modelLights()
 
@@ -2966,7 +2966,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         val s = session ?: return
 
-        if (!s.duplicateModelLight(index.toUInt())) message = "A model can have four lights at most."
+        if (!s.duplicateModelLight(index.toUInt())) message = "Модель может иметь не больше четырёх источников света."
 
         modelLights = s.modelLights()
 
@@ -3366,7 +3366,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             if (image == null) {
 
-                message = "This picture can't be opened."
+                message = "Эту картинку нельзя открыть."
 
                 return@launch
 
@@ -3904,7 +3904,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (head == null) {
 
-            message = "This file can't be opened."
+            message = "Этот файл нельзя открыть."
 
             return
 
@@ -3924,7 +3924,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (zip && zipFile == null) {
 
-            if (!importCancelled) message = "This file can't be opened."
+            if (!importCancelled) message = "Этот файл нельзя открыть."
 
             return
 
@@ -3960,15 +3960,15 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             val bytes = zipBytes()
 
-            if (bytes == null || !addBrushes(bytes)) message = "This file has no brushes in it."
+            if (bytes == null || !addBrushes(bytes)) message = "В этом файле нет кистей."
 
         } else if ((foreign || kind == com.linpaintx.core.ZipKind.Swatches) && importSwatches(uri)) {
 
-            message = "Palette added."
+            message = "Палитра добавлена."
 
         } else if (foreign) {
 
-            message = "This palette can't be read."
+            message = "Эту палитру нельзя прочитать."
 
         } else if (name != null && isModelName(name)) {
 
@@ -3986,7 +3986,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            if (ok) refreshGallery() else message = "This file can't be opened."
+            if (ok) refreshGallery() else message = "Этот файл нельзя открыть."
 
         } else if (kind is com.linpaintx.core.ZipKind.Model) {
 
@@ -4000,7 +4000,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             val bytes = zipBytes() ?: withContext(Dispatchers.IO) { runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull() }
 
-            if (bytes == null || !addOtherBrushes(bytes, name)) message = "This file has no brushes in it."
+            if (bytes == null || !addOtherBrushes(bytes, name)) message = "В этом файле нет кистей."
 
         } else if (head != null && String(head, Charsets.ISO_8859_1) == "8BPS") {
 
@@ -4024,7 +4024,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            if (ok) refreshGallery() else message = "This file can't be opened."
+            if (ok) refreshGallery() else message = "Этот файл нельзя открыть."
 
         } else {
 
@@ -4144,9 +4144,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             is com.linpaintx.core.PagesOutcome.TooManyPages ->
 
-                message = "This PDF has more pages than a canvas its size can hold as layers (${outcome.most})."
+                message = "В PDF больше страниц, чем холст такого размера может вместить слоями (${outcome.most})."
 
-            com.linpaintx.core.PagesOutcome.Unreadable -> message = "This PDF can't be opened."
+            com.linpaintx.core.PagesOutcome.Unreadable -> message = "Этот PDF нельзя открыть."
 
         }
 
@@ -4192,11 +4192,11 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             is com.linpaintx.core.PsdOutcome.TooManyLayers ->
 
-                message = "This file has more layers than a canvas its size can hold (${outcome.most})."
+                message = "В файле больше слоёв, чем холст такого размера может вместить (${outcome.most})."
 
-            com.linpaintx.core.PsdOutcome.Unsupported -> message = "This kind of PSD can't be opened."
+            com.linpaintx.core.PsdOutcome.Unsupported -> message = "PSD такого вида открыть нельзя."
 
-            com.linpaintx.core.PsdOutcome.Unreadable -> message = "This file can't be opened."
+            com.linpaintx.core.PsdOutcome.Unreadable -> message = "Этот файл нельзя открыть."
 
         }
 
@@ -4452,7 +4452,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         } ?: false
 
-        if (failed && session === s) message = "This device's graphics can't draw the canvas."
+        if (failed && session === s) message = "Графика этого устройства не может нарисовать холст."
 
     }
 
@@ -4522,7 +4522,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 then?.invoke()
 
-            }.onFailure { message = "This artwork can't be opened." }
+            }.onFailure { message = "Эту работу нельзя открыть." }
 
         }
 
@@ -5799,7 +5799,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (ids.isEmpty()) {
 
-            message = "Nothing is drawn there."
+            message = "Там ничего не нарисовано."
 
             return
 
@@ -6607,7 +6607,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (image == null) {
 
-            message = "This picture can't be opened."
+            message = "Эту картинку нельзя открыть."
 
             return false
 
@@ -8077,7 +8077,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             if (image == null) {
 
-                message = "This picture can't be opened."
+                message = "Эту картинку нельзя открыть."
 
             } else if (s != null && session === s) {
 
@@ -9243,7 +9243,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         }
 
-        if (!added) message = "This file has no brushes in it."
+        if (!added) message = "В этом файле нет кистей."
 
     }
 
@@ -9379,7 +9379,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            message = "Brushes will be added to the library when a canvas opens."
+            message = "Кисти добавятся в библиотеку, когда откроется холст."
 
             return true
 
@@ -9421,7 +9421,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            message = "Brushes will be added to the library when a canvas opens."
+            message = "Кисти добавятся в библиотеку, когда откроется холст."
 
             return true
 
@@ -9501,7 +9501,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            if (any) message = "Brushes added to the library."
+            if (any) message = "Кисти добавлены в библиотеку."
 
         }
 
@@ -9704,7 +9704,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         } else if (!libraryFailing) {
 
             libraryFailing = true
-            message = "The brush library couldn't be kept. The storage may be full."
+            message = "Не удалось сохранить библиотеку кистей. Возможно, хранилище заполнено."
         }
 
     }
@@ -10158,7 +10158,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         throw e
     } catch (e: Throwable) {
         Log.e(TAG, doing, e)
-        message = "This picture couldn't be used."
+        message = "Эту картинку не удалось использовать."
         null
     }
 
@@ -10185,7 +10185,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (bitmap == null) {
 
-            message = "This picture can't be opened."
+            message = "Эту картинку нельзя открыть."
 
             return null
 
@@ -10211,7 +10211,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         }
         if (uri == null) {
 
-            message = "There's no picture to paste."
+            message = "Нет картинки для вставки."
 
             return null
 
@@ -11530,7 +11530,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         // a change that couldn't be written out (the storage full, say) told, once until one is
 
-        if (paletteStore.takeFailure() != null) message = "The palettes couldn't be kept."
+        if (paletteStore.takeFailure() != null) message = "Не удалось сохранить палитры."
 
         defaultPalette = paletteStore.defaultPalette().toInt()
 
@@ -11598,7 +11598,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             if (!added) {
 
-                message = "This picture can't be read."
+                message = "Эту картинку нельзя прочитать."
 
                 return@launch
 
@@ -12304,6 +12304,10 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun endAdjustment(commit: Boolean) {
 
+        // whatever the last swipe left waiting is applied before the adjustment goes
+
+        settleAdjust()
+
         liquifyRingAt = null
 
         if (adjustment == null) return
@@ -12410,9 +12414,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setBalance(k: Int, value: Float) {
 
-        session?.adjustmentBalance(k.coerceIn(0, 2).toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentBalance(k.coerceIn(0, 2).toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12630,9 +12638,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setNoiseValue(index: Int, value: Float) {
 
-        session?.adjustmentNoiseValue(index.coerceIn(0, 2).toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentNoiseValue(index.coerceIn(0, 2).toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12662,9 +12674,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setBloomValue(index: Int, value: Float) {
 
-        session?.adjustmentBloomValue(index.coerceIn(0, 2).toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentBloomValue(index.coerceIn(0, 2).toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12708,9 +12724,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (index < 0) return
 
-        session?.adjustmentChromaValue(index.toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentChromaValue(index.toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12732,9 +12752,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (index < 0) return
 
-        session?.adjustmentGlitchValue(index.toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentGlitchValue(index.toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12757,6 +12781,10 @@ fun applyStabilizer(mode: Int, level: Int) {
     /** Keeps what the adjustment did as one undo step and starts it again from there. */
 
     fun applyAdjustment() {
+
+        // a swipe still waiting its frame belongs to what is applied now
+
+        settleAdjust()
 
         if (adjustment == null) return
 
@@ -12816,6 +12844,12 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (adjustment == null) return
 
+        // a swipe still waiting must not come back over the reset
+
+        adjustFlush?.cancel()
+
+        pendingAdjust = null
+
         val painted = adjustPencil
 
         session?.adjustmentReset()
@@ -12846,9 +12880,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun setLiquifyValue(index: Int, value: Float) {
 
-        session?.adjustmentLiquifyValue(index.coerceIn(0, 3).toUInt(), value)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentLiquifyValue(index.coerceIn(0, 3).toUInt(), value)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -12876,20 +12914,56 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
 
+    private var adjustFlush: Job? = null
+    private var pendingAdjust: (() -> Unit)? = null
+
+    /**
+     * Runs [f] no sooner than a frame after the last one it was asked. A drag on a slider or the
+     * adjustment's bar sends values faster than a bloom, a glitch or a blur can repaint the layer,
+     * so every one of them queued its own full repaint: the backlog is the hitching felt while
+     * painting with an effect on. Only the newest value matters, so the rest are dropped.
+     */
+    private fun coalesceAdjust(f: () -> Unit) {
+        pendingAdjust = f
+        if (adjustFlush?.isActive == true) return
+        adjustFlush = viewModelScope.launch {
+            delay(16)
+            val run = pendingAdjust
+            pendingAdjust = null
+            run?.invoke()
+        }
+    }
+
+    /** The value a drag last left, applied at once rather than a frame later (its finger came up). */
+    fun settleAdjust() {
+        val run = pendingAdjust ?: return
+        adjustFlush?.cancel()
+        pendingAdjust = null
+        run()
+    }
+
     fun setHsb(h: Float, s: Float, b: Float) {
 
-        session?.adjustmentHsb(h, s, b)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.adjustmentHsb(h, s, b)
+
+            readAdjust()
+
+        }
 
     }
 
     /** The amount (0..1) set by its slider, not swiped across the canvas. */
     fun changeAdjustAmount(v: Float) {
 
-        session?.setAdjustmentAmount(v)
+        coalesceAdjust {
 
-        readAdjust()
+            session?.setAdjustmentAmount(v)
+
+            readAdjust()
+
+        }
 
     }
 
@@ -14632,7 +14706,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         val s = session ?: return
         viewModelScope.launch {
             val made = withContext(Dispatchers.Default) { s.addInbetween(layer.id) }
-            if (made == null) message = "An in-between goes between two frames of one layer each, with something drawn." else layerChange { }
+            if (made == null) message = "Промежуточный кадр ставится между двумя кадрами одного слоя, в каждом из которых что-то нарисовано." else layerChange { }
         }
     }
 

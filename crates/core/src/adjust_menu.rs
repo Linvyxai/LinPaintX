@@ -28,9 +28,9 @@ pub enum Adjustment {
 
 /// Each adjustment: its name, whether its amount is swiped, and its amount when first painted on.
 const ADJUSTMENTS: [(Adjustment, &str, bool, Option<f32>); 16] = [
-    (Adjustment::Hsb, "Оттенок, насыщенность, яркость", true, None),
-    (Adjustment::ColorBalance, "Цветовой баланс", true, None),
-    (Adjustment::Curves, "Кривые", true, None),
+    (Adjustment::Hsb, "Оттенок, насыщенность, яркость", false, None),
+    (Adjustment::ColorBalance, "Цветовой баланс", false, None),
+    (Adjustment::Curves, "Кривые", false, None),
     (Adjustment::GradientMap, "Карта градиента", true, None),
     (Adjustment::GaussianBlur, "Размытие по Гауссу", true, Some(0.6)),
     (Adjustment::MotionBlur, "Размытие в движении", true, Some(0.6)),
@@ -41,8 +41,8 @@ const ADJUSTMENTS: [(Adjustment, &str, bool, Option<f32>); 16] = [
     (Adjustment::Glitch, "Глитч", true, Some(0.5)),
     (Adjustment::Halftone, "Полутон", true, Some(0.12)),
     (Adjustment::ChromaticAberration, "Хроматическая аберрация", true, Some(1.0)),
-    (Adjustment::Liquify, "Пластика", true, None),
-    (Adjustment::Clone, "Клонирование", true, None),
+    (Adjustment::Liquify, "Пластика", false, None),
+    (Adjustment::Clone, "Клонирование", false, None),
     (Adjustment::Plugin, "Плагин", false, None),
 ];
 

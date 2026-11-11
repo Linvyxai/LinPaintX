@@ -634,9 +634,9 @@ private fun PluginFileRow(file: PluginFile, vm: CanvasViewModel) {
         val chosen = file.chosen
         if (chosen != null) {
             Text(chosen, color = Pc.SlideValue, fontSize = 15.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(start = 12.dp).weight(1f, fill = false))
-            Text("Clear", color = Pc.Accent, fontSize = 17.sp, maxLines = 1, modifier = Modifier.clickable { vm.clearPluginFile(file.key) }.padding(start = 12.dp))
+            Text("Очистить", color = Pc.Accent, fontSize = 17.sp, maxLines = 1, modifier = Modifier.clickable { vm.clearPluginFile(file.key) }.padding(start = 12.dp))
         } else {
-            Text("Import", color = Pc.Accent, fontSize = 17.sp, maxLines = 1)
+            Text("Импорт", color = Pc.Accent, fontSize = 17.sp, maxLines = 1)
         }
     }
 }

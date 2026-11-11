@@ -174,6 +174,8 @@ fun AdjustmentBar(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     }
                     c.consume()
                     if (!c.pressed) {
+                        // the last value of the swipe lands at once rather than a frame later
+                        if (slid && a.swiped) vm.settleAdjust()
                         if (!slid && a.paintable) vm.adjustModesOpen = !vm.adjustModesOpen
                         break
                     }
