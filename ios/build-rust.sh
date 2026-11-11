@@ -8,7 +8,7 @@
 #   ProCraftCore.swift                    the bindings, compiled into the app
 #   include/ProCraftCoreFFI.h             their C half, a module on the Swift import path
 #   include/module.modulemap
-#   Assets.xcassets                       the app icon (assets/app-icon/procraft-1024.png)
+#   Assets.xcassets                       the app icon (assets/app-icon/linpaintx-1024.png)
 #
 # Usage: ios/build-rust.sh [iphoneos | iphonesimulator]
 #
@@ -63,4 +63,4 @@ cat >"$ICON/Contents.json" <<'JSON'
   "info": { "author": "xcode", "version": 1 }
 }
 JSON
-update "$ROOT/assets/app-icon/procraft-1024.png" "$ICON/AppIcon.png"
+update "$ROOT/assets/app-icon/linpaintx-1024.png" "$ICON/AppIcon.png"

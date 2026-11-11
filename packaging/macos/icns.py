@@ -3,7 +3,7 @@ grid (824 of 1024, centred, as the system's own icons sit) at every size the Fin
 look up, each kept as a PNG inside. Needs Python 3 alone (no Pillow, no Mac), so it runs on any
 build machine:
 
-    python3 packaging/macos/icns.py assets/app-icon/procraft-1024.png procraft.icns
+    python3 packaging/macos/icns.py assets/app-icon/linpaintx-1024.png linpaintx.icns
 
 Run by package.sh. Shrinking is by area (each pixel the average of what it covers, alpha
 premultiplied), halving first while the picture is at least twice the tile.

@@ -81,8 +81,8 @@ if has appimage; then
   rm -rf "$APPDIR/usr/share/doc"
   install -Dm755 "$HERE/AppRun" "$APPDIR/AppRun"
   cp "$HERE/procraft.desktop" "$APPDIR/procraft.desktop"
-  cp "$ROOT/assets/app-icon/hicolor/256x256/apps/procraft.png" "$APPDIR/procraft.png"
-  ln -s procraft.png "$APPDIR/.DirIcon"
+  cp "$ROOT/assets/app-icon/hicolor/256x256/apps/linpaintx.png" "$APPDIR/linpaintx.png"
+  ln -s linpaintx.png "$APPDIR/.DirIcon"
   TOOL="${APPIMAGETOOL:-$(command -v appimagetool || true)}"
   if [ -z "$TOOL" ]; then
     TOOL="$TARGET_DIR/appimagetool-$ARCH.AppImage"

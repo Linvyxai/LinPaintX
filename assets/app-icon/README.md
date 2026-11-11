@@ -1,43 +1,45 @@
-# ProCraft app icon
+# Иконка приложения LinPaintX
 
-<img src="procraft-512.png" alt="ProCraft app icon: a paintbrush in a warm-to-cool blend on black" width="128">
+<img src="linpaintx-512.png" alt="Иконка LinPaintX: кисть и акцент-«X» в тёпло-холодном градиенте на чёрном" width="128">
 
-A paintbrush, writing down to the left: a tapered handle in a warm-to-cool blend, a metal ferrule,
-paper bristles with a tip dipped in the blend, and a soft glow of the blend, on a black tile.
+Кисть, пишущая влево-вниз: сужающаяся ручка в тёпло-холодном градиенте, металлическая
+обойма, бумажный ворс с кончиком, обмакнутым в градиент, мягкое свечение градиента и
+двухцветный акцент-«X» (фиолетовый поверх синего) в правом верхнем углу — на чёрной плитке.
 
-## Palette
+## Палитра
 
-| Colour | Hex | Used for |
+| Цвет | Hex | Назначение |
 |---|---|---|
-| Ink | `#0b0b0c` | the tile (the launcher's background layer) |
-| Paper | `#efe9dc` | the bristles |
-| Metal | `#c4c6ce`, line `#787a82` | the ferrule |
-| The blend | `#ffc43d` → `#f07a2e` → `#ec4878` → `#8b5cf6` → `#3b82f6` | the handle, the dipped tip, the glow |
+| Чернила | `#0b0b0c` | плитка (фоновый слой лаунчера) |
+| Бумага | `#efe9dc` | ворс |
+| Металл | `#c4c6ce`, линия `#787a82` | обойма |
+| Градиент | `#ffc43d` → `#f07a2e` → `#ec4878` → `#8b5cf6` → `#3b82f6` | ручка, обмакнутый кончик, свечение |
+| Акцент-«X» | `#8b5cf6`, `#3b82f6` | «X» в LinPaintX |
 
-## Geometry
+## Геометрия
 
-A 512-unit tile, a rounded square with `rx=112` (drawn at 2048 px and shrunk). On Android the
-tile is the adaptive icon's middle 72 of 108 dp: the background layer is the ink, the
-foreground the brush and its glow, the monochrome layer the brush alone (for themed icons).
+Плитка в 512 единиц, скруглённый квадрат с `rx=112` (рисуется в 2048 px и уменьшается). На
+Android плитка — это средние 72 из 108 dp адаптивной иконки: фоновый слой — чернила, передний —
+кисть со свечением и акцентом-«X», монохромный — одна кисть (для тематических иконок).
 
-## Provenance
+## Происхождение
 
-Original work, drawn in code by `tools/app-icon/make_icon.py` (Pillow), which writes every size
-below. MIT OR Apache-2.0, like the code.
+Оригинальная работа, нарисована кодом в `tools/app-icon/make_icon.py` (Pillow), который
+записывает все размеры ниже. MIT OR Apache-2.0, как и код.
 
-## Files
+## Файлы
 
-| File | What |
+| Файл | Назначение |
 |---|---|
-| `procraft-1024.png`, `procraft-512.png` | the icon on its rounded tile (store listing, README) |
-| `res/drawable-*dpi/ic_launcher_foreground.png` | the adaptive icon's foreground, 108 dp |
-| `res/drawable-*dpi/ic_launcher_monochrome.png` | its monochrome layer, for themed icons |
-| `res/drawable-nodpi/procraft_mark.png` | the foreground at 1350 px, for the About screen |
-| `res/mipmap-anydpi/ic_launcher.xml` | the adaptive icon (background `@color/ic_launcher_background`) |
+| `linpaintx-1024.png`, `linpaintx-512.png` | иконка на скруглённой плитке (листинг магазина, README) |
+| `res/drawable-*dpi/ic_launcher_foreground.png` | передний слой адаптивной иконки, 108 dp |
+| `res/drawable-*dpi/ic_launcher_monochrome.png` | её монохромный слой, для тематических иконок |
+| `res/drawable-nodpi/linpaintx_mark.png` | передний слой в 1350 px, для экрана «О программе» |
+| `res/mipmap-anydpi/ic_launcher.xml` | адаптивная иконка (фон `@color/ic_launcher_background`) |
 
-The `res/` paths are under `android/app/src/main/`.
+Пути `res/` лежат под `android/app/src/main/`.
 
-## Regenerate
+## Пересоздание
 
 ```
 python tools/app-icon/make_icon.py

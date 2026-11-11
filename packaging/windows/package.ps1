@@ -85,7 +85,7 @@ Invoke-Native 'wix build' {
   & $Wix build (Join-Path $PSScriptRoot 'procraft.wxs') -arch $Arch `
     -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -culture en-US `
     -d "Version=$MsiVersion" -d "DisplayVersion=$Version" -d "BinDir=$Stage" `
-    -d "IconPath=$(Join-Path $Root 'assets\app-icon\procraft.ico')" -o $Msi
+    -d "IconPath=$(Join-Path $Root 'assets\app-icon\linpaintx.ico')" -o $Msi
 }
 Invoke-Native 'wix msi validate' {
   & $Wix msi validate $Msi -intermediateFolder (Join-Path $TargetDir 'windows-package\msi-validation')

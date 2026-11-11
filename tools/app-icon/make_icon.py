@@ -1,19 +1,19 @@
-"""Draws ProCraft's app icon, a paintbrush in a warm-to-cool blend on black, and writes every size
-the app and the repository use. Needs Pillow. Run from anywhere:
+"""Draws LinPaintX's app icon, a paintbrush with a two-tone "X" accent in a warm-to-cool blend on
+black, and writes every size the app and the repository use. Needs Pillow. Run from anywhere:
 
     python tools/app-icon/make_icon.py
 
 Writes:
-- assets/app-icon/procraft-1024.png, procraft-512.png, procraft-256.png: the icon on its rounded
+- assets/app-icon/linpaintx-1024.png, linpaintx-512.png, linpaintx-256.png: the icon on its rounded
   tile (the desktop app's window and Linux menus use the 256 and 512 ones).
-- assets/app-icon/procraft.ico: the tile at every size Windows shows (the desktop app's .exe and
+- assets/app-icon/linpaintx.ico: the tile at every size Windows shows (the desktop app's .exe and
   its installer).
-- assets/app-icon/hicolor/<n>x<n>/apps/procraft.png: the tile at the sizes Linux desktops look up
+- assets/app-icon/hicolor/<n>x<n>/apps/linpaintx.png: the tile at the sizes Linux desktops look up
   for the app's menu entry and window (copied as it is into the packages' share/icons/).
 - the Android adaptive icon's layers (108 dp, the tile its middle 72 dp): the brush and its glow
   (drawable-*dpi/ic_launcher_foreground.png), the brush alone in white for themed icons
   (drawable-*dpi/ic_launcher_monochrome.png), and a large copy for the About screen
-  (drawable-nodpi/procraft_mark.png).
+  (drawable-nodpi/linpaintx_mark.png).
 """
 
 import math
@@ -22,7 +22,7 @@ import os
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RES = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res')
+RES = os.path.join(ROOT, "android", "app", "src", "main", "res")
 
 S = 2048  # the 512-unit tile, drawn at 4x
 INK = (11, 11, 12)
@@ -30,9 +30,17 @@ PAPER = (239, 233, 220)
 METAL = (196, 198, 206)
 METAL_LINE = (120, 122, 130)
 # the blend: amber, orange, coral pink, violet, blue
-STOPS = [(0.0, (255, 196, 61)), (0.28, (240, 122, 46)), (0.52, (236, 72, 120)), (0.76, (139, 92, 246)),
-         (1.0, (59, 130, 246))]
+STOPS = [
+    (0.0, (255, 196, 61)),
+    (0.28, (240, 122, 46)),
+    (0.52, (236, 72, 120)),
+    (0.76, (139, 92, 246)),
+    (1.0, (59, 130, 246)),
+]
 ANGLE = 225  # the brush drawn along x, then turned so it writes down to the left
+# the "X" accent: violet "\" over blue "/", for the X in LinPaintX
+X_VIOLET = (139, 92, 246)
+X_BLUE = (59, 130, 246)
 
 
 def blend(t):
@@ -46,7 +54,7 @@ def blend(t):
 
 def gradient_along(x0, x1):
     """An S x S picture whose colour runs along x, from the blend's start at x0 to its end at x1."""
-    row = Image.new('RGB', (S, 1))
+    row = Image.new("RGB", (S, 1))
     for x in range(S):
         row.putpixel((x, 0), blend((x - x0) / (x1 - x0)))
     return row.resize((S, S), Image.NEAREST)
@@ -55,51 +63,107 @@ def gradient_along(x0, x1):
 def brush():
     """The paintbrush along x: a tapered handle in the blend, a metal ferrule, paper bristles whose
     tip is dipped in the blend."""
-    layer = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     cy = S / 2
     x_end, x_ferrule, x_bristle, x_tip = 230, 1080, 1300, 1820
-    handle = [(x_end + 60, cy - 70), (x_ferrule - 260, cy - 120), (x_ferrule, cy - 100),
-              (x_ferrule, cy + 100), (x_ferrule - 260, cy + 120), (x_end + 60, cy + 70)]
-    m = Image.new('L', (S, S), 0)
+    handle = [
+        (x_end + 60, cy - 70),
+        (x_ferrule - 260, cy - 120),
+        (x_ferrule, cy - 100),
+        (x_ferrule, cy + 100),
+        (x_ferrule - 260, cy + 120),
+        (x_end + 60, cy + 70),
+    ]
+    m = Image.new("L", (S, S), 0)
     md = ImageDraw.Draw(m)
     md.polygon(handle, fill=255)
     md.ellipse((x_end, cy - 70, x_end + 120, cy + 70), fill=255)
     layer.paste(gradient_along(x_end, x_ferrule), (0, 0), m)
-    shine = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(shine).polygon([(x_end + 60, cy - 70), (x_ferrule - 260, cy - 120), (x_ferrule, cy - 100),
-                                   (x_ferrule, cy - 60), (x_end + 60, cy - 40)], fill=(255, 255, 255, 52))
+    shine = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(shine).polygon(
+        [
+            (x_end + 60, cy - 70),
+            (x_ferrule - 260, cy - 120),
+            (x_ferrule, cy - 100),
+            (x_ferrule, cy - 60),
+            (x_end + 60, cy - 40),
+        ],
+        fill=(255, 255, 255, 52),
+    )
     layer.alpha_composite(shine)
     d = ImageDraw.Draw(layer)
-    d.polygon([(x_ferrule, cy - 104), (x_bristle, cy - 128), (x_bristle, cy + 128), (x_ferrule, cy + 104)],
-              fill=METAL + (255,))
-    d.line((x_ferrule + 70, cy - 112, x_ferrule + 70, cy + 112), fill=METAL_LINE + (255,), width=14)
+    d.polygon(
+        [
+            (x_ferrule, cy - 104),
+            (x_bristle, cy - 128),
+            (x_bristle, cy + 128),
+            (x_ferrule, cy + 104),
+        ],
+        fill=METAL + (255,),
+    )
+    d.line(
+        (x_ferrule + 70, cy - 112, x_ferrule + 70, cy + 112),
+        fill=METAL_LINE + (255,),
+        width=14,
+    )
     bristles = [(x_bristle, cy - 128)]
     for i in range(1, 41):
         t = i / 40
         x = x_bristle + t * (x_tip - x_bristle)
-        y = cy - 128 * (1 - t ** 1.6) * (1 + 0.25 * math.sin(t * math.pi))
+        y = cy - 128 * (1 - t**1.6) * (1 + 0.25 * math.sin(t * math.pi))
         bristles.append((x, y))
     bristles += [(x, 2 * cy - y) for x, y in reversed(bristles)]
     d.polygon(bristles, fill=PAPER + (255,))
-    dip = Image.new('L', (S, S), 0)
+    dip = Image.new("L", (S, S), 0)
     ImageDraw.Draw(dip).polygon(bristles, fill=255)
-    cut = Image.new('L', (S, S), 0)
-    ImageDraw.Draw(cut).rectangle((x_bristle + 0.55 * (x_tip - x_bristle), 0, S, S), fill=255)
-    layer.paste(gradient_along(x_bristle + 0.4 * (x_tip - x_bristle), x_tip + 200), (0, 0), ImageChops.multiply(dip, cut))
+    cut = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(cut).rectangle(
+        (x_bristle + 0.55 * (x_tip - x_bristle), 0, S, S), fill=255
+    )
+    layer.paste(
+        gradient_along(x_bristle + 0.4 * (x_tip - x_bristle), x_tip + 200),
+        (0, 0),
+        ImageChops.multiply(dip, cut),
+    )
     return layer.rotate(ANGLE, resample=Image.BICUBIC, center=(S / 2, S / 2))
+
+
+def thick_line(draw, p0, p1, width, fill):
+    """A line with rounded ends (Pillow's line has square caps)."""
+    draw.line((p0[0], p0[1], p1[0], p1[1]), fill=fill, width=width)
+    r = width / 2
+    for p in (p0, p1):
+        draw.ellipse((p[0] - r, p[1] - r, p[0] + r, p[1] + r), fill=fill)
+
+
+def x_mark():
+    """A two-tone "X" accent (violet over blue) in the tile's top-right, balanced against the
+    brush writing down to the left."""
+    x = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(x)
+    cx, cy, half, thick = 1570, 440, 150, 46
+    thick_line(
+        d, (cx - half, cy - half), (cx + half, cy + half), thick, X_VIOLET + (255,)
+    )
+    thick_line(
+        d, (cx - half, cy + half), (cx + half, cy - half), thick, X_BLUE + (255,)
+    )
+    return x
 
 
 def glow(turned):
     """A soft glow of the blend around the turned brush."""
-    alpha = turned.split()[3].filter(ImageFilter.GaussianBlur(60)).point(lambda a: a * 0.35)
+    alpha = (
+        turned.split()[3].filter(ImageFilter.GaussianBlur(60)).point(lambda a: a * 0.35)
+    )
     colour = gradient_along(S * 0.15, S * 0.85).rotate(ANGLE, center=(S / 2, S / 2))
-    out = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     out.paste(colour, (0, 0), alpha)
     return out
 
 
 def tile_mask():
-    m = Image.new('L', (S, S), 0)
+    m = Image.new("L", (S, S), 0)
     ImageDraw.Draw(m).rounded_rectangle((0, 0, S - 1, S - 1), radius=112 * 4, fill=255)
     return m
 
@@ -107,7 +171,7 @@ def tile_mask():
 def adaptive(picture):
     """`picture` (the tile's contents) placed in the middle 72 of the adaptive icon's 108."""
     side = round(S * 108 / 72)
-    out = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    out = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     out.alpha_composite(picture, ((side - S) // 2, (side - S) // 2))
     return out
 
@@ -119,31 +183,73 @@ def save(image, path, size):
 
 def main():
     turned = brush()
+    mark = x_mark()
     picture = glow(turned)
+    # a faint glow behind the X so it reads as part of the mark
+    x_glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    x_glow.paste(
+        Image.new("RGBA", (S, S), X_VIOLET + (90,)),
+        (0, 0),
+        mark.split()[3].filter(ImageFilter.GaussianBlur(26)),
+    )
+    picture.alpha_composite(x_glow)
+    picture.alpha_composite(mark)
     picture.alpha_composite(turned)
 
-    tile = Image.new('RGBA', (S, S), INK + (255,))
+    tile = Image.new("RGBA", (S, S), INK + (255,))
     tile.alpha_composite(picture)
     tile.putalpha(tile_mask())
     for size in (1024, 512, 256):
-        save(tile, os.path.join(ROOT, 'assets', 'app-icon', f'procraft-{size}.png'), size)
+        save(
+            tile,
+            os.path.join(ROOT, "assets", "app-icon", f"linpaintx-{size}.png"),
+            size,
+        )
     sizes = [(n, n) for n in (16, 20, 24, 32, 40, 48, 64, 128, 256)]
-    tile.resize((256, 256), Image.LANCZOS).save(os.path.join(ROOT, 'assets', 'app-icon', 'procraft.ico'), sizes=sizes)
+    tile.resize((256, 256), Image.LANCZOS).save(
+        os.path.join(ROOT, "assets", "app-icon", "linpaintx.ico"), sizes=sizes
+    )
     for size in (16, 24, 32, 48, 64, 128, 256, 512):
-        save(tile, os.path.join(ROOT, 'assets', 'app-icon', 'hicolor', f'{size}x{size}', 'apps', 'procraft.png'), size)
+        save(
+            tile,
+            os.path.join(
+                ROOT,
+                "assets",
+                "app-icon",
+                "hicolor",
+                f"{size}x{size}",
+                "apps",
+                "linpaintx.png",
+            ),
+            size,
+        )
 
     foreground = adaptive(picture)
-    mono = Image.new('RGBA', turned.size, (255, 255, 255, 0))
+    mono = Image.new("RGBA", turned.size, (255, 255, 255, 0))
     mono.putalpha(turned.split()[3])
     monochrome = adaptive(mono)
-    for bucket, scale in (('mdpi', 1), ('hdpi', 1.5), ('xhdpi', 2), ('xxhdpi', 3), ('xxxhdpi', 4)):
+    for bucket, scale in (
+        ("mdpi", 1),
+        ("hdpi", 1.5),
+        ("xhdpi", 2),
+        ("xxhdpi", 3),
+        ("xxxhdpi", 4),
+    ):
         size = round(108 * scale)
-        save(foreground, os.path.join(RES, f'drawable-{bucket}', 'ic_launcher_foreground.png'), size)
-        save(monochrome, os.path.join(RES, f'drawable-{bucket}', 'ic_launcher_monochrome.png'), size)
+        save(
+            foreground,
+            os.path.join(RES, f"drawable-{bucket}", "ic_launcher_foreground.png"),
+            size,
+        )
+        save(
+            monochrome,
+            os.path.join(RES, f"drawable-{bucket}", "ic_launcher_monochrome.png"),
+            size,
+        )
     # the About screen shows it 450 dp across: sharp up to about 3 pixels a dp
-    save(foreground, os.path.join(RES, 'drawable-nodpi', 'procraft_mark.png'), 1350)
-    print('written')
+    save(foreground, os.path.join(RES, "drawable-nodpi", "linpaintx_mark.png"), 1350)
+    print("written")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

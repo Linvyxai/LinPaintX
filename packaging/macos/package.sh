@@ -60,7 +60,7 @@ lipo -info "$APP/Contents/MacOS/procraft"
 sed -e "s|@VERSION@|$SHORT|g" -e "s|@BUILD@|$BUILD|g" "$HERE/Info.plist" >"$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"
-python3 "$HERE/icns.py" "$ROOT/assets/app-icon/procraft-1024.png" "$APP/Contents/Resources/procraft.icns"
+python3 "$HERE/icns.py" "$ROOT/assets/app-icon/linpaintx-1024.png" "$APP/Contents/Resources/linpaintx.icns"
 for f in LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md; do
   cp "$ROOT/$f" "$APP/Contents/Resources/$f"
 done

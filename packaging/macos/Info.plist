@@ -15,7 +15,7 @@
 	<key>CFBundleExecutable</key>
 	<string>procraft</string>
 	<key>CFBundleIconFile</key>
-	<string>procraft</string>
+	<string>linpaintx</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.artcraftandroid.procraft</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -44,7 +44,7 @@
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 			<key>CFBundleTypeIconFile</key>
-			<string>procraft</string>
+			<string>linpaintx</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>io.github.artcraftandroid.procraft.artwork</string>
@@ -100,7 +100,7 @@
 			<key>UTTypeDescription</key>
 			<string>ProCraft Artwork</string>
 			<key>UTTypeIconFile</key>
-			<string>procraft</string>
+			<string>linpaintx</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>

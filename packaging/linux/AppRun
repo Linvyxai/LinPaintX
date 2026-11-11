@@ -6,9 +6,9 @@ HERE="$(dirname "$(readlink -f "$0")")"
 if [ -n "${APPIMAGE:-}" ] && [ -n "${HOME:-}" ]; then
   DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
   {
-    for icon in "$HERE"/usr/share/icons/hicolor/*/apps/procraft.png; do
+    for icon in "$HERE"/usr/share/icons/hicolor/*/apps/linpaintx.png; do
       size="$(basename "$(dirname "$(dirname "$icon")")")"
-      mkdir -p "$DATA/icons/hicolor/$size/apps" && cp -f "$icon" "$DATA/icons/hicolor/$size/apps/procraft.png"
+      mkdir -p "$DATA/icons/hicolor/$size/apps" && cp -f "$icon" "$DATA/icons/hicolor/$size/apps/linpaintx.png"
     done
     mkdir -p "$DATA/applications" &&
       sed "s|^Exec=.*|Exec=\"$APPIMAGE\" %F|" "$HERE/procraft.desktop" >"$DATA/applications/procraft.desktop"

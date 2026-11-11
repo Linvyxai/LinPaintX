@@ -1,181 +1,178 @@
 <p align="center">
-  <img src="assets/app-icon/procraft-1024.png" alt="ProCraft's app icon: a paintbrush in a warm-to-cool blend on a black tile" width="128">
+  <img src="assets/app-icon/linpaintx-1024.png" alt="Иконка LinPaintX: кисть и акцент-«X» в тёпло-холодном градиенте на чёрной плитке" width="128">
 </p>
 
-<h1 align="center">ProCraft</h1>
+<h1 align="center">LinPaintX</h1>
 
 <p align="center">
-  <b>An open-source painting app for Android tablets, Windows and Linux, with its own Rust engine and GPU renderer: a Kotlin/Jetpack Compose UI on Android, the same interface in egui on the desktop.</b><br>
-  Pressure-sensitive brushes, layers with blend modes, adjustments, selection and transform, animation and 3D painting, written from scratch.
-</p>
-
-<p align="center">
-  <a href="https://github.com/artcraft-android/procraft/releases"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Get it on GitHub" height="60"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/artcraft-android/procraft"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="60"></a>
-  <a href="https://discord.gg/gypGes3Uca"><img src="docs/images/discord-badge.svg" alt="Join us on Discord" height="60"></a>
+  <b>Приложение для рисования с открытым исходным кодом для Android-планшетов, Windows и Linux, с собственным движком на Rust и GPU-рендерером: интерфейс на Kotlin/Jetpack Compose на Android и тот же интерфейс на egui на десктопе.</b><br>
+  Кисти с учётом нажима, слои с режимами наложения, коррекции, выделение и трансформация, анимация и 3D-рисование — всё написано с нуля.
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/gypGes3Uca"><img alt="Discord: join the community" src="https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white"></a>
-  <img alt="Rust engine" src="https://img.shields.io/badge/engine-Rust-lightblue?style=flat&logo=rust&logoColor=white">
-  <img alt="GPU renderer: wgpu" src="https://img.shields.io/badge/renderer-wgpu-lightblue?style=flat">
-  <img alt="Kotlin and Jetpack Compose" src="https://img.shields.io/badge/UI-Kotlin%20%C2%B7%20Jetpack%20Compose-blue?style=flat">
-  <img alt="Minimum: Android 10 (API 29)" src="https://img.shields.io/badge/min-Android%2010%20%28API%2029%29-blue?style=flat">
-  <img alt="Target: Android 16 (API 36)" src="https://img.shields.io/badge/target-Android%2016%20%28API%2036%29-blue?style=flat">
-  <img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue?style=flat">
-  <img alt="Desktop: Windows and Linux" src="https://img.shields.io/badge/desktop-Windows%20%C2%B7%20Linux-blue?style=flat">
-  <img alt="Status: beta" src="https://img.shields.io/badge/status-beta-lightblue?style=flat">
+  <a href="https://github.com/Linvyxai/LinPaintX/releases"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Скачать на GitHub" height="60"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Linvyxai/LinPaintX"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Скачать через Obtainium" height="60"></a>
+  <a href="https://discord.gg/gypGes3Uca"><img src="docs/images/discord-badge.svg" alt="Присоединяйтесь к нам в Discord" height="60"></a>
 </p>
 
 <p align="center">
-  <sub>From <a href="https://github.com/artcraft-android/procraft/releases">Releases</a>: Android tablets take the <code>arm64.apk</code> (the <code>legacy-arm32.apk</code> is only for older 32-bit tablets), or Obtainium, for updates; Windows the <code>.msi</code> installer or the portable <code>.zip</code>; Linux the <code>.AppImage</code>, the <code>.deb</code> or the <code>.tar.gz</code> (videos and PDFs there use the system's <code>ffmpeg</code> and <code>poppler-utils</code>).</sub>
+  <a href="https://discord.gg/gypGes3Uca"><img alt="Discord: присоединиться к сообществу" src="https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white"></a>
+  <img alt="Движок: Rust" src="https://img.shields.io/badge/engine-Rust-lightblue?style=flat&logo=rust&logoColor=white">
+  <img alt="GPU-рендерер: wgpu" src="https://img.shields.io/badge/renderer-wgpu-lightblue?style=flat">
+  <img alt="Kotlin и Jetpack Compose" src="https://img.shields.io/badge/UI-Kotlin%20%C2%B7%20Jetpack%20Compose-blue?style=flat">
+  <img alt="Минимум: Android 10 (API 29)" src="https://img.shields.io/badge/min-Android%2010%20%28API%2029%29-blue?style=flat">
+  <img alt="Цель: Android 16 (API 36)" src="https://img.shields.io/badge/target-Android%2016%20%28API%2036%29-blue?style=flat">
+  <img alt="Лицензия: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue?style=flat">
+  <img alt="Десктоп: Windows и Linux" src="https://img.shields.io/badge/desktop-Windows%20%C2%B7%20Linux-blue?style=flat">
+  <img alt="Статус: бета" src="https://img.shields.io/badge/status-beta-lightblue?style=flat">
 </p>
 
 <p align="center">
-  <a href="#painting">Painting</a> ·
-  <a href="#layers-and-colour">Layers &amp; colour</a> ·
-  <a href="#adjustments-and-transform">Adjustments &amp; transform</a> ·
-  <a href="#actions">Actions</a> ·
-  <a href="#planned-features">Planned features</a> ·
-  <a href="#building-instructions">Building</a>
+  <sub>Из <a href="https://github.com/Linvyxai/LinPaintX/releases">Releases</a>: планшетам Android нужен <code>arm64.apk</code> (<code>legacy-arm32.apk</code> — только для старых 32-битных планшетов) или Obtainium для обновлений; Windows — установщик <code>.msi</code> или портативный <code>.zip</code>; Linux — <code>.AppImage</code>, <code>.deb</code> или <code>.tar.gz</code> (видео и PDF там используют системные <code>ffmpeg</code> и <code>poppler-utils</code>).</sub>
+</p>
+
+<p align="center">
+  <a href="#рисование">Рисование</a> ·
+  <a href="#слои-и-цвет">Слои и цвет</a> ·
+  <a href="#коррекции-и-трансформация">Коррекции и трансформация</a> ·
+  <a href="#действия">Действия</a> ·
+  <a href="#планы">Планы</a> ·
+  <a href="#сборка">Сборка</a>
 </p>
 
 <br>
 
 <p align="center">
-  <img src="docs/images/demo.webp" alt="Dusk painted in ProCraft from a blank canvas, at a person's pace: the Soft Airbrush picked in the brush library and its size set; colours picked on the Classic square; the sky filled indigo by dragging the colour onto the canvas and airbrushed in bands of purple, magenta, orange and gold; a new layer for a glow and one for the sun, a circle that snaps round and is filled; two ranges of hills outlined and filled; pines and birds inked; stars airbrushed and made to glow with Bloom; the Layers panel opened on its seven layers" width="100%">
+  <img src="docs/images/demo.webp" alt="Закат, нарисованный в LinPaintX с чистого холста: в библиотеке кистей выбран мягкий аэрограф и задан его размер; цвета подобраны на классическом квадрате; небо залито индиго перетаскиванием цвета на холст и расписано аэрографом полосами фиолетового, пурпурного, оранжевого и золотого; новый слой для свечения и ещё один для солнца — круга, который защёлкивается ровно и заливается; два хребта холмов обведены и залиты; сосны и птицы нарисованы тушью; звёзды нанесены аэрографом и подсвечены Bloom; открыта панель слоёв на семи слоях" width="100%">
   <br>
-  <sub><b>Dusk</b>, painted from a blank canvas on a Lenovo Legion Tab: the brush library, the colour picker, the layers, a sun snapped round and filled, hills filled the same way, pines, stars with Bloom. About 1:20; the <a href="docs/images/demo.mp4">full video</a> (MP4, 2:21) shows every menu at close to real speed. Every stroke is a pen stroke with pressure, eased in and out, played by the <a href="tools/showcase">demo script</a>.</sub>
+  <sub><b>Закат</b>, нарисованный с чистого холста на Lenovo Legion Tab: библиотека кистей, палитра, слои, защёлкнутое и залитое солнце, залитые так же холмы, сосны, звёзды с Bloom. Около 1:20; <a href="docs/images/demo.mp4">полное видео</a> (MP4, 2:21) показывает каждое меню почти в реальном темпе. Каждый штрих — штрих пером с нажимом, с плавным началом и концом, проигран <a href="tools/showcase">демо-скриптом</a>.</sub>
 </p>
 
 <br>
 
 <p align="center">
-  <img src="docs/images/canvas.jpg" alt="The finished Dusk on the canvas: a sky from deep indigo through purple, magenta and orange to gold, a pale sun with a soft glow, birds, two ranges of purple hills with dark pines, and stars; the top bar with Gallery and the tools, and the sidebar with the size and opacity sliders, undo and redo" width="100%">
+  <img src="docs/images/canvas.jpg" alt="Готовый «Закат» на холсте: небо от глубокого индиго через фиолетовый, пурпурный и оранжевый к золотому, бледное солнце с мягким свечением, птицы, два хребта фиолетовых холмов с тёмными соснами и звёзды; сверху панель с Галереей и инструментами, сбоку — слайдеры размера и непрозрачности, отмена и повтор" width="100%">
   <br>
-  <sub>The canvas: the tools along the top, size and opacity in the sidebar, the whole screen for the painting.</sub>
+  <sub>Холст: инструменты сверху, размер и непрозрачность сбоку, весь экран для рисунка.</sub>
 </p>
 
 <br>
 
-## Painting
+## Рисование
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/brushes.jpg" alt="The Brush library over Dusk: the sets Sketching, Inking, Drawing, Painting (chosen), Watercolour, Calligraphy, Airbrushing, Spray Paint, Charcoals, Textures and Abstract, each with its icon, and the Painting set's brushes with a preview stroke each"><br><sub>The brush library: eleven sets of our own brushes, each previewed with a stroke.</sub></td>
-<td width="50%"><img src="docs/images/studio.jpg" alt="The Brush Studio on Round Brush: the tabs from Stroke path to About this brush, the Shape tab with its shape source and input style, and the Drawing Pad with a pressure scribble"><br><sub>The Brush Studio: stroke path, stabilization, taper, shape, grain, rendering, wet mix, colour dynamics and more, tried out on the drawing pad.</sub></td>
+<td width="50%"><img src="docs/images/brushes.jpg" alt="Библиотека кистей поверх «Заката»: наборы Эскиз, Тушь, Рисование, Живопись (выбран), Акварель, Каллиграфия, Аэрография, Баллончик, Уголь, Текстуры и Абстракция, каждый со своей иконкой, и кисти набора Живопись с превью-штрихом"><br><sub>Библиотека кистей: одиннадцать наборов собственных кистей, каждая с превью-штрихом.</sub></td>
+<td width="50%"><img src="docs/images/studio.jpg" alt="Студия кисти на «Круглой кисти»: вкладки от «Пути штриха» до «Об этой кисти», вкладка «Форма» с источником формы и стилем ввода, и планшет для наброска с нажимом"><br><sub>Студия кисти: путь штриха, стабилизация, сужение, форма, зерно, рендеринг, влажное смешивание, динамика цвета и многое другое, с пробой на планшете.</sub></td>
 </tr>
 </table>
 
 <br>
 
-## Layers and colour
+## Слои и цвет
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/layers.jpg" alt="The Layers panel over Dusk: seven layers, each with its thumbnail (stars, pines, the near and far hills, the sun, its glow and the sky), their blend mode letters and visibility boxes, and the background colour"><br><sub>Layers with blend modes, opacity, alpha lock, clipping masks, masks and groups. Layers past what the GPU holds are kept compressed, so artworks with hundreds of layers open and paint smoothly.</sub></td>
-<td width="50%"><img src="docs/images/colour.jpg" alt="The Colors panel on its Disc tab: a hue ring around a saturation and brightness disc, the current and previous colours, and the Classic, Harmony, Value and Palettes tabs"><br><sub>Colour: disc, classic, harmony, value (with hex) and palettes.</sub></td>
+<td width="50%"><img src="docs/images/layers.jpg" alt="Панель слоёв поверх «Заката»: семь слоёв, каждый с миниатюрой (звёзды, сосны, ближние и дальние холмы, солнце, его свечение и небо), буквы режима наложения и переключатели видимости, а также цвет фона"><br><sub>Слои с режимами наложения, непрозрачностью, блокировкой альфы, обтравочными масками, масками и группами. Слои, не помещающиеся в GPU, хранятся сжатыми, поэтому работы с сотнями слоёв открываются и рисуются плавно.</sub></td>
+<td width="50%"><img src="docs/images/colour.jpg" alt="Панель «Цвета» на вкладке «Диск»: кольцо оттенка вокруг диска насыщенности и яркости, текущий и предыдущий цвета, а также вкладки Классический, Гармония, Значение и Палитры"><br><sub>Цвет: диск, классический, гармония, значение (с hex) и палитры.</sub></td>
 </tr>
 </table>
 
 <br>
 
-## Adjustments and transform
+## Коррекции и трансформация
 
 <table>
 <tr>
-<td width="50%"><img src="docs/images/adjust.jpg" alt="Hue, Saturation, Brightness on Dusk's sky: the hue moved to 40 percent turns the sky blue at the top and pink at the horizon, with the Hue, Saturation and Brightness sliders below"><br><sub>Hue, saturation, brightness on the sky layer, live. Also colour balance, curves, gradient map, blurs, noise, sharpen, bloom, glitch, halftone, chromatic aberration, liquify and clone, on the layer or painted on.</sub></td>
-<td width="50%"><img src="docs/images/transform.jpg" alt="Transform in Warp on the sun layer: a mesh with corner handles over the sun, and the toolbar with Freeform, Uniform, Distort and Warp, then Advanced Mesh, Flip Horizontal, Flip Vertical, Rotate 45, Fit to Canvas, Bilinear and Reset"><br><sub>Transform: freeform, uniform, distort and warp, with snapping. Selection: automatic, freehand, rectangle and ellipse, with feather.</sub></td>
+<td width="50%"><img src="docs/images/adjust.jpg" alt="Оттенок, насыщенность, яркость на слое неба в «Закате»: сдвиг оттенка на 40 процентов делает небо синим сверху и розовым у горизонта, ниже — слайдеры оттенка, насыщенности и яркости"><br><sub>Оттенок, насыщенность, яркость на слое неба, в реальном времени. Также цветовой баланс, кривые, карта градиента, размытия, шум, резкость, свечение, глитч, полутон, хроматическая аберрация, пластика и клонирование — на слое или нарисованные поверх.</sub></td>
+<td width="50%"><img src="docs/images/transform.jpg" alt="Трансформация в режиме «Деформация» на слое солнца: сетка с угловыми ручками над солнцем и панель инструментов — Свободная, Равномерная, Искажение и Деформация, затем Расширенная сетка, Отразить по горизонтали, Отразить по вертикали, Повернуть на 45, Вписать в холст, Билинейная и Сброс"><br><sub>Трансформация: свободная, равномерная, искажение и деформация, с прилипанием. Выделение: автоматическое, от руки, прямоугольник и эллипс, с растушёвкой.</sub></td>
 </tr>
 </table>
 
 <br>
 
-## Actions
+## Действия
 
 <p align="center">
-  <img src="docs/images/actions.jpg" alt="The Actions panel on its Canvas tab over Dusk: Crop and Resize, the Animation Assist, Page Assist, Drawing Guide and Reference switches, Edit Drawing Guide, Flip horizontal, Flip vertical and Canvas information, under the Add, Canvas, Share, Video, Prefs and Help tabs" width="100%">
+  <img src="docs/images/actions.jpg" alt="Панель «Действия» на вкладке «Холст» поверх «Заката»: Обрезать и изменить размер, Помощник анимации, Помощник страниц, Направляющая и Референс, Изменить направляющую, Отразить по горизонтали, Отразить по вертикали и Сведения о холсте, под вкладками Добавить, Холст, Поделиться, Видео, Настройки и Справка" width="100%">
   <br>
-  <sub>Actions: add files, photos and text; the canvas, its guides and assists; share as PNG, JPEG, PSD, PDF, TIFF, GIF or MP4; a time-lapse of every artwork; preferences and gesture controls.</sub>
+  <sub>Действия: добавить файлы, фотографии и текст; холст, его направляющие и помощники; поделиться как PNG, JPEG, PSD, PDF, TIFF, GIF или MP4; таймлапс каждой работы; настройки и управление жестами.</sub>
 </p>
 
 <br>
 
-## Planned features
+## Планы
 
-ProCraft is in beta, on Android tablets and on the desktop (Windows and Linux).
+LinPaintX находится в бете — на Android-планшетах и на десктопе (Windows и Linux).
 
-| Area | Status |
+| Область | Статус |
 |---|---|
-| Canvas: the top bar, the sidebar (size, opacity, modify, undo, redo), full screen, gestures (pinch, rotate, quick fit, two- and three-finger taps, scrub to clear) | ✅ |
-| Brush engine: shape and grain sources, stroke path, stabilization, taper, rendering and glazes, wet mix, colour dynamics, pen pressure and tilt; the library and the Brush Studio | ✅ |
-| Layers: blend modes, opacity, alpha lock, clipping masks, masks, groups, merge, the reference layer; large artworks kept compressed off the GPU | ✅ |
-| Colour: disc, classic, harmony, value and palettes; history; eyedropper; filling by dragging the colour onto the canvas | ✅ |
-| Adjustments, each with its toolbar, on the layer or painted on | ✅ |
-| Selection (automatic, freehand, shapes, feather) and transform (freeform, uniform, distort, warp, snapping) | ✅ |
-| Shapes that snap clean, drawing guides and drawing assist (2D, isometric, perspective, symmetry), text | ✅ |
-| Animation and page assists, the reference window | ✅ |
-| Gallery: stacks, new-canvas presets, import and share (PNG, JPEG, PSD, PDF, TIFF, GIF, MP4), time-lapse | 🚧 nearly done |
-| 3D painting: OBJ and USDZ models, texture sets, painting on the mesh, lights and environments | 🚧 |
-| Desktop: Windows and Linux, the same interface with a mouse, a pen tablet and keyboard shortcuts; an installer, an AppImage and a .deb | 🚧 beta |
-| Plugins: `.procraft-plugin` files you import in Prefs › Plugins, each off until you turn it on and gone without a trace when you turn it off. Filters (a few lines of WGSL, under Adjustments) and sandboxed WebAssembly that changes how the app behaves, such as Interface size, Touch offset and ColorDrop gap closing. How to write one: [docs/plugins.md](docs/plugins.md) | 🚧 experimental |
-| More for plugins: panels and tools of their own, and plugins that can use the app's commands | ⬜ |
-| Phones: their own app, ProCraft Pocket (this one is for tablets) | ⬜ |
+| Холст: верхняя панель, боковая панель (размер, непрозрачность, изменение, отмена, повтор), полный экран, жесты (щипок, поворот, быстрая подгонка, касания двумя и тремя пальцами, смахивание для очистки) | ✅ |
+| Движок кистей: источники формы и зерна, путь штриха, стабилизация, сужение, рендеринг и глазури, влажное смешивание, динамика цвета, нажим и наклон пера; библиотека и студия кисти | ✅ |
+| Слои: режимы наложения, непрозрачность, блокировка альфы, обтравочные маски, маски, группы, слияние, референсный слой; большие работы хранятся сжатыми вне GPU | ✅ |
+| Цвет: диск, классический, гармония, значение и палитры; история; пипетка; заливка перетаскиванием цвета на холст | ✅ |
+| Коррекции, каждая со своей панелью, на слое или нарисованные поверх | ✅ |
+| Выделение (автоматическое, от руки, фигуры, растушёвка) и трансформация (свободная, равномерная, искажение, деформация, прилипание) | ✅ |
+| Фигуры, которые защёлкиваются ровно, направляющие и помощник рисования (2D, изометрия, перспектива, симметрия), текст | ✅ |
+| Анимация и помощник страниц, окно референса | ✅ |
+| Галерея: стопки, пресеты нового холста, импорт и экспорт (PNG, JPEG, PSD, PDF, TIFF, GIF, MP4), таймлапс | 🚧 почти готово |
+| 3D-рисование: модели OBJ и USDZ, наборы текстур, рисование по сетке, свет и окружение | 🚧 |
+| Десктоп: Windows и Linux, тот же интерфейс с мышью, графическим планшетом и горячими клавишами; установщик, AppImage и .deb | 🚧 бета |
+| Плагины: файлы `.procraft-plugin`, которые вы импортируете в Настройки › Плагины; каждый выключен, пока вы его не включите, и исчезает без следа при выключении. Фильтры (несколько строк WGSL, в разделе Коррекции) и изолированный WebAssembly, меняющий поведение приложения, например Размер интерфейса, Смещение касания и Замыкание промежутков ColorDrop. Как написать: [docs/plugins.md](docs/plugins.md) | 🚧 экспериментально |
+| Больше для плагинов: собственные панели и инструменты, и плагины, способные использовать команды приложения | ⬜ |
+| Телефоны: собственное приложение, LinPaintX Pocket (это для планшетов) | ⬜ |
 
-<sub>✅ works today · 🚧 in progress · ⬜ not started · 🚫 not planned</sub>
+<sub>✅ работает сегодня · 🚧 в работе · ⬜ не начато · 🚫 не планируется</sub>
 
 <br>
 
-## Building Instructions
-*One Gradle command builds the whole app: it compiles the Rust engine with [cargo-ndk](https://github.com/bbqsrc/cargo-ndk) and generates the Kotlin bindings.*
+## Сборка
+*Одна команда Gradle собирает всё приложение: она компилирует движок на Rust с [cargo-ndk](https://github.com/bbqsrc/cargo-ndk) и генерирует привязки Kotlin.*
 
-* Clone this repository
-* Make sure you have at least 6 GB of free disk space
-* enter `android` and run `./gradlew assembleRelease -Pprocraft.abis=arm64-v8a`, or open that folder in Android Studio and press Run.
-* the desktop app: `cargo run --release -p procraft-desktop` from the repository's root; its installer and packages with `packaging/windows/package.ps1` (WiX v5) and `packaging/linux/package.sh` (nfpm, appimagetool).
+* Клонируйте этот репозиторий
+* Убедитесь, что есть не меньше 6 ГБ свободного места на диске
+* войдите в `android` и выполните `./gradlew assembleRelease -Pprocraft.abis=arm64-v8a`, либо откройте эту папку в Android Studio и нажмите Run.
+* десктопное приложение: `cargo run --release -p procraft-desktop` из корня репозитория; его установщик и пакеты — через `packaging/windows/package.ps1` (WiX v5) и `packaging/linux/package.sh` (nfpm, appimagetool).
 
-Build time dependencies:
+Зависимости времени сборки:
 
 <details>
-  <summary>required tools</summary>
+  <summary>необходимые инструменты</summary>
 
   ```
-      rustup, with the aarch64-linux-android and x86_64-linux-android targets
+      rustup с целями aarch64-linux-android и x86_64-linux-android
       cargo install cargo-ndk --version "^4" --locked
-      Android SDK (API 37) and NDK 29.0.14206865
-      JDK 17 or newer
+      Android SDK (API 37) и NDK 29.0.14206865
+      JDK 17 или новее
   ```
 </details>
 
-`cargo test --workspace` runs the engine's and the renderer's tests on the desktop.
+`cargo test --workspace` запускает тесты движка и рендерера на десктопе.
 
-| Path | What |
+| Путь | Что |
 |---|---|
-| `crates/engine` | document, brushes, stroke geometry, canvas view (no GPU) |
-| `crates/gpu` | wgpu renderer: layers, strokes, compositing, display |
-| `crates/core` | what both apps share above the renderer: the canvas session, every touch and gesture, the tools' state (adjustments, transform, selection, crop, Recolor) and which of them a button ends, the gallery, presets, gradients, time-lapse, the brush library's files, the layer menu, exports and their file names, and keyboard shortcuts; with the Android app's UniFFI bindings |
-| `android` | the Android app (Gradle) |
-| `desktop` | the desktop app (egui) for Windows and Linux |
-| `packaging` | the desktop app's Windows installer and Linux packages, as the release workflow builds them |
+| `crates/engine` | документ, кисти, геометрия штриха, вид холста (без GPU) |
+| `crates/gpu` | рендерер wgpu: слои, штрихи, композитинг, отображение |
+| `crates/core` | общее для обоих приложений над рендерером: сессия холста, каждое касание и жест, состояние инструментов (коррекции, трансформация, выделение, обрезка, Перекрашивание) и какую из них завершает кнопка, галерея, пресеты, градиенты, таймлапс, файлы библиотеки кистей, меню слоя, экспорт и его имена файлов, горячие клавиши; с привязками UniFFI Android-приложения |
+| `android` | приложение для Android (Gradle) |
+| `desktop` | десктопное приложение (egui) для Windows и Linux |
+| `packaging` | установщик Windows и пакеты Linux десктопного приложения, как их собирает релизный workflow |
 
-*Builds are only tested on Windows 11.*
-
-<br>
-
-## License
-
-[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE), at your option.
-
-- **Third-party material:** the Inter font, Lucide icons and the light panoramas the app bundles,
-  and the libraries it's built with, are listed in [NOTICE](NOTICE).
-- **Every asset**, with its author, source and licence, is in [ATTRIBUTION.md](ATTRIBUTION.md).
-- **Icons** drawn using vector outlines ([`tools/icons/draw_icons.py`](tools/icons/draw_icons.py),
-  to the [style guide](docs/icons/STYLE_GUIDE.md)).
-- **The demo painting**, *Dusk*, is our own, made in the app.
+*Сборки проверяются только на Windows 11.*
 
 <br>
 
-## Misc info for myself
+## Лицензия
 
-Try to use [semantic commit](https://kapeli.com/cheat_sheets/Semantic_Commits.docset/Contents/Resources/Documents/index)
-messages. Use `feat:` / `fix:` / `chore:` / `docs:` / etc.
+[MIT](LICENSE-MIT) OR [Apache-2.0](LICENSE-APACHE), на ваш выбор.
+
+- **Сторонние материалы:** шрифт Inter, иконки Lucide и светлые панорамы, которые поставляет приложение, а также библиотеки, на которых оно построено, перечислены в [NOTICE](NOTICE).
+- **Каждый ресурс**, с его автором, источником и лицензией, — в [ATTRIBUTION.md](ATTRIBUTION.md).
+- **Иконки** нарисованы векторными контурами ([`tools/icons/draw_icons.py`](tools/icons/draw_icons.py), по [руководству по стилю](docs/icons/STYLE_GUIDE.md)).
+- **Демо-картина**, *Закат*, — наша собственная, сделана в приложении.
+
+<br>
+
+## Заметки для себя
+
+Старайтесь использовать [семантические коммиты](https://kapeli.com/cheat_sheets/Semantic_Commits.docset/Contents/Resources/Documents/index). Используйте `feat:` / `fix:` / `chore:` / `docs:` / и т.д.

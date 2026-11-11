@@ -869,7 +869,7 @@ impl Gallery {
     /// field, its name and its version; the round button at the top right (or Escape) closes it.
     fn about(&mut self, ctx: &egui::Context, screen: Rect) {
         if self.mark.is_none() {
-            let bytes = include_bytes!("../../android/app/src/main/res/drawable-nodpi/procraft_mark.png");
+            let bytes = include_bytes!("../../android/app/src/main/res/drawable-nodpi/linpaintx_mark.png");
             let image = crate::files::png_rgba(bytes)
                 .map(|(w, h, rgba)| egui::ColorImage::from_rgba_unmultiplied([w as usize, h as usize], &rgba));
             self.mark = image.map(|i| ctx.load_texture("app mark", i, egui::TextureOptions::LINEAR));

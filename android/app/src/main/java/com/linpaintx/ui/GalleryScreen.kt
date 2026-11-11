@@ -1791,7 +1791,7 @@ private fun AboutApp(onRecover: () -> Unit, onClose: () -> Unit) {
             // the launcher icon: its field, and its picture drawn at the adaptive icon's full size
             Box(Modifier.size(300.dp).clip(RoundedCornerShape(67.dp)).background(AboutIconField), contentAlignment = Alignment.Center) {
                 androidx.compose.foundation.Image(
-                    androidx.compose.ui.res.painterResource(com.linpaintx.R.drawable.procraft_mark),
+                    androidx.compose.ui.res.painterResource(com.linpaintx.R.drawable.linpaintx_mark),
                     contentDescription = null,
                     modifier = Modifier.requiredSize(450.dp),
                 )
