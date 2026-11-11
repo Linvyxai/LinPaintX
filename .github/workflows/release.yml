@@ -198,7 +198,11 @@ jobs:
         run: |
           curl -fsSL https://github.com/goreleaser/nfpm/releases/download/v2.47.0/nfpm_2.47.0_Linux_x86_64.tar.gz | tar -xz -C "$RUNNER_TEMP" nfpm
           sudo install -m755 "$RUNNER_TEMP/nfpm" /usr/local/bin/nfpm
-          sudo apt-get install -y --no-install-recommends desktop-file-utils >/dev/null
+          for attempt in 1 2 3 4 5; do
+            sudo apt-get install -y --no-install-recommends desktop-file-utils >/dev/null && break
+            echo "apt-get install failed (attempt $attempt); retrying"
+            sleep 10
+          done
 
       - name: Package for Linux
         if: runner.os == 'Linux'
