@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LinPaintX"
 include(":app")
+include(":pocket")
