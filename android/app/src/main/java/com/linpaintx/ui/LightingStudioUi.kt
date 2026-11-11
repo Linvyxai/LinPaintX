@@ -244,21 +244,21 @@ private fun LightSettings(
                     if (light.hue >= 1f) 360 else hsv[0].roundToInt()
                 }
                 LightSlider(
-                    "Hue",
-                    if (light.saturation <= 0f) "None" else "$degrees°",
+                    "Оттенок",
+                    if (light.saturation <= 0f) "Нет" else "$degrees°",
                     light.hue,
                     Brush.horizontalGradient(HueStops),
                     hue,
                 ) { vm.changeLight(index, light.copy(hue = it)) }
                 LightSlider(
-                    "Saturation",
+                    "Насыщенность",
                     level(light.saturation),
                     light.saturation,
                     Brush.horizontalGradient(listOf(SaturationStart, hue)),
                     androidx.compose.ui.graphics.lerp(SaturationStart, hue, light.saturation),
                 ) { vm.changeLight(index, light.copy(saturation = it)) }
                 LightSlider(
-                    "Intensity",
+                    "Интенсивность",
                     level(light.intensity),
                     light.intensity,
                     Brush.horizontalGradient(listOf(Color.Black, Color.White)),
@@ -280,10 +280,10 @@ private fun LightSettings(
     }
 }
 
-/** A share shown as the light's sliders show it: None, a percentage, or Max. */
+/** A share shown as the light's sliders show it: none, a percentage, or all of it. */
 private fun level(v: Float) = when {
-    v <= 0f -> "None"
-    v >= 1f -> "Max"
+    v <= 0f -> "Нет"
+    v >= 1f -> "Макс."
     else -> "${(v * 100f).roundToInt()}%"
 }
 
@@ -388,8 +388,8 @@ private fun ExposureSlider(value: Float, onChange: (Float) -> Unit) {
     val change by rememberUpdatedState(onChange)
     val current by rememberUpdatedState(value)
     val shown = when {
-        value <= 0f -> "Min"
-        value >= MOST_EXPOSURE -> "Max"
+        value <= 0f -> "Мин."
+        value >= MOST_EXPOSURE -> "Макс."
         else -> "${(value * 100f).roundToInt()}%"
     }
     Box(Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(14.dp)).background(GroupFill)) {

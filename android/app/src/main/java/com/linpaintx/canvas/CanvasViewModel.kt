@@ -8343,7 +8343,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (part.isEmpty()) return
 
-        systemClipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Text", part))
+        systemClipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Текст", part))
 
         if (cut) changeTextField(TextFieldValue(v.text.removeRange(sel.min, sel.max), TextRange(sel.min)))
 
@@ -8439,7 +8439,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         var info = TextInfo(
 
-            text = "Text", font = "sans-serif", style = "Medium",
+            text = "Текст", font = "sans-serif", style = "Medium",
 
             size = 0f,
 

@@ -57,7 +57,7 @@ fun ModelPicture(vm: CanvasViewModel) {
         ) {
             ToolbarButton(PcIcons.FlipHorizontal, "Отразить горизонтально", width = PictureButton, iconSize = 50.dp) { vm.flipModelPicture(true) }
             ToolbarButton(PcIcons.FlipVertical, "Отразить вертикально", width = PictureButton, iconSize = 50.dp) { vm.flipModelPicture(false) }
-            ToolbarButton(PcIcons.Rotate45, "Rotate 45°", width = PictureButton, iconSize = 44.dp) { vm.turnModelPicture() }
+            ToolbarButton(PcIcons.Rotate45, "Повернуть 45°", width = PictureButton, iconSize = 44.dp) { vm.turnModelPicture() }
             ToolbarButton(PcIcons.TransformReset, "Сбросить", width = PictureButton, iconSize = 44.dp) { vm.resetModelPicture() }
             ToolbarButton(PcIcons.Cross, "Отмена", width = PictureButton, iconSize = 28.dp) { vm.endModelPicture(keep = false) }
             ToolbarButton(PcIcons.Tick, "Готово", width = PictureButton, iconSize = 28.dp) { vm.endModelPicture(keep = true) }

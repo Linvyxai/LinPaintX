@@ -380,9 +380,10 @@ private fun BlendPicker(vm: CanvasViewModel, c: StudioControl.Picker) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(localizedStudioName(c.label), color = StudioDim, fontSize = 17.sp, maxLines = 1, modifier = Modifier.weight(1f))
-        // a file may give the grain a layer mode the list leaves out
+        // a file may give the grain a layer mode the list leaves out; the list shows its rows
+        // translated, so the value beside the label reads the same way
         val name = (modes + vm.blendModeList).firstOrNull { it.id.toInt() == current }?.name ?: "Normal"
-        Text(name, color = Pc.Accent, fontSize = 17.sp, maxLines = 1, modifier = Modifier.tap { open = true })
+        Text(localizedStudioName(name), color = Pc.Accent, fontSize = 17.sp, maxLines = 1, modifier = Modifier.tap { open = true })
     }
     if (open) {
         BlendModeList(modes, current, at) { picked ->
@@ -543,19 +544,19 @@ private fun shownValue(v: Float, shown: Shown, most: Float = 16f): String {
     val belowTop = "${(v * 100).roundToInt().coerceAtMost(99)}%"
     return when (shown) {
         Shown.PERCENT -> when {
-            v <= 0f -> "None"
-            v >= 1f -> "Max"
+            v <= 0f -> "Нет"
+            v >= 1f -> "Макс."
             else -> between
         }
-        Shown.BOTH -> if (v >= 1f) "Max" else belowTop
+        Shown.BOTH -> if (v >= 1f) "Макс." else belowTop
         // smoothing all the way
-        Shown.GRADE -> if (v >= 1f) "Smooth" else belowTop
+        Shown.GRADE -> if (v >= 1f) "Сглажено" else belowTop
         // the control's middle reads as 100%
         Shown.DOUBLE -> "${(v * 200).roundToInt()}%"
         // as a percent, with the control's middle at 100%
         Shown.TWICE -> when {
-            v <= 0f -> "None"
-            v >= 1f -> "Max"
+            v <= 0f -> "Нет"
+            v >= 1f -> "Макс."
             else -> "${(v * 200).roundToInt().coerceIn(1, 199)}%"
         }
         // turning with the stroke: all the way reads as following it
@@ -695,7 +696,7 @@ private fun StudioPad(vm: CanvasViewModel, modifier: Modifier) {
             if (vm.randomisesBrushes) {
                 Box(Modifier.height(43.dp).clip(CircleShape).background(StudioButton).border(1.dp, StudioButtonEdge, CircleShape)
                     .tap { vm.randomiseStudio() }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-                    Text("Randomise", color = StudioButtonInk, fontSize = 17.sp, maxLines = 1)
+                    Text("Случайно", color = StudioButtonInk, fontSize = 17.sp, maxLines = 1)
                 }
                 Spacer(Modifier.width(13.dp))
             }

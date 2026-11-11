@@ -279,7 +279,7 @@ fun ModelAnimatedExport(vm: CanvasViewModel, format: CanvasViewModel.Animated) {
         val seconds = if (t.seconds < 1f) "%.1f".format(t.seconds) else "${t.seconds.roundToInt()}"
         TurntableSlider("Длительность анимации", seconds, (t.seconds - 0.5f) / 4.5f) { vm.turntable = vm.turntable.copy(seconds = 0.5f + it * 4.5f) }
         TurntableSlider("Дистанция масштаба", "${(t.zoom * 100).roundToInt()}%", t.zoom) { vm.turntable = vm.turntable.copy(zoom = it) }
-        TurntableSlider("Ease", "${(t.ease * 100).roundToInt()}%", t.ease) { vm.turntable = vm.turntable.copy(ease = it) }
+        TurntableSlider("Плавность", "${(t.ease * 100).roundToInt()}%", t.ease) { vm.turntable = vm.turntable.copy(ease = it) }
         Spacer(Modifier.height(10.dp))
         SettingRow("Показывать окружение", t.environment) { vm.turntable = vm.turntable.copy(environment = it) }
     }

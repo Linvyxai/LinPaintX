@@ -58,7 +58,7 @@ fun BoxScope.CopyPastePanel(vm: CanvasViewModel) {
                 Icon(PcIcons.Cross, contentDescription = "Закрыть", tint = ButtonInk, modifier = Modifier.size(18.dp))
             }
             Row(Modifier.offset(y = 48.dp)) {
-                PanelButton(PcIcons.CopyCut, "Cut") { act(vm::cutLayer) }
+                PanelButton(PcIcons.CopyCut, "Вырезать") { act(vm::cutLayer) }
                 PanelButton(PcIcons.CopyOne, "Копировать") { act(vm::copyLayer) }
                 PanelButton(PcIcons.CopyAll, "Копировать всё") { act(vm::copyCanvas) }
                 PanelButton(PcIcons.CopyDuplicate, "Дублировать") { act(vm::duplicateCurrent) }

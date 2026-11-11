@@ -964,7 +964,7 @@ private fun BlendEditor(vm: CanvasViewModel, l: LayerInfo) {
     Column(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 15.dp)) {
         Row(Modifier.padding(horizontal = 13.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Непрозрачность", color = Pc.PanelTitle, fontSize = 17.sp, modifier = Modifier.weight(1f))
-            Text(if (opacity >= 0.995f) "Max" else "${(opacity * 100).roundToInt()}%", color = Pc.PanelTitle, fontSize = 17.sp)
+            Text(if (opacity >= 0.995f) "Макс." else "${(opacity * 100).roundToInt()}%", color = Pc.PanelTitle, fontSize = 17.sp)
         }
         OpacitySlider(
             opacity,

@@ -212,7 +212,7 @@ fun RasterizePrompt(vm: CanvasViewModel) {
         if (vm.askRasterize) Unit else null,
         title = { "Растеризовать текстовый слой?" },
         message = { "После этого текст нельзя будет изменить, но на нём можно рисовать." },
-        action = "Rasterize",
+        action = "Растеризовать",
         destructive = false,
         onCancel = { vm.askRasterize = false },
         onAction = {
@@ -315,14 +315,14 @@ private fun TextStyleSheet(vm: CanvasViewModel, info: TextInfo) {
             .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } },
     ) {
         Row(Modifier.fillMaxWidth().height(62.dp).background(SheetBar).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SheetIcon(PcIcons.Keyboard, "Keyboard", Modifier.size(44.dp).clip(CircleShape).background(KeyboardDisc), 40.dp) { vm.textStyleOpen = false }
+            SheetIcon(PcIcons.Keyboard, "Клавиатура", Modifier.size(44.dp).clip(CircleShape).background(KeyboardDisc), 40.dp) { vm.textStyleOpen = false }
             Spacer(Modifier.width(13.dp))
             Row(Modifier.height(40.dp).clip(RoundedCornerShape(12.dp)).background(SheetCapsule)) {
-                SheetIcon(PcIcons.TextCut, "Cut", Modifier.size(41.dp, 40.dp), 40.dp) { vm.copyText(cut = true) }
+                SheetIcon(PcIcons.TextCut, "Вырезать", Modifier.size(41.dp, 40.dp), 40.dp) { vm.copyText(cut = true) }
                 Spacer(Modifier.width(7.dp))
-                SheetIcon(PcIcons.TextCopy, "Copy", Modifier.size(41.dp, 40.dp), 40.dp) { vm.copyText(cut = false) }
+                SheetIcon(PcIcons.TextCopy, "Копировать", Modifier.size(41.dp, 40.dp), 40.dp) { vm.copyText(cut = false) }
                 Spacer(Modifier.width(7.dp))
-                SheetIcon(PcIcons.TextPaste, "Paste", Modifier.size(41.dp, 40.dp), 40.dp) { vm.pasteText() }
+                SheetIcon(PcIcons.TextPaste, "Вставить", Modifier.size(41.dp, 40.dp), 40.dp) { vm.pasteText() }
             }
             Spacer(Modifier.weight(1f))
             Row(Modifier.height(43.dp).clip(CircleShape).background(SheetCapsule), verticalAlignment = Alignment.CenterVertically) {
@@ -386,7 +386,7 @@ private val WIDE_SHEET = 900.dp
 @Composable
 private fun FontCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifier) {
     // Font and Style are one card split by a line: square where they meet
-    Card("Font", modifier, RoundedCornerShape(topStart = CardCorner, bottomStart = CardCorner)) {
+    Card("Шрифт", modifier, RoundedCornerShape(topStart = CardCorner, bottomStart = CardCorner)) {
         LazyColumn(Modifier.padding(start = 10.dp, end = 17.dp), contentPadding = PaddingValues(top = 6.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             items(TextRenderer.families) { f ->
                 Cell(f.name, f.family == info.font, TextRenderer.typeface(f.family, "Regular")) { vm.changeText { it.copy(font = f.family) } }
@@ -397,7 +397,7 @@ private fun FontCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifier) {
 
 @Composable
 private fun StyleCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifier) {
-    Card("Style", modifier, RoundedCornerShape(topEnd = CardCorner, bottomEnd = CardCorner)) {
+    Card("Стиль", modifier, RoundedCornerShape(topEnd = CardCorner, bottomEnd = CardCorner)) {
         LazyColumn(Modifier.padding(start = 10.dp, end = 17.dp), contentPadding = PaddingValues(top = 6.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             items(TextRenderer.styles) { st ->
                 Cell(st.name, st.name == info.style, TextRenderer.typeface(info.font, st.name)) { vm.changeText { it.copy(style = st.name) } }
@@ -410,7 +410,7 @@ private fun StyleCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifier) {
 private fun DesignCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifier) {
     val dpi = vm.canvasDpi()
     val pt = { px: Float -> px * 72f / dpi }
-    Card("Design", modifier) {
+    Card("Оформление", modifier) {
         Column(Modifier.padding(horizontal = 4.dp)) {
             DesignRow("Size", sizeToSlider(info.size), "%.1fpt".format(pt(info.size)), fromMiddle = false) { v -> vm.changeText { it.copy(size = sliderToSize(v)) } }
             DesignRow("Kerning", info.kerning / 2f + 0.5f, "%.1f%%".format(info.kerning * 100f)) { v -> vm.changeText { it.copy(kerning = v * 2f - 1f) } }
@@ -434,7 +434,7 @@ private fun AttributesCard(vm: CanvasViewModel, info: TextInfo, modifier: Modifi
     )
     // the buttons 36 tall, but the alignments 35 when two by two
     val gridTall = if (wide) 36.dp else 35.dp
-    Card("Attributes", modifier) {
+    Card("Параметры", modifier) {
         Column(
             Modifier.padding(start = if (wide) 10.dp else 6.5.dp, end = if (wide) 10.dp else 6.5.dp, top = if (wide) 6.dp else 7.dp),
             verticalArrangement = Arrangement.spacedBy(if (wide) 20.dp else 4.dp),
@@ -477,7 +477,7 @@ private fun SheetIcon(icon: ImageVector, label: String, modifier: Modifier, icon
 @Composable
 private fun Card(title: String, modifier: Modifier, shape: RoundedCornerShape = RoundedCornerShape(CardCorner), content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.fillMaxHeight().clip(shape).background(CardFill)) {
-        Text(title, color = SheetInk, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.5.dp, bottom = 9.dp))
+        Text(title, color = SheetInk, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.padding(start = 20.dp, top = 16.5.dp, bottom = 9.dp))
         content()
     }
 }
