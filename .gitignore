@@ -14,3 +14,6 @@ replay_pid*.log
 # local packaging: WiX's extension cache and files built outside the release workflow
 /.wix/
 /dist-local/
+
+# the working note carried between development sessions, not part of the documentation
+/docs/ai-context.md
