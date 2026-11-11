@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- dark, as the tablet app, so nothing flashes before the first frame -->
+    <color name="window_background">#FF000000</color>
+    <color name="ic_launcher_background">#FF0B0B0C</color>
+
+    <style name="Theme.LinPaintX" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

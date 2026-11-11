@@ -9,7 +9,9 @@
   The C runtime is linked in (+crt-static), so nothing else needs installing. The version is
   $env:VERSION, else procraft.version in android\gradle.properties (the one a release is tagged
   with). Needs Rust (MSVC) and WiX v5 with its UI and Util extensions ($env:WIX_EXE can name another
-  wix.exe):
+  wix.exe). WiX v5 is a dotnet tool, so it needs a .NET SDK first (winget install
+  Microsoft.DotNet.SDK.9), and the extensions are added once per machine (-g) or left in the
+  project's .wix\ folder as -g does not:
     dotnet tool install --global wix --version 5.0.2
     wix extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
   Modelled on SolidCraft's packaging (tangency-labs/solidcraft).

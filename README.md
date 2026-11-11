@@ -132,7 +132,7 @@ LinPaintX находится в бете — на Android-планшетах и 
 * Клонируйте этот репозиторий
 * Убедитесь, что есть не меньше 6 ГБ свободного места на диске
 * войдите в `android` и выполните `./gradlew assembleRelease -Pprocraft.abis=arm64-v8a`, либо откройте эту папку в Android Studio и нажмите Run.
-* десктопное приложение: `cargo run --release -p procraft-desktop` из корня репозитория; его установщик и пакеты — через `packaging/windows/package.ps1` (WiX v5) и `packaging/linux/package.sh` (nfpm, appimagetool).
+* десктопное приложение: `cargo run --release -p procraft-desktop` из корня репозитория; его установщик и пакеты — через `packaging/windows/package.ps1` (WiX v5, а значит и .NET SDK) и `packaging/linux/package.sh` (nfpm, appimagetool).
 
 Зависимости времени сборки:
 
