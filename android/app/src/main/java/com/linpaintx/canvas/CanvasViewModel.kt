@@ -12844,11 +12844,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (adjustment == null) return
 
-        // a swipe still waiting must not come back over the reset
+        // a swipe still waiting for its frame must not come back over the reset
 
-        adjustFlush?.cancel()
-
-        pendingAdjust = null
+        adjustDue = null
 
         val painted = adjustPencil
 
@@ -12914,31 +12912,30 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
 
-    private var adjustFlush: Job? = null
-    private var pendingAdjust: (() -> Unit)? = null
+    /** The adjustment's values slid and not yet redrawn: redrawn once a frame, however many come in one. */
+    private var adjustDue: (() -> Unit)? = null
 
     /**
-     * Runs [f] no sooner than a frame after the last one it was asked. A drag on a slider or the
-     * adjustment's bar sends values faster than a bloom, a glitch or a blur can repaint the layer,
-     * so every one of them queued its own full repaint: the backlog is the hitching felt while
-     * painting with an effect on. Only the newest value matters, so the rest are dropped.
+     * Redraws the open adjustment at the next frame, unless a later [f] is given before it comes. A
+     * drag on a slider or the adjustment's bar sends values faster than a bloom, a glitch or a blur
+     * can repaint the layer, so each one used to queue its own full repaint: that backlog is the
+     * hitching felt while painting with an effect on. Only the newest value matters, so the rest go.
      */
     private fun coalesceAdjust(f: () -> Unit) {
-        pendingAdjust = f
-        if (adjustFlush?.isActive == true) return
-        adjustFlush = viewModelScope.launch {
-            delay(16)
-            val run = pendingAdjust
-            pendingAdjust = null
-            run?.invoke()
+        val waiting = adjustDue != null
+        adjustDue = f
+        if (waiting) return
+        android.view.Choreographer.getInstance().postFrameCallback {
+            val run = adjustDue ?: return@postFrameCallback
+            adjustDue = null
+            run()
         }
     }
 
-    /** The value a drag last left, applied at once rather than a frame later (its finger came up). */
+    /** The value a drag last left, applied at once rather than at the next frame (its finger came up). */
     fun settleAdjust() {
-        val run = pendingAdjust ?: return
-        adjustFlush?.cancel()
-        pendingAdjust = null
+        val run = adjustDue ?: return
+        adjustDue = null
         run()
     }
 
