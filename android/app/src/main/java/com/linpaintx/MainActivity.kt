@@ -2,6 +2,7 @@ package com.linpaintx
 
 import android.graphics.Color
 import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // text's fonts given to the core, off the main thread
         com.linpaintx.canvas.TextRenderer.prepare(assets, java.io.File(filesDir, "fonts"))
-        window.isNavigationBarContrastEnforced = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         // wide colour, so a Display P3 canvas's colours show as they are around it too
         if (resources.configuration.isScreenWideColorGamut) window.colorMode = android.content.pm.ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
         hideSystemBars()
@@ -53,7 +54,13 @@ class MainActivity : ComponentActivity() {
         com.linpaintx.core.setGpuRecordFolder(filesDir.path)
         // made here, not inside the flow's read-only snapshot, where its setup can't write state
         val model = vm
-        setContent { AppRoot(model) }
+        // laid out left to right in every language, as the original is: a right-to-left one
+        // (Arabic, Hebrew) would otherwise mirror the bars
+        setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+            ) { AppRoot(model) }
+        }
         lifecycleScope.launch { snapshotFlow { model.projectCanvas }.collect { showProjection() } }
         importOpened(intent)
     }
@@ -95,12 +102,14 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         vm.readAppSettings()
         vm.resumeTracking()
+        vm.appInFront(true)
         displays.registerDisplayListener(displayListener, null)
         showProjection()
     }
 
     override fun onStop() {
         super.onStop()
+        vm.appInFront(false)
         vm.saveNow()
         displays.unregisterDisplayListener(displayListener)
         projection?.dismiss()

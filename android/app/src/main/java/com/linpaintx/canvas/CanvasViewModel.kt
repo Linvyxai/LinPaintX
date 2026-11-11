@@ -1003,7 +1003,40 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         private set
 
+    /** Whether a plugin draws in-betweens (the frame options then offer In-between). */
+    var tweensOn by mutableStateOf(false)
+        private set
 
+    // the interface's accent as the plugins give it
+    init { followPluginLooks() }
+
+    /** What the plugins change in how the interface looks: its accent, Classic's triangle; and whether strokes are heard. */
+    private fun followPluginLooks() {
+        com.linpaintx.ui.Pc.accentGiven = com.linpaintx.ui.Pc.accentOf(plugins)
+        com.linpaintx.ui.Pc.colourTriangle = plugins.colourTriangle()
+        tweensOn = plugins.tweens()
+        followStrokeSound()
+    }
+
+    /** The strokes' sound (a plugin's), played while an artwork is open and the app in front. */
+    private val strokeSound = StrokeSound()
+
+    /** Whether the app is in front (started), for the strokes' sound. */
+    private var inFront = true
+
+    /** Plays the open artwork's strokes while a plugin makes their sound and the app is in front. */
+    private fun followStrokeSound() {
+        // set up before the session is, the first time
+        @Suppress("SENSELESS_COMPARISON")
+        if (strokeSound == null) return
+        strokeSound.follow(session?.takeIf { inFront && screen == Screen.CANVAS }, plugins.makesStrokeSound())
+    }
+
+    /** The app came to the front ([front]) or went behind: the strokes' sound follows. */
+    fun appInFront(front: Boolean) {
+        inFront = front
+        followStrokeSound()
+    }
 
     /** How big the interface shows now, as a plugin says (1: as measured). */
 
@@ -1243,14 +1276,28 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
     }
 
+    /** A sound picked at [uri] for a plugin's file control [key]: read in the background (any sound Android can play, a minute of it at most), then kept with the plugin; told if it can't be used. */
+    fun pickPluginSound(key: String, uri: android.net.Uri) {
+        viewModelScope.launch {
+            val kept = withContext(Dispatchers.IO) {
+                val wav = decodedSound(getApplication(), uri) ?: return@withContext false
+                plugins.setSoundFile(key, fileName(uri) ?: "Recording", wav)
+            }
+            if (kept) pluginsChanged() else message = "This sound couldn't be used."
+        }
+    }
 
+    /** A plugin's file control [key] lets its file go. */
+    fun clearPluginFile(key: String) {
+        if (plugins.clearFile(key)) pluginsChanged()
+    }
 
     /** The list as it stands: a plugin may have stopped on a stroke since it was read. */
 
     fun readPlugins() {
 
         pluginList = plugins.plugins()
-
+        followPluginLooks()
     }
 
 
@@ -2158,9 +2205,15 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
     /** What was last copied or cut, for pasting (in this artwork or another). */
-
     private var clipboard: com.linpaintx.core.ThumbnailImage? = null
+        set(v) {
+            // when something new was cut or copied here, against the system's clipboard
+            if (v !== field) clipboardAt = System.currentTimeMillis()
+            field = v
+        }
 
+    /** When [clipboard] last took something new (wall clock, as the system clipboard's time is). */
+    private var clipboardAt = 0L
     var canPaste by mutableStateOf(false)
 
         private set
@@ -2276,9 +2329,9 @@ fun applyStabilizer(mode: Int, level: Int) {
         refreshGallery()
 
         // the GPU made while the gallery shows, so the first artwork opens at once
-
         viewModelScope.launch(Dispatchers.Default) { com.linpaintx.core.warmGpu() }
-
+        // and the brushes read (with many imported, reading them took seconds at each open)
+        viewModelScope.launch(Dispatchers.IO) { com.linpaintx.core.prepareBrushes(brushesDir.path) }
     }
 
 
@@ -4708,7 +4761,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         noteTime()
 
         keepChoices(s)
-
+        strokeSound.follow(null, false)
         s.detachProjection()
 
         val dir = artworkDir
@@ -5318,7 +5371,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         attachProjection()
 
         activeSince = android.os.SystemClock.elapsedRealtime()
-
+        followStrokeSound()
         thumbnails.clear()
 
         thumbnailVersions.clear()
@@ -6880,7 +6933,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         QuickShapeKind.POLYLINE -> "a polyline"
 
         QuickShapeKind.ARC -> "an arc"
-
+        QuickShapeKind.CURVE -> "a curve"
         QuickShapeKind.ELLIPSE -> "an ellipse"
 
         QuickShapeKind.CIRCLE -> "a circle"
@@ -7228,7 +7281,8 @@ fun applyStabilizer(mode: Int, level: Int) {
                     t.record(shot.rgba, shot.width.toInt(), shot.height.toInt())
 
                 }
-
+                // one that couldn't be kept (the storage full) is told once
+                t.takeProblem()?.let { message = it }
             } while (frameStale)
 
             timeLapseRecorded = t.count > 0
@@ -8630,9 +8684,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         s.editingText()?.let(s::layerText)?.let { textInfo = it }
 
         renderText()
-
-        showNotice((if (undo) "Undo " else "Redo ") + name)
-
+        s.stepNotice(undo, name)?.let { showNotice(it) }
         refresh()
 
         return true
@@ -9652,9 +9704,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         } else if (!libraryFailing) {
 
             libraryFailing = true
-
-            message = "The brush library couldn't be kept."
-
+            message = "The brush library couldn't be kept. The storage may be full."
         }
 
     }
@@ -9681,7 +9731,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun studio(key: String): Float = studioValues[key] ?: 0f
 
-
+    /** The rows the plugins that are on add to the brush studio, kept with each brush. */
+    fun pluginBrushControls(): List<com.linpaintx.core.PluginBrushControl> =
+        pluginList.filter { it.on && it.problem == null }.flatMap { it.brushControls }
 
     /** The studio's brush is a dual brush, and its second part shows. */
 
@@ -9832,9 +9884,7 @@ fun applyStabilizer(mode: Int, level: Int) {
     private fun readStudio() {
 
         val s = session ?: return
-
-        val keys = com.linpaintx.ui.STUDIO_KEYS
-
+        val keys = com.linpaintx.ui.STUDIO_KEYS + pluginBrushControls().map { it.key }
         s.studioSettings(keys).forEachIndexed { i, v -> studioValues[keys[i]] = v }
 
         studioCurve = s.studioCurve().chunked(2).filter { it.size == 2 }.map { Offset(it[0], it[1]) }
@@ -10096,9 +10146,23 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
     /** A picture from elsewhere as a source image; none if it can't be read. */
+    suspend fun decodeSource(uri: android.net.Uri): ByteArray? = sourceOrSay("importing a picture into a source editor") { decodedSource(uri) }
 
-    suspend fun decodeSource(uri: android.net.Uri): ByteArray? {
+    /**
+     * What [make] gives, or none if it fails in any way (running out of memory too): the editor
+     * says so and stays open rather than the app closing.
+     */
+    private suspend fun sourceOrSay(doing: String, make: suspend () -> ByteArray?): ByteArray? = try {
+        make()
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        Log.e(TAG, doing, e)
+        message = "This picture couldn't be used."
+        null
+    }
 
+    private suspend fun decodedSource(uri: android.net.Uri): ByteArray? {
         val bitmap = withContext(Dispatchers.IO) {
 
             runCatching {
@@ -10134,11 +10198,17 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
     /** A picture on the clipboard as a source image; none if there isn't one. */
+    suspend fun pastedSource(): ByteArray? = sourceOrSay("pasting into a source editor") { clipboardSource() }
 
-    suspend fun pastedSource(): ByteArray? {
-
-        val uri = systemClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
-
+    private suspend fun clipboardSource(): ByteArray? {
+        val clip = systemClipboard?.primaryClip?.takeIf { it.itemCount > 0 }
+        val uri = clip?.getItemAt(0)?.uri
+        // what was cut or copied here, unless another app's picture went on the clipboard since
+        val own = clipboard
+        if (own != null && (uri == null || clipboardAt >= (clip.description?.timestamp ?: 0L))) {
+            val source = withContext(Dispatchers.Default) { com.linpaintx.core.sourceFromCopy(own) }
+            if (source.isNotEmpty()) return source
+        }
         if (uri == null) {
 
             message = "There's no picture to paste."
@@ -10146,9 +10216,7 @@ fun applyStabilizer(mode: Int, level: Int) {
             return null
 
         }
-
-        return decodeSource(uri)
-
+        return decodedSource(uri)
     }
 
 
@@ -10315,7 +10383,20 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     }
 
+    /** Whether a plugin sets brushes at random: the studio shows Randomise. */
+    val randomisesBrushes: Boolean
+        get() {
+            // read again as the plugins change
+            pluginList
+            return plugins.randomisesBrushes()
+        }
 
+    /** The studio's brush set at random, as a plugin says. */
+    fun randomiseStudio() {
+        if (session?.studioRandomise() != true) return
+        readStudio()
+        syncPad()
+    }
 
     /** Every control back to how the brush ships. */
 
@@ -11878,9 +11959,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         val could = canUndo
 
         val name = session?.let { s -> if (recoloring) pourNow { s.undo() } else s.undo() }
-
-        if (could || name != null) showNotice("Undo" + name?.let { " $it" }.orEmpty())
-
+        if (could || name != null) session?.stepNotice(true, name)?.let { showNotice(it) }
         followQuickShape()
 
         // a model's tile chosen before comes back, with its channel's colour
@@ -11976,9 +12055,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         // recoloring, the core steps the open fill aside and makes it again over what comes back
 
         val name = session?.let { s -> if (recoloring) pourNow { s.redo() } else s.redo() }
-
-        if (could) showNotice("Redo" + name?.let { " $it" }.orEmpty())
-
+        if (could) session?.stepNotice(false, name)?.let { showNotice(it) }
         followQuickShape()
 
         if (modelOpen) followModelChannel()
@@ -14548,7 +14625,16 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     }
 
-
+    /** A plugin's In-between: a frame drawn between this frame and the next by the plugin (off the main thread: it takes a moment), made current. */
+    fun addInbetween() {
+        frameOptionsOpen = false
+        val layer = currentFrameLayer() ?: return
+        val s = session ?: return
+        viewModelScope.launch {
+            val made = withContext(Dispatchers.Default) { s.addInbetween(layer.id) }
+            if (made == null) message = "An in-between goes between two frames of one layer each, with something drawn." else layerChange { }
+        }
+    }
 
     /** The frame deleted; on a held place it is held one frame less. */
 
@@ -15231,7 +15317,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
     override fun onCleared() {
-
+        strokeSound.follow(null, false)
         saveNow()
 
         session?.stopAutosave()
@@ -15477,11 +15563,8 @@ fun applyStabilizer(mode: Int, level: Int) {
         const val BRUSH_EXTENSION = "brush"
 
         const val BRUSH_SET_EXTENSION = "brushset"
-
-        /** Other apps' brush files: Photoshop's, GIMP's brushes, pipes and generated brushes, Krita's presets and bundles, Clip Studio's sub tools. */
-
-        val OTHER_BRUSH_EXTENSIONS = listOf("abr", "gbr", "gih", "vbr", "kpp", "bundle", "sut")
-
+        /** Other apps' brush files: Photoshop's, GIMP's brushes, pipes and generated brushes, Krita's presets and bundles, Clip Studio's sub tools and their groups. */
+        val OTHER_BRUSH_EXTENSIONS = listOf("abr", "gbr", "gih", "vbr", "kpp", "bundle", "sut", "sutg")
         val PACKAGE_LABEL = PACKAGE_EXTENSION.replaceFirstChar(Char::titlecase)
 
 
@@ -15719,4 +15802,3 @@ fun applyStabilizer(mode: Int, level: Int) {
     }
 
 }
-

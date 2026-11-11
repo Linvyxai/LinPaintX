@@ -3,6 +3,9 @@
 A plugin is a `.procraft-plugin` file. Someone imports it on the Plugins page, and it has a card there
 with Turn on, Turn off and Remove. With none on, the app is as it always was.
 
+Making one doesn't change the app or its code here, and needs no access to this repository: you
+build the file on your own computer (see [Building it](#building-it)) and share the file itself.
+
 For now the samples in [`plugins/`](../plugins) also come inside the app, packed: see
 [The plugins that come with the app](#the-plugins-that-come-with-the-app).
 
@@ -58,7 +61,8 @@ starts off, until someone taps Turn on. One the app adds by itself starts off, w
 
 ## Controls
 
-A plugin can have up to eight, each a `slider` or a `switch`.
+A plugin can have up to eight, each a `slider` or a `switch`; a plugin with code can have up to eight
+`file` controls besides.
 
 | Field | Means |
 |---|---|
@@ -68,7 +72,41 @@ A plugin can have up to eight, each a `slider` or a `switch`.
 | `unit` | Written after the value, such as `" px"` |
 | `shown_times` | The value is shown multiplied by this: 100 shows .5 as 50 |
 | `at_least` | Shown in place of the number at the slider's lowest, such as `"Off"` |
+| `names` | A name for each of a slider's steps from its lowest, shown in place of the number |
 | `live` | The value goes in as the slider moves, rather than as it lets go |
+| `accepts` | What a `file` control takes: `"sound"`, a recording (the app reads it, keeps a minute of it at most with the plugin, and drops it with the plugin) |
+
+A `file` control shows Import, or the name of the file picked and Clear. The plugin is told 1 while a
+file is picked, 0 while none is, and is handed the file itself if it takes files (see below); what
+the file is for is up to the plugin.
+
+### Rows in the brush studio
+
+A plugin with code can add up to eight rows to the brush studio's Properties page, each a choice of 2
+to 16 (each 24 characters at most), kept with each brush:
+
+```json
+"brush_controls": [
+  { "key": "sound", "label": "Sound", "choices": ["Default", "Eraser", "Pencil"] }
+]
+```
+
+A brush starts at the first choice. The row shows under its `label` while the plugin is on; a brush
+keeps its choice under `plugin:<id>:<key>`, so it stays with the brush when the plugin is off.
+
+### What the code is told
+
+Besides its hooks, code may export any of these, and is told:
+
+- The current brush, before a sound is asked for when it changed: its name and its set's (UTF-8) into
+  `procraft_text_buffer(len: i32) -> i32`, which answers where `len` bytes go, then
+  `procraft_brush(name_len: i32, set_len: i32)`; and its rows' choices through
+  `procraft_brush_control(index: i32, value: f32)`, `index` their place in `brush_controls`.
+- The file picked for a `file` control, when it starts and whenever one is picked or let go: into
+  `procraft_file_buffer(index: i32, len: i32) -> i32` (where `len` bytes go), then
+  `procraft_file(index: i32, len: i32)`, `index` the control's place in `controls` and `len` 0 when
+  it is let go. A sound comes as a WAV file of 32-bit floats, one channel, a minute at most. It's a
+  long call, on fuel of its own.
 
 A `key` is lowercase letters, digits and `_`, starting with a letter, and can't be `on`. A filter
 reads it as a field, so there it also has to be a word WGSL allows, and not a keyword such as `loop`.
@@ -196,6 +234,210 @@ written there, `procraft_fill_run` works it out and says whether anything comes 
 A plugin can only take away: a bit it sets comes out of the fill, and it can't add any. The seed has to
 stay in the fill, or the plugin stops.
 
+### `fill_all_layers`
+
+Whether ColorDrop fills by every layer you see (not 0), as if they were one picture, rather than by the
+current layer alone (or the reference layer, if one is set).
+
+```
+procraft_fill_all_layers() -> i32
+```
+
+It only says which to go by: the fill is still the app's, and still goes on the current layer.
+
+### `radial_segments`
+
+How many parts the Drawing Guide's radial symmetry makes, in place of its usual eight.
+
+```
+procraft_radial_segments() -> i32
+```
+
+An answer outside 2 to 64 stops the plugin. An odd count is made even unless the symmetry only turns
+its copies (Rotational Symmetry), since the mirrored copies come in pairs. The count is never written
+to the artwork: turn the plugin off, or open the artwork without it, and radial symmetry makes eight
+again. With several plugins on this hook, the first by id that answers is used.
+
+### `hide_undo_notice`
+
+Whether undo and redo go by without the notice at the top that names what they took back or brought
+back (not 0).
+
+```
+procraft_hide_undo_notice() -> i32
+```
+
+It only hides the notice: undo and redo work as before.
+
+### `interface_colour`
+
+The colour the interface draws a part of itself in, as 0xRRGGBB, or -1 to leave it as it is.
+
+```
+procraft_interface_colour(role: i32) -> i32
+```
+
+`role` 0 is the accent: the blue of what is chosen or switched on (a selected tab, a switch, a
+slider's filled part, a picked layer). Other roles may come later; answer -1 for any you don't know.
+An answer past 0xFFFFFF stops the plugin. With several plugins on this hook, the first by id that
+answers is used.
+
+### `pin_panels`
+
+Whether a touch on the canvas with a panel open paints at once and leaves the panel up (not 0), rather
+than closing it (a tap) or fading it away (a drag). The panel's own button still closes it.
+
+```
+procraft_pin_panels() -> i32
+```
+
+### `opacity_together`
+
+Whether a layer's opacity changed while it is one of several picked layers sets every picked layer's
+to the same (not 0), as one undo step. A layer that isn't picked still goes alone.
+
+```
+procraft_opacity_together() -> i32
+```
+
+### `randomise_brush`
+
+While a plugin on this hook is on, the brush studio shows Randomise. Tapping it asks the plugin about
+each setting below, by its number, with one `seed` for the whole tap:
+
+```
+procraft_randomise(setting: i32, seed: i32) -> f32
+```
+
+Answer where the setting goes as a share of its range, 0 to 1 (0 its least, 1 its most), or anything
+below 0 to leave it as it is. An answer above 1, or not a number, stops the plugin. A whole-number
+setting (a choice or a switch) is rounded. The plugin gets no randomness of its own: mix the seed and
+the setting's number to get one.
+
+| Number | Setting | Range |
+|---|---|---|
+| 0 | `spacing` | 0 to 1 |
+| 1 | `streamline` | 0 to 1 |
+| 2 | `streamline_pressure` | 0 to 1 |
+| 3 | `pen_taper_start` | 0 to 1 |
+| 4 | `pen_taper_end` | 0 to 1 |
+| 5 | `pen_taper_size` | 0 to 1 |
+| 6 | `pen_taper_opacity` | 0 to 1 |
+| 7 | `touch_taper_start` | 0 to 1 |
+| 8 | `touch_taper_end` | 0 to 1 |
+| 9 | `touch_taper_size` | 0 to 1 |
+| 10 | `touch_taper_opacity` | 0 to 1 |
+| 11 | `input_style` | 0 to 2 (whole) |
+| 12 | `shape_rotation` | -1 to 1 |
+| 13 | `scatter` | 0 to 1 |
+| 14 | `count` | 0 to 1 |
+| 15 | `randomized` | 0 to 1 (whole) |
+| 16 | `roundness` | 0 to 1 |
+| 17 | `shape_angle` | 0 to 1 |
+| 18 | `grain_behavior` | 0 to 1 (whole) |
+| 19 | `grain_scale` | 0 to 1 |
+| 20 | `grain_depth` | 0 to 1 |
+| 21 | `rendering_mode` | 0 to 5 (whole) |
+| 22 | `flow` | 0 to 1 |
+| 23 | `jitter_size` | 0 to 1 |
+| 24 | `jitter_opacity` | 0 to 1 |
+| 25 | `pressure_size` | -1 to 1 |
+| 26 | `pressure_opacity` | -1 to 1 |
+| 27 | `tilt_angle` | 0 to 1 |
+| 28 | `tilt_opacity` | 0 to 1 |
+| 29 | `tilt_size` | 0 to 1 |
+| 30 | `max_size` | 0 to 1 |
+| 31 | `min_size` | 0 to 1 |
+| 32 | `max_opacity` | 0 to 1 |
+| 33 | `min_opacity` | 0 to 1 |
+| 34 | `smudge_pull` | 0 to 1 |
+| 35 | `wet_pull` | 0 to 1 |
+
+Randomise is one change to the brush: Cancel or Reset brush takes it back.
+
+### `colour_triangle`
+
+Whether the colour panel's Classic tab shows a triangle in place of its square (not 0): saturation and
+brightness between the pure hue (its right corner), white (top left) and black (bottom left). The hue
+slider and the others under it stay as they are.
+
+```
+procraft_colour_triangle() -> i32
+```
+
+### `inbetween`
+
+Animation Assist's frame options get In-between while a plugin is on this hook: the plugin draws a
+frame between the current frame and the next (each a single layer), and the app puts it just after
+the current one and makes it current, as one undo step. Tapped again, it goes between the new frame
+and the next, and so on. How the frame between looks is all the plugin's: the app only hands over the
+two frames' pixels (the part either is drawn in) and takes back what it draws.
+
+```
+procraft_between_begin(width: i32, height: i32) -> i32
+procraft_between_row(frame: i32, y: i32)
+procraft_between_run() -> i32
+procraft_between_out(y: i32)
+```
+
+`begin` starts one of `width` × `height` pixels and answers where in its memory a row of them goes
+(`width` × 4 bytes, premultiplied RGBA). The app then writes each row of this frame (`frame` 0) and of
+the next (`frame` 1) there, calling `row` after each; calls `run`, which draws the frame between (0 for
+none); and for each row calls `out` and reads it back from the same place. It is a long call, on fuel
+by the area, with up to 256 MB of memory; one that runs out stops. The Tweening plugin the app comes
+with slides each drawing from its own place and size toward the other's and fades between them.
+
+### `quickshape_curve`
+
+A curve QuickShape may snap to. When a held stroke snaps, the app hands the plugin the stroke's points
+and the kind QuickShape found first; the plugin may offer a curve, which then comes first among the
+kinds to switch to (what QuickShape found still there). When Curve is picked from the kinds again,
+the plugin is asked for one by name. The app draws the curve and lets it be reshaped: dragging a
+control moves its pair the other way, so the curve stays smooth there; tapping an anchor sets it free
+(each control on its own), then a corner, then smooth again.
+
+```
+procraft_curve_begin(count: i32, best: i32) -> i32
+procraft_curve_run() -> i32
+procraft_curve_nodes() -> i32
+```
+
+`begin` answers where the stroke's `count` points go (x and y, 32-bit floats each, window pixels);
+`best` is the kind QuickShape found first, by its place among line, polyline, arc, curve, ellipse,
+circle, triangle, equilateral triangle, quadrilateral, rectangle and square, or -1 when a curve is
+asked for by name. `run` answers how many nodes the curve has, 0 for none: an anchor, then two
+controls and an anchor for each span (4, 7, 10 ...). `nodes` answers where they are, as the points
+came. The QuickShape curves plugin the app comes with offers one for a polyline: an anchor at each
+corner, each anchor's controls leaning the way the stroke came and went.
+
+### `stroke_sound`
+
+A sound as you draw. While a plugin on this hook is on, the app asks it for the stroke's sound every
+few milliseconds, on a thread of its own, and plays what it hands back:
+
+```
+procraft_stroke_sound(frames: i32, rate: i32, speed: f32, pressure: f32, since_ms: f32,
+                      state: i32, hover_x: f32, hover_y: f32, height: f32) -> i32
+procraft_sound_prepare(rate: i32) -> i32
+```
+
+It answers where in its memory the next `frames` samples are (32-bit floats, -1 to 1, at `rate` a
+second). The stroke moves at `speed` (window heights a second) with `pressure` (a finger as pressed
+all the way); its last input came `since_ms` ago (below 0: no stroke is open); `state` says, as bits,
+1 a stroke is open, 2 the pen hovers (at `hover_x`, `hover_y`, window pixels, in a window `height`
+tall), 4 the tool erases. Before the first sound at a rate, `procraft_sound_prepare` (if it has one)
+readies whatever it makes once, as a long call. A sound may spend fuel by the frame; there's 128 MB
+of memory. It's told the brush and its rows as above, so a sound can go by the brush.
+
+The Brush sounds plugin the app comes with behaves as Krita's Brush SFX plugin by davi133 does
+(github.com/davi133/brush_sfx): six sounds (an eraser, a pencil, a pen, a paintbrush, an airbrush and
+a spray can), each brush the one its kind takes (by its name, else its set's), louder the faster and
+harder the stroke goes, the pen's and the paintbrush's ring rising with speed, the airbrush hissing
+while pressed and the spray can while it moves, its ball rattling when the pen is shaken back and
+forth above the canvas. Its controls set the volume, one sound for every brush, whether erasing makes
+a sound and which, and a recording for any of the six; its row in the brush studio gives a brush its
+own sound, or none. All of it is in the plugin, made sample by sample with a few filters.
+
 ### Limits
 
 | | |
@@ -299,6 +541,12 @@ Code stops if it runs out of steps, asks for too much memory, traps, or gives an
 sense. Whatever it was handed goes on as it came.
 
 ## Building it
+
+1. Get a copy of this repository: `git clone https://github.com/artcraft-android/procraft`, or
+   Code > Download ZIP on its GitHub page. It stays on your computer; nothing you do in it comes
+   back here.
+2. For code, install Rust (from rustup.rs). Python 3 runs the packer.
+3. Put your plugin's folder under `plugins/` in that copy, then, from the copy's top folder:
 
 ```
 rustup target add wasm32-unknown-unknown

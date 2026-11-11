@@ -557,6 +557,7 @@ impl Interface {
         self.time_lapse.record(&ctx, session, input.idle());
         // the brush studio over everything (the library stays open under it)
         if let Some(new) = self.library.studio.take() {
+            self.studio.plugin_rows = crate::studio::plugin_rows(&self.prefs.plugins);
             self.studio.begin(&ctx, session, new);
         }
         if self.studio.open {
@@ -817,6 +818,7 @@ impl Interface {
         }
         // a full-screen page covers the timeline, as it covers the canvas
         if self.canvas_info.is_none() && !self.gesture_controls.open {
+            self.animation.tweens = self.prefs.plugins.tweens();
             let said = self.animation.show(&ctx, &mut self.look, session, &self.colours.palettes, self.colours.harmony);
             if let Some(crate::animation::Said::NoRoom) = said {
                 crate::files::no_room(session);
@@ -1270,6 +1272,11 @@ impl Interface {
     /// Undo (recoloring, the core takes back the open fill first).
     fn undo(&mut self, session: &CanvasSession) {
         self.feedback();
+        // transforming, the transform's last change goes back, the box with it
+        if self.transform.on {
+            self.transform.moved(session.transform_apply(procraft_core::TransformAction::Undo));
+            return;
+        }
         // a finished text's step goes back to editing that text first, as a step of its own
         if !self.text.editing()
             && !self.transform.on
@@ -1283,7 +1290,7 @@ impl Interface {
             && let Some(name) = session.text_box_undo()
         {
             self.text.reread(session);
-            self.overlays.notice(format!("Undo {name}"), false);
+            self.step_notice(session, true, Some(name));
             return;
         }
         // undoing while editing text otherwise undoes the whole edit
@@ -1291,20 +1298,31 @@ impl Interface {
         let could = session.info().can_undo;
         let name = session.undo();
         if could || name.is_some() {
-            self.overlays.notice(name.map_or("Undo".into(), |n| format!("Undo {n}")), false);
+            self.step_notice(session, true, name);
         }
         self.follow_shape(session);
         // a model's tile chosen before comes back, with its channel's colour
         self.layers.follow_channel(session, &mut self.colours);
     }
 
+    /// The notice an undo (`undo`) or a redo of the step `name` shows, unless a plugin hides it.
+    fn step_notice(&mut self, session: &CanvasSession, undo: bool, name: Option<String>) {
+        if let Some(text) = session.step_notice(undo, name) {
+            self.overlays.notice(text, false);
+        }
+    }
+
     fn redo(&mut self, session: &CanvasSession) {
         self.feedback();
+        // transforming, nothing is redone until it ends
+        if self.transform.on {
+            return;
+        }
         if self.text.editing()
             && let Some(name) = session.text_box_redo()
         {
             self.text.reread(session);
-            self.overlays.notice(format!("Redo {name}"), false);
+            self.step_notice(session, false, Some(name));
             return;
         }
         // text being edited is kept first
@@ -1315,7 +1333,7 @@ impl Interface {
         let text = if editing { None } else { session.text_redo_layer() };
         let name = session.redo();
         if could {
-            self.overlays.notice(name.map_or("Redo".into(), |n| format!("Redo {n}")), false);
+            self.step_notice(session, false, name);
         }
         self.follow_shape(session);
         self.layers.follow_channel(session, &mut self.colours);
@@ -1766,7 +1784,7 @@ impl Interface {
         }
         let Some(cut) = session.cut_layer() else { return false };
         self.clipboard = Some(cut);
-        self.system_clipboard.copied_here();
+        self.system_clipboard.copied_here(self.clipboard.as_ref());
         self.overlays.notice("Layer cut", false);
         true
     }
@@ -1776,7 +1794,7 @@ impl Interface {
         self.open = None;
         if let Some(copied) = session.copy_layer() {
             self.clipboard = Some(copied);
-            self.system_clipboard.copied_here();
+            self.system_clipboard.copied_here(self.clipboard.as_ref());
             self.overlays.notice("Layer copied", false);
         }
     }
@@ -1786,7 +1804,7 @@ impl Interface {
         self.open = None;
         if let Some(copied) = session.copy_canvas() {
             self.clipboard = Some(copied);
-            self.system_clipboard.copied_here();
+            self.system_clipboard.copied_here(self.clipboard.as_ref());
             self.overlays.notice("Canvas copied", false);
         }
     }
@@ -2163,6 +2181,7 @@ impl Interface {
         backdrops: &mut Vec<f32>,
     ) -> Rect {
         let Some(pick) = self.background_pick.as_mut() else { return Rect::NOTHING };
+        self.colours.set_triangle(self.prefs.plugins.colour_triangle());
         let brush = std::mem::replace(&mut self.colours.hsv, pick.hsv);
         self.colours.background = true;
         let history = self.prefs.colour_history_shown;
@@ -2230,7 +2249,7 @@ impl Interface {
                 }
                 if let Some(copied) = self.layers.copied.take() {
                     self.clipboard = Some(copied);
-                    self.system_clipboard.copied_here();
+                    self.system_clipboard.copied_here(self.clipboard.as_ref());
                 }
                 if std::mem::take(&mut self.layers.share) {
                     self.actions.push(Action::Export(Format::ChosenLayerPngs, 100));
@@ -2250,6 +2269,7 @@ impl Interface {
                 shown
             }
             Popover::Colour => {
+                self.colours.set_triangle(self.prefs.plugins.colour_triangle());
                 let shown = self.prefs.colour_history_shown;
                 let history = &mut self.prefs.colour_history_shown;
                 let rect = self.colours.show(ctx, &mut self.look, session, &mut self.drop, button, history, backdrops);

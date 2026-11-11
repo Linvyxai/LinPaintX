@@ -22,6 +22,51 @@
 //!   out (not 0: something comes out), and `procraft_fill_out(y: i32)` puts each row of what comes
 //!   out there. All it can do is take away: what isn't in the fill stays out of it, and the seed
 //!   stays in.
+//! - `procraft_fill_all_layers() -> i32`: for the hook `fill_all_layers`, whether ColorDrop fills
+//!   by every layer seen (not 0) rather than by the current layer alone.
+//! - `procraft_radial_segments() -> i32`: for the hook `radial_segments`, how many parts radial
+//!   symmetry makes, 2 to 64.
+//! - `procraft_hide_undo_notice() -> i32`: for the hook `hide_undo_notice`, whether undo and redo go
+//!   by without their notice (not 0).
+//! - `procraft_interface_colour(role: i32) -> i32`: for the hook `interface_colour`, the colour
+//!   (0xRRGGBB) the interface draws `role` in (0: the accent, the blue of what is chosen and
+//!   switched on), or -1 to leave it as it is.
+//! - `procraft_pin_panels() -> i32`: for the hook `pin_panels`, whether a touch on the canvas with
+//!   a panel open paints at once and leaves the panel up (not 0).
+//! - `procraft_opacity_together() -> i32`: for the hook `opacity_together`, whether a layer's
+//!   opacity changed while it is one of several picked sets every picked layer's (not 0).
+//! - `procraft_randomise(setting: i32, seed: i32) -> f32`: for the hook `randomise_brush`, where
+//!   a brush setting (by its place in [`crate::studio::RANDOMISED`]) goes, as a share of its range
+//!   (0 to 1), or below 0 to leave it; `seed` is the same for every setting of one press.
+//! - `procraft_colour_triangle() -> i32`: for the hook `colour_triangle`, whether the colour
+//!   panel's Classic shows a triangle in place of its square (not 0).
+//! - For the hook `quickshape_curve` (a curve QuickShape may snap to, the plugin's):
+//!   `procraft_curve_begin(count: i32, best: i32) -> i32` gives where the stroke's `count` points go
+//!   (x and y each, 32-bit floats, window pixels), `best` the kind QuickShape found first (its place
+//!   among line, polyline, arc, curve, ellipse, circle, triangle, equilateral triangle,
+//!   quadrilateral, rectangle, square; -1 when a curve is asked for by name); then
+//!   `procraft_curve_run() -> i32` answers how many nodes the curve has (0: none; an anchor, then
+//!   two controls and an anchor for each span), and `procraft_curve_nodes() -> i32` where they are.
+//! - For the hook `stroke_sound` (a sound as you draw, the plugin's): `procraft_stroke_sound(frames:
+//!   i32, rate: i32, speed: f32, pressure: f32, since_ms: f32, state: i32, hover_x: f32, hover_y:
+//!   f32, height: f32) -> i32` gives where the next `frames` samples (32-bit floats, -1 to 1, at
+//!   `rate` a second) are, for the stroke moving at `speed` (window heights a second) with
+//!   `pressure`, its last input `since_ms` ago (below 0: no stroke open), `state` saying (bits) 1 a
+//!   stroke is open, 2 the pen hovers (at `hover_x`, `hover_y`, window pixels, in a window `height`
+//!   tall), 4 the tool erases. Called on the sound's own thread, every few milliseconds. Before the
+//!   first at a rate, `procraft_sound_prepare(rate: i32) -> i32`, if it has one, as a long call.
+//! - What a plugin is told if it listens: the current brush, before a sound when it changed (its
+//!   name and its set's, UTF-8, into `procraft_text_buffer(len: i32) -> i32`, then
+//!   `procraft_brush(name_len: i32, set_len: i32)`; its rows in the brush studio, each by its place,
+//!   through `procraft_brush_control(index: i32, value: f32)`); and the file picked for a file
+//!   control (into `procraft_file_buffer(index: i32, len: i32) -> i32`, then `procraft_file(index:
+//!   i32, len: i32)`, `len` 0 when let go), as a long call.
+//! - For the hook `inbetween` (Animation Assist's In-between draws a frame between a frame and the
+//!   next, the plugin's way): `procraft_between_begin(width: i32, height: i32) -> i32` starts one
+//!   of that many pixels and gives where a row of them goes (`width` × 4 bytes, premultiplied
+//!   RGBA8); `procraft_between_row(frame: i32, y: i32)` says row `y` of `frame` (0 this frame, 1 the
+//!   next) is there; `procraft_between_run() -> i32` draws the frame between (0: none);
+//!   `procraft_between_out(y: i32)` puts its row `y` there. A long call, on fuel by the area.
 //! - `procraft_control(index: i32, value: f32)`: a control's value (a switch is 0 or 1), by its
 //!   place in the manifest: each as the plugin starts, then each as it changes. Needed if it has any.
 
@@ -42,6 +87,20 @@ const MOST_MEMORY: usize = 16 << 20;
 /// What a plugin on the fill hook may ask for: a few planes of a bit a pixel, for the fills
 /// [`MOST_FILL`] lets through.
 const MOST_FILL_MEMORY: usize = 64 << 20;
+/// What a plugin on the sound hook may ask for: its sounds' loops and the recordings picked.
+const MOST_SOUND_MEMORY: usize = 128 << 20;
+/// What a sound may spend (a few milliseconds of it), readying the sounds at a rate, and taking a
+/// file in.
+const SOUND_FUEL: u64 = 20_000_000;
+const SOUND_FRAME_FUEL: u64 = 4_000;
+const PREPARE_FUEL: u64 = 4_000_000_000;
+const FILE_FUEL: u64 = 2_000_000_000;
+/// What a plugin on the in-between hook may ask for: the two frames and the one between, and room
+/// to work.
+pub(crate) const MOST_BETWEEN_MEMORY: usize = 256 << 20;
+/// What an in-between may spend, to start with and by the pixel.
+const BETWEEN_FUEL: u64 = 20_000_000;
+const BETWEEN_PIXEL_FUEL: u64 = 4096;
 const MOST_TABLE: usize = 10_000;
 const MOST_CALLS_DEEP: usize = 256;
 /// What it may spend, in roughly one a step: to start up, and on one sample or control. A sample
@@ -78,6 +137,34 @@ const FILL_BEGIN: &str = "procraft_fill_begin";
 const FILL_ROW: &str = "procraft_fill_row";
 const FILL_RUN: &str = "procraft_fill_run";
 const FILL_OUT: &str = "procraft_fill_out";
+const FILL_ALL_LAYERS: &str = "procraft_fill_all_layers";
+const RADIAL_SEGMENTS: &str = "procraft_radial_segments";
+const HIDE_UNDO_NOTICE: &str = "procraft_hide_undo_notice";
+const INTERFACE_COLOUR: &str = "procraft_interface_colour";
+const PIN_PANELS: &str = "procraft_pin_panels";
+const OPACITY_TOGETHER: &str = "procraft_opacity_together";
+const RANDOMISE: &str = "procraft_randomise";
+const COLOUR_TRIANGLE: &str = "procraft_colour_triangle";
+const CURVE_BEGIN: &str = "procraft_curve_begin";
+const CURVE_RUN: &str = "procraft_curve_run";
+const CURVE_NODES: &str = "procraft_curve_nodes";
+/// What a curve may spend, to start with and by the stroke's point, and the most nodes it may have.
+const CURVE_FUEL: u64 = 5_000_000;
+const CURVE_POINT_FUEL: u64 = 20_000;
+const MOST_CURVE_NODES: usize = 3 * 4_096 + 1;
+const STROKE_SOUND: &str = "procraft_stroke_sound";
+const SOUND_PREPARE: &str = "procraft_sound_prepare";
+const TEXT_BUFFER: &str = "procraft_text_buffer";
+const BRUSH: &str = "procraft_brush";
+const BRUSH_CONTROL: &str = "procraft_brush_control";
+const FILE_BUFFER: &str = "procraft_file_buffer";
+const FILE: &str = "procraft_file";
+const BETWEEN_BEGIN: &str = "procraft_between_begin";
+const BETWEEN_ROW: &str = "procraft_between_row";
+const BETWEEN_RUN: &str = "procraft_between_run";
+const BETWEEN_OUT: &str = "procraft_between_out";
+/// How many parts radial symmetry may be asked to make.
+const RADIAL_PARTS: std::ops::RangeInclusive<i32> = 2..=64;
 const MEMORY: &str = "memory";
 const CONTROL: &str = "procraft_control";
 
@@ -89,6 +176,17 @@ pub(crate) enum Hook {
     InterfaceScale,
     PasteMask,
     FillMask,
+    FillAllLayers,
+    RadialSegments,
+    HideUndoNotice,
+    InterfaceColour,
+    PinPanels,
+    OpacityTogether,
+    RandomiseBrush,
+    ColourTriangle,
+    QuickshapeCurve,
+    StrokeSound,
+    Inbetween,
 }
 
 impl Hook {
@@ -99,6 +197,17 @@ impl Hook {
             "interface_scale" => Some(Hook::InterfaceScale),
             "paste_mask" => Some(Hook::PasteMask),
             "fill_mask" => Some(Hook::FillMask),
+            "fill_all_layers" => Some(Hook::FillAllLayers),
+            "radial_segments" => Some(Hook::RadialSegments),
+            "hide_undo_notice" => Some(Hook::HideUndoNotice),
+            "interface_colour" => Some(Hook::InterfaceColour),
+            "pin_panels" => Some(Hook::PinPanels),
+            "opacity_together" => Some(Hook::OpacityTogether),
+            "randomise_brush" => Some(Hook::RandomiseBrush),
+            "colour_triangle" => Some(Hook::ColourTriangle),
+            "quickshape_curve" => Some(Hook::QuickshapeCurve),
+            "stroke_sound" => Some(Hook::StrokeSound),
+            "inbetween" => Some(Hook::Inbetween),
             _ => None,
         }
     }
@@ -111,6 +220,17 @@ impl Hook {
             Hook::InterfaceScale => "This plugin can make the interface bigger or smaller.",
             Hook::PasteMask => "This plugin can put what you paste into the current mask.",
             Hook::FillMask => "This plugin can take parts out of a ColorDrop fill.",
+            Hook::FillAllLayers => "This plugin can make ColorDrop fill by every layer you see.",
+            Hook::RadialSegments => "This plugin can change how many parts radial symmetry makes.",
+            Hook::HideUndoNotice => "This plugin can hide the notice undo and redo show.",
+            Hook::InterfaceColour => "This plugin can change the interface's colours.",
+            Hook::PinPanels => "This plugin can keep panels open while you paint.",
+            Hook::OpacityTogether => "This plugin can change the opacity of all the layers you've picked at once.",
+            Hook::RandomiseBrush => "This plugin can set a brush's settings at random in the brush studio.",
+            Hook::ColourTriangle => "This plugin can change how the colour panel's Classic picker looks.",
+            Hook::QuickshapeCurve => "This plugin can make QuickShape snap strokes to curves.",
+            Hook::StrokeSound => "This plugin can play a sound as you draw.",
+            Hook::Inbetween => "This plugin can draw frames between your animation's frames.",
         }
     }
 
@@ -124,6 +244,32 @@ impl Hook {
         match self {
             Hook::Position => exports(module, POSITION, &[ValType::F32, ValType::F32], &[ValType::I64]),
             Hook::PickLayer => exports(module, PICK_LAYER, &[], &[ValType::I32]),
+            Hook::FillAllLayers => exports(module, FILL_ALL_LAYERS, &[], &[ValType::I32]),
+            Hook::RadialSegments => exports(module, RADIAL_SEGMENTS, &[], &[ValType::I32]),
+            Hook::HideUndoNotice => exports(module, HIDE_UNDO_NOTICE, &[], &[ValType::I32]),
+            Hook::InterfaceColour => exports(module, INTERFACE_COLOUR, &[ValType::I32], &[ValType::I32]),
+            Hook::PinPanels => exports(module, PIN_PANELS, &[], &[ValType::I32]),
+            Hook::OpacityTogether => exports(module, OPACITY_TOGETHER, &[], &[ValType::I32]),
+            Hook::RandomiseBrush => exports(module, RANDOMISE, &[ValType::I32, ValType::I32], &[ValType::F32]),
+            Hook::ColourTriangle => exports(module, COLOUR_TRIANGLE, &[], &[ValType::I32]),
+            Hook::QuickshapeCurve => {
+                exports(module, CURVE_BEGIN, &[ValType::I32, ValType::I32], &[ValType::I32])
+                    && exports(module, CURVE_RUN, &[], &[ValType::I32])
+                    && exports(module, CURVE_NODES, &[], &[ValType::I32])
+                    && has_memory(module)
+            }
+            Hook::StrokeSound => {
+                use ValType::{F32, I32};
+                exports(module, STROKE_SOUND, &[I32, I32, F32, F32, F32, I32, F32, F32, F32], &[I32])
+                    && has_memory(module)
+            }
+            Hook::Inbetween => {
+                exports(module, BETWEEN_BEGIN, &[ValType::I32, ValType::I32], &[ValType::I32])
+                    && exports(module, BETWEEN_ROW, &[ValType::I32, ValType::I32], &[])
+                    && exports(module, BETWEEN_RUN, &[], &[ValType::I32])
+                    && exports(module, BETWEEN_OUT, &[ValType::I32], &[])
+                    && has_memory(module)
+            }
             Hook::InterfaceScale => exports(module, INTERFACE_SCALE, &[ValType::F32, ValType::F32], &[ValType::F32]),
             Hook::PasteMask => {
                 exports(module, PASTE_MASK, &[], &[ValType::I32])
@@ -244,6 +390,24 @@ pub(crate) fn can_run(bytes: &[u8], hooks: &[Hook], controls: bool) -> bool {
 }
 
 /// What the fill hook calls.
+/// The sound hook's call: frames, rate, speed, pressure, since, state, hover x and y, height.
+type SoundCall = TypedFunc<(i32, i32, f32, f32, f32, i32, f32, f32, f32), i32>;
+
+/// The curve hook's calls.
+struct CurveCalls {
+    begin: TypedFunc<(i32, i32), i32>,
+    run: TypedFunc<(), i32>,
+    nodes: TypedFunc<(), i32>,
+}
+
+/// The in-between hook's calls.
+struct BetweenCalls {
+    begin: TypedFunc<(i32, i32), i32>,
+    row: TypedFunc<(i32, i32), ()>,
+    run: TypedFunc<(), i32>,
+    out: TypedFunc<i32, ()>,
+}
+
 struct FillCalls {
     mask: TypedFunc<(), i32>,
     begin: TypedFunc<(i32, i32, i32, i32), i32>,
@@ -296,6 +460,26 @@ pub(crate) struct Running {
     row_buffer: Option<TypedFunc<i32, i32>>,
     paste_row: Option<TypedFunc<(i32, i32), ()>>,
     fill: Option<FillCalls>,
+    fill_all_layers: Option<TypedFunc<(), i32>>,
+    radial_segments: Option<TypedFunc<(), i32>>,
+    hide_undo_notice: Option<TypedFunc<(), i32>>,
+    interface_colour: Option<TypedFunc<i32, i32>>,
+    pin_panels: Option<TypedFunc<(), i32>>,
+    opacity_together: Option<TypedFunc<(), i32>>,
+    randomise: Option<TypedFunc<(i32, i32), f32>>,
+    colour_triangle: Option<TypedFunc<(), i32>>,
+    curve: Option<CurveCalls>,
+    stroke_sound: Option<SoundCall>,
+    sound_prepare: Option<TypedFunc<i32, i32>>,
+    text_buffer: Option<TypedFunc<i32, i32>>,
+    brush: Option<TypedFunc<(i32, i32), ()>>,
+    brush_control: Option<TypedFunc<(i32, f32), ()>>,
+    file_buffer: Option<TypedFunc<(i32, i32), i32>>,
+    file: Option<TypedFunc<(i32, i32), ()>>,
+    /// The rate its sounds are readied for, and the brush it was last told (as a number).
+    sound_rate: Option<i32>,
+    told_brush: Option<u64>,
+    between: Option<BetweenCalls>,
     memory: Option<Memory>,
     control: Option<TypedFunc<(i32, f32), ()>>,
 }
@@ -303,7 +487,15 @@ pub(crate) struct Running {
 impl Running {
     /// `bytes` started, under the caps of a plugin on `hooks`, and told `controls`.
     pub(crate) fn start_on(bytes: &[u8], controls: &[f32], hooks: &[Hook]) -> Result<Running, Stop> {
-        let most_memory = if hooks.contains(&Hook::FillMask) { MOST_FILL_MEMORY } else { MOST_MEMORY };
+        let most_memory = if hooks.contains(&Hook::Inbetween) {
+            MOST_BETWEEN_MEMORY
+        } else if hooks.contains(&Hook::StrokeSound) {
+            MOST_SOUND_MEMORY
+        } else if hooks.contains(&Hook::FillMask) {
+            MOST_FILL_MEMORY
+        } else {
+            MOST_MEMORY
+        };
         Running::start_within(bytes, controls, most_memory)
     }
 
@@ -351,6 +543,36 @@ impl Running {
                     out: instance.get_typed_func(&store, FILL_OUT).ok()?,
                 })
             })();
+            let fill_all_layers = instance.get_typed_func(&store, FILL_ALL_LAYERS).ok();
+            let radial_segments = instance.get_typed_func(&store, RADIAL_SEGMENTS).ok();
+            let hide_undo_notice = instance.get_typed_func(&store, HIDE_UNDO_NOTICE).ok();
+            let interface_colour = instance.get_typed_func(&store, INTERFACE_COLOUR).ok();
+            let pin_panels = instance.get_typed_func(&store, PIN_PANELS).ok();
+            let opacity_together = instance.get_typed_func(&store, OPACITY_TOGETHER).ok();
+            let randomise = instance.get_typed_func(&store, RANDOMISE).ok();
+            let colour_triangle = instance.get_typed_func(&store, COLOUR_TRIANGLE).ok();
+            let curve = (|| {
+                Some(CurveCalls {
+                    begin: instance.get_typed_func(&store, CURVE_BEGIN).ok()?,
+                    run: instance.get_typed_func(&store, CURVE_RUN).ok()?,
+                    nodes: instance.get_typed_func(&store, CURVE_NODES).ok()?,
+                })
+            })();
+            let stroke_sound = instance.get_typed_func(&store, STROKE_SOUND).ok();
+            let sound_prepare = instance.get_typed_func(&store, SOUND_PREPARE).ok();
+            let text_buffer = instance.get_typed_func(&store, TEXT_BUFFER).ok();
+            let brush = instance.get_typed_func(&store, BRUSH).ok();
+            let brush_control = instance.get_typed_func(&store, BRUSH_CONTROL).ok();
+            let file_buffer = instance.get_typed_func(&store, FILE_BUFFER).ok();
+            let file = instance.get_typed_func(&store, FILE).ok();
+            let between = (|| {
+                Some(BetweenCalls {
+                    begin: instance.get_typed_func(&store, BETWEEN_BEGIN).ok()?,
+                    row: instance.get_typed_func(&store, BETWEEN_ROW).ok()?,
+                    run: instance.get_typed_func(&store, BETWEEN_RUN).ok()?,
+                    out: instance.get_typed_func(&store, BETWEEN_OUT).ok()?,
+                })
+            })();
             let memory = instance.get_memory(&store, MEMORY);
             let control = instance.get_typed_func(&store, CONTROL).ok();
             Ok(Running {
@@ -362,6 +584,25 @@ impl Running {
                 row_buffer,
                 paste_row,
                 fill,
+                fill_all_layers,
+                radial_segments,
+                hide_undo_notice,
+                interface_colour,
+                pin_panels,
+                opacity_together,
+                randomise,
+                colour_triangle,
+                curve,
+                stroke_sound,
+                sound_prepare,
+                text_buffer,
+                brush,
+                brush_control,
+                file_buffer,
+                file,
+                sound_rate: None,
+                told_brush: None,
+                between,
                 memory,
                 control,
             })
@@ -391,6 +632,282 @@ impl Running {
             pick_layer.call(&mut *store, ()).map_err(|e| stop_of(&e))
         })?;
         Ok(said != 0)
+    }
+
+    /// Whether it says ColorDrop fills by every visible layer.
+    pub(crate) fn fill_all_layers(&mut self) -> Result<bool, Stop> {
+        let Running { store, fill_all_layers, .. } = self;
+        let Some(fill_all_layers) = fill_all_layers else { return Ok(false) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            fill_all_layers.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        Ok(said != 0)
+    }
+
+    /// The colour (0xRRGGBB) it says the interface draws `role` in; none if it leaves it be (-1).
+    pub(crate) fn interface_colour(&mut self, role: i32) -> Result<Option<u32>, Stop> {
+        let Running { store, interface_colour, .. } = self;
+        let Some(interface_colour) = interface_colour else { return Ok(None) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            interface_colour.call(&mut *store, role).map_err(|e| stop_of(&e))
+        })?;
+        match said {
+            -1 => Ok(None),
+            0..=0xFF_FFFF => Ok(u32::try_from(said).ok()),
+            _ => Err(Stop::Nonsense),
+        }
+    }
+
+    /// The frame between `this` and `next` (each `width` × `height`, premultiplied RGBA8), as it
+    /// draws it: a long call, on fuel by the area. None without the hook, or if it draws none.
+    pub(crate) fn inbetween(
+        &mut self,
+        this: &[u8],
+        next: &[u8],
+        width: usize,
+        height: usize,
+    ) -> Result<Option<Vec<u8>>, Stop> {
+        let Running { store, between, memory, .. } = self;
+        let (Some(between), Some(memory)) = (between.as_ref(), memory.as_ref()) else { return Ok(None) };
+        let row = width * 4;
+        if row == 0 || height == 0 || this.len() != row * height || next.len() != row * height {
+            return Ok(None);
+        }
+        let until = Instant::now() + MOST_FILL_TIME;
+        let mut left = BETWEEN_FUEL + BETWEEN_PIXEL_FUEL * (width * height) as u64;
+        guarded(|| {
+            let size =
+                (i32::try_from(width).map_err(|_| Stop::Nonsense)?, i32::try_from(height).map_err(|_| Stop::Nonsense)?);
+            let at = long_call(store, &between.begin, size, &mut left, until)?;
+            let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+            for (frame, pixels) in [this, next].into_iter().enumerate() {
+                for (y, line) in pixels.chunks_exact(row).enumerate() {
+                    memory.write(&mut *store, place, line).map_err(|_| Stop::Nonsense)?;
+                    long_call(store, &between.row, (frame as i32, y as i32), &mut left, until)?;
+                }
+            }
+            if long_call(store, &between.run, (), &mut left, until)? == 0 {
+                return Ok(None);
+            }
+            let mut out = vec![0_u8; row * height];
+            for (y, line) in out.chunks_exact_mut(row).enumerate() {
+                long_call(store, &between.out, y as i32, &mut left, until)?;
+                memory.read(&*store, place, line).map_err(|_| Stop::Nonsense)?;
+            }
+            Ok(Some(out))
+        })
+    }
+
+    /// The sound of the stroke as `motion` has it: `frames` samples at `rate` a second, as it makes
+    /// them, readied for the rate first (a long call, the first time at it) and told `brush` when
+    /// that changed. None without the hook.
+    pub(crate) fn stroke_sound(
+        &mut self,
+        frames: usize,
+        rate: u32,
+        motion: &crate::stroke_sound::SoundMotion,
+        brush: &crate::stroke_sound::SoundBrush,
+    ) -> Result<Option<Vec<f32>>, Stop> {
+        if self.stroke_sound.is_none() || self.memory.is_none() {
+            return Ok(None);
+        }
+        let rate = i32::try_from(rate).map_err(|_| Stop::Nonsense)?;
+        if self.sound_rate != Some(rate) {
+            self.sound_prepare(rate)?;
+            self.sound_rate = Some(rate);
+        }
+        if self.told_brush != Some(brush.key) {
+            self.tell_brush(brush)?;
+            self.told_brush = Some(brush.key);
+        }
+        let Running { store, stroke_sound, memory, .. } = self;
+        let (Some(call), Some(memory)) = (stroke_sound.as_ref(), memory.as_ref()) else { return Ok(None) };
+        let count = i32::try_from(frames).map_err(|_| Stop::Nonsense)?;
+        let m = motion;
+        let args = (count, rate, m.speed, m.pressure, m.since_ms, m.state, m.hover.0, m.hover.1, m.height);
+        let at = guarded(|| {
+            store.set_fuel(SOUND_FUEL + SOUND_FRAME_FUEL * frames as u64).map_err(|_| Stop::Damaged)?;
+            call.call(&mut *store, args).map_err(|e| stop_of(&e))
+        })?;
+        let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+        let mut bytes = vec![0_u8; frames * 4];
+        memory.read(&*store, place, &mut bytes).map_err(|_| Stop::Nonsense)?;
+        let sample = |b: &[u8; 4]| {
+            let s = f32::from_le_bytes(*b);
+            if s.is_finite() { s.clamp(-1.0, 1.0) } else { 0.0 }
+        };
+        Ok(Some(bytes.as_chunks::<4>().0.iter().map(sample).collect()))
+    }
+
+    /// Readies its sounds for `rate`, if it asks to be: a long call.
+    fn sound_prepare(&mut self, rate: i32) -> Result<(), Stop> {
+        let Running { store, sound_prepare, .. } = self;
+        let Some(prepare) = sound_prepare.as_ref() else { return Ok(()) };
+        let (mut left, until) = (PREPARE_FUEL, Instant::now() + MOST_FILL_TIME);
+        guarded(|| long_call(store, prepare, rate, &mut left, until).map(|_| ()))
+    }
+
+    /// Tells it the current brush, if it listens: its name and set, and its rows in the brush studio.
+    fn tell_brush(&mut self, brush: &crate::stroke_sound::SoundBrush) -> Result<(), Stop> {
+        let Running { store, text_buffer, brush: named, brush_control, memory, .. } = self;
+        if let (Some(text_buffer), Some(named), Some(memory)) = (text_buffer.as_ref(), named.as_ref(), memory.as_ref())
+        {
+            let text = [brush.name.as_bytes(), brush.set.as_bytes()].concat();
+            let length = |n: usize| i32::try_from(n).map_err(|_| Stop::Nonsense);
+            guarded(|| {
+                store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+                let at = text_buffer.call(&mut *store, length(text.len())?).map_err(|e| stop_of(&e))?;
+                let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+                memory.write(&mut *store, place, &text).map_err(|_| Stop::Nonsense)?;
+                store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+                named.call(&mut *store, (length(brush.name.len())?, length(brush.set.len())?)).map_err(|e| stop_of(&e))
+            })?;
+        }
+        if let Some(brush_control) = brush_control.as_ref() {
+            for (index, value) in brush.controls.iter().enumerate() {
+                let index = i32::try_from(index).map_err(|_| Stop::Nonsense)?;
+                guarded(|| {
+                    store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+                    brush_control.call(&mut *store, (index, *value)).map_err(|e| stop_of(&e))
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Hands it the file picked for its control `index` (none: let go), if it takes them: a long
+    /// call.
+    pub(crate) fn give_file(&mut self, index: usize, bytes: Option<&[u8]>) -> Result<(), Stop> {
+        let Running { store, file_buffer, file, memory, .. } = self;
+        let (Some(file), Some(memory)) = (file.as_ref(), memory.as_ref()) else { return Ok(()) };
+        let data = bytes.unwrap_or(&[]);
+        let index = i32::try_from(index).map_err(|_| Stop::Nonsense)?;
+        let len = i32::try_from(data.len()).map_err(|_| Stop::Nonsense)?;
+        let (mut left, until) = (FILE_FUEL, Instant::now() + MOST_FILL_TIME);
+        guarded(|| {
+            if !data.is_empty() {
+                let Some(file_buffer) = file_buffer.as_ref() else { return Ok(()) };
+                let at = long_call(store, file_buffer, (index, len), &mut left, until)?;
+                let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+                memory.write(&mut *store, place, data).map_err(|_| Stop::Nonsense)?;
+            }
+            long_call(store, file, (index, len), &mut left, until)
+        })
+    }
+
+    /// The curve it offers for a snapping stroke of `points` (window pixels), QuickShape having
+    /// found `best` first (-1: a curve asked for): its nodes, an anchor then two controls and an
+    /// anchor for each span. None without the hook, or if it offers none.
+    pub(crate) fn quickshape_curve(
+        &mut self,
+        points: &[(f32, f32)],
+        best: i32,
+    ) -> Result<Option<Vec<(f32, f32)>>, Stop> {
+        let Running { store, curve, memory, .. } = self;
+        let (Some(curve), Some(memory)) = (curve.as_ref(), memory.as_ref()) else { return Ok(None) };
+        let count = i32::try_from(points.len()).map_err(|_| Stop::Nonsense)?;
+        let until = Instant::now() + Duration::from_secs(2);
+        let mut left = CURVE_FUEL + CURVE_POINT_FUEL * points.len() as u64;
+        guarded(|| {
+            let at = long_call(store, &curve.begin, (count, best), &mut left, until)?;
+            let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+            let bytes: Vec<u8> =
+                points.iter().flat_map(|(x, y)| [x.to_le_bytes(), y.to_le_bytes()]).flatten().collect();
+            memory.write(&mut *store, place, &bytes).map_err(|_| Stop::Nonsense)?;
+            let n = usize::try_from(long_call(store, &curve.run, (), &mut left, until)?).map_err(|_| Stop::Nonsense)?;
+            if n == 0 {
+                return Ok(None);
+            }
+            if n < 4 || n % 3 != 1 || n > MOST_CURVE_NODES {
+                return Err(Stop::Nonsense);
+            }
+            let at = long_call(store, &curve.nodes, (), &mut left, until)?;
+            let place = usize::try_from(at).map_err(|_| Stop::Nonsense)?;
+            let mut bytes = vec![0_u8; n * 8];
+            memory.read(&*store, place, &mut bytes).map_err(|_| Stop::Nonsense)?;
+            let nodes: Vec<(f32, f32)> = bytes
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| (f32::from_le_bytes([b[0], b[1], b[2], b[3]]), f32::from_le_bytes([b[4], b[5], b[6], b[7]])))
+                .collect();
+            let near = |v: f32| v.is_finite() && v.abs() <= MOST_MOVE * 4.0;
+            if nodes.iter().all(|(x, y)| near(*x) && near(*y)) { Ok(Some(nodes)) } else { Err(Stop::Nonsense) }
+        })
+    }
+
+    /// Whether it says Classic shows a triangle.
+    pub(crate) fn colour_triangle(&mut self) -> Result<bool, Stop> {
+        let Running { store, colour_triangle, .. } = self;
+        let Some(colour_triangle) = colour_triangle else { return Ok(false) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            colour_triangle.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        Ok(said != 0)
+    }
+
+    /// Where it says brush setting `setting` goes, as a share of its range (none: left as it is).
+    pub(crate) fn randomise(&mut self, setting: i32, seed: i32) -> Result<Option<f32>, Stop> {
+        let Running { store, randomise, .. } = self;
+        let Some(randomise) = randomise else { return Ok(None) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            randomise.call(&mut *store, (setting, seed)).map_err(|e| stop_of(&e))
+        })?;
+        if said.is_nan() || said > 1.0 {
+            Err(Stop::Nonsense)
+        } else if said < 0.0 {
+            Ok(None)
+        } else {
+            Ok(Some(said))
+        }
+    }
+
+    /// Whether it says picked layers' opacity changes together.
+    pub(crate) fn opacity_together(&mut self) -> Result<bool, Stop> {
+        let Running { store, opacity_together, .. } = self;
+        let Some(opacity_together) = opacity_together else { return Ok(false) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            opacity_together.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        Ok(said != 0)
+    }
+
+    /// Whether it says panels stay open while the canvas is painted.
+    pub(crate) fn pin_panels(&mut self) -> Result<bool, Stop> {
+        let Running { store, pin_panels, .. } = self;
+        let Some(pin_panels) = pin_panels else { return Ok(false) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            pin_panels.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        Ok(said != 0)
+    }
+
+    /// Whether it says undo and redo go by without their notice.
+    pub(crate) fn hide_undo_notice(&mut self) -> Result<bool, Stop> {
+        let Running { store, hide_undo_notice, .. } = self;
+        let Some(hide_undo_notice) = hide_undo_notice else { return Ok(false) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            hide_undo_notice.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        Ok(said != 0)
+    }
+
+    /// How many parts it says radial symmetry makes (none if it has no say).
+    pub(crate) fn radial_segments(&mut self) -> Result<Option<u32>, Stop> {
+        let Running { store, radial_segments, .. } = self;
+        let Some(radial_segments) = radial_segments else { return Ok(None) };
+        let said = guarded(|| {
+            store.set_fuel(SAMPLE_FUEL).map_err(|_| Stop::Damaged)?;
+            radial_segments.call(&mut *store, ()).map_err(|e| stop_of(&e))
+        })?;
+        if RADIAL_PARTS.contains(&said) { Ok(u32::try_from(said).ok()) } else { Err(Stop::Nonsense) }
     }
 
     /// How big it says the interface shows in a window `width` × `height` points at 1.

@@ -66,6 +66,8 @@ mod render;
 mod reveal;
 mod scene3d;
 mod selection;
+mod sound_file;
+mod stroke_sound;
 mod studio;
 #[cfg(test)]
 mod tests;
@@ -75,6 +77,7 @@ mod timelapse;
 mod touch;
 mod transform;
 mod undo_history;
+mod tween;
 #[cfg(target_os = "android")]
 mod window;
 // the iPad app's window is its layer: taken and drawn into as Android's is
@@ -107,6 +110,7 @@ pub use animation::{
     export_fps_label, frame_rate,
 };
 pub use brush_files::{BrushesRead, OTHER_BRUSH_EXTENSIONS, ReadBrushes, is_brush_zip, read_any_brushes, read_brushes};
+pub use brush_library::prepare_brushes;
 pub use brushes::{BrushInfo, BrushSetInfo, RecentBrush};
 pub use colour::{
     cmyk_profiles, color_profiles, colours_in_p3, convert_color, import_profile, is_cmyk_profile, set_profile_folder,
@@ -129,7 +133,7 @@ pub use keys::{KeyCombo, KeyDrag, KeyShortcut, ShortcutGroup, ShortcutRow, key_s
 pub use layers::{
     BlendModeInfo, Blocked, HiddenBy, LayerInfo, LayerOption, LayerOptionRow, LayerType, ThumbnailImage,
     apply_background_mask, background_mask, blend_modes, brush_blend_modes, combine_blend_modes, grain_blend_modes,
-    layers_for, remove_background, set_resident_budget,
+    layers_for, remove_background, set_layer_budget, set_resident_budget,
 };
 pub use liquify::liquify_reach;
 pub use modes::{ModeButton, ModeSwitch, Modes, mode_switch};
@@ -137,7 +141,7 @@ pub use palettes::{PaletteInfo, Palettes, colour_name};
 pub use pick::Pick;
 pub use pickers::{
     disc_picture, disc_to_square, disc_to_square_point, harmony_wheel, p3_hsv_of, p3_hsv_to_rgb, rgb_to_p3_hsv,
-    square_to_disc, square_to_disc_point,
+    square_to_disc, square_to_disc_point, triangle_picture, triangle_point, triangle_sv,
 };
 pub use plugin_file::read_plugin_file;
 pub use plugin_filter::PluginFilterShown;
@@ -157,7 +161,7 @@ pub use quick_menu::{
     quick_adjustments_listed, quick_menu_active_after, quick_menu_added, quick_menu_saved, quick_menu_slots,
     quick_menus, quick_menus_saved,
 };
-pub use quickshape::{QuickShapeInfo, QuickShapeKind};
+pub use quickshape::{QuickShapeAnchor, QuickShapeInfo, QuickShapeKind};
 pub use reference_view::{
     ReferenceSizes, ReferenceView, reference_picture_point, reference_picture_rect, reference_view_pinched,
 };
@@ -171,7 +175,7 @@ pub use scene3d::{
 pub use selection::{SelectionDisplay, SelectionJoin};
 pub use studio::{
     SliderExtrasInfo, SourceImage, SourceKind, StudioAbout, curve_samples, repeatable_source, slider_extras,
-    small_source, source_from_picture, source_library, source_size,
+    small_source, source_from_copy, source_from_picture, source_library, source_size,
 };
 pub use text::{TextAlignment, TextDraw, TextDrawn, TextInfo, TextSide};
 pub use text_draw::{
@@ -416,6 +420,10 @@ pub(crate) struct State {
     pub(crate) brush_on_screen: bool,
     /// What samples go through on their way to a stroke, if anything.
     pub(crate) hooks: Option<Arc<hooks::Hooks>>,
+    /// When the stroke's input was last heard, for a sound plugin.
+    pub(crate) sound_heard: Option<std::time::Instant>,
+    /// Where the pen last hovered (window pixels) and when, for the spray can's rattle.
+    pub(crate) sound_hover: Option<(procraft_engine::geom::Vec2, std::time::Instant)>,
     /// Crops kept for undo: the canvas and document from before; and one undone, for redo, with
     /// the steps the canvas then put back had made (redo only while that hasn't changed).
     crop_undo: Option<(Canvas, Document)>,
@@ -472,6 +480,9 @@ pub(crate) struct State {
     pub(crate) gpu: Option<Gpu>,
     pub(crate) canvas: Option<Canvas>,
     pub(crate) needs_frame: bool,
+    /// A frame wanted at this time, not before: the selection's bands drift slowly, so a frame
+    /// shows them moved only every so often (a pixel at a time).
+    pub(crate) frame_due: Option<std::time::Instant>,
     /// Frames wait (the canvas is being redrawn a stroke at a time, as the brush studio's pad is
     /// when its brush changes), and one was asked for meanwhile.
     pub(crate) holding_frames: bool,
@@ -487,6 +498,9 @@ pub(crate) struct State {
     pub(crate) pad_strokes: Option<Vec<(PointerKind, Vec<PenSample>)>>,
     /// Brush files' grains at their own size.
     pub(crate) grain_store: grain_store::GrainStore,
+    /// Where the library was last kept or read whole, and what it held then (see
+    /// `brush_library::Images::Told`): kept again only once that changes.
+    pub(crate) library_kept: Option<(std::path::PathBuf, u64)>,
     /// The pad shows only its sample scribble: a stroke of one's own takes it away.
     pub(crate) pad_sample: bool,
     /// The pad drawn as a sphere, the flat pad's strokes set aside meanwhile.
@@ -513,6 +527,9 @@ pub(crate) struct State {
     pub(crate) name: String,
     /// What the artwork keeps about itself: when it was made, strokes, time spent, its author.
     pub(crate) info: project::ArtworkInfo,
+    /// Since when time on the artwork counts, while it does (see [`CanvasSession::set_tracking`]):
+    /// not yet in `info`.
+    pub(crate) tracking_since: Option<std::time::Instant>,
     /// Saved layer pixels waiting for the canvas (an opened artwork before it is shown).
     pub(crate) pending_pixels: Vec<(procraft_engine::document::LayerId, project::Opened)>,
     /// Undo and redo read with an artwork, installed once its GPU canvas exists.
@@ -1301,6 +1318,8 @@ impl CanvasSession {
             selection_visibility: 0.25,
             brush_on_screen: false,
             hooks: None,
+            sound_heard: None,
+            sound_hover: None,
             input: procraft_engine::stroke::InputSettings::default(),
             crop_redo: None,
             library: shelf,
@@ -1326,6 +1345,7 @@ impl CanvasSession {
             scene: None,
             x_ray: false,
             needs_frame: false,
+            frame_due: None,
             holding_frames: false,
             frame_held: false,
             stop: false,
@@ -1334,6 +1354,7 @@ impl CanvasSession {
             frames: 0,
             pad_strokes: None,
             grain_store: grain_store::GrainStore::default(),
+            library_kept: None,
             pad_sample: false,
             sphere: None,
             frame_interval_ms: 0.0,
@@ -1351,6 +1372,7 @@ impl CanvasSession {
                     .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(0)),
                 ..project::ArtworkInfo::default()
             },
+            tracking_since: None,
             revision: 0,
             transform: None,
             transform_mode: procraft_engine::transform::TransformMode::Freeform,
@@ -1497,6 +1519,8 @@ impl CanvasSession {
     pub fn stroke_begin(&self, pointer: PointerKind, samples: Vec<PenSample>) {
         let mut guard = self.shared.lock();
         let st = &mut *guard;
+        // radial symmetry in as many parts as a plugin says, for this stroke
+        st.doc.guide.radial = st.hooks.as_ref().and_then(|hooks| hooks.radial_segments());
         // a fill still spreading in shows all of itself before anything is drawn over it
         st.end_reveal();
         // the graphics stopped (perhaps while the app was away, its notice long gone): nothing
@@ -1981,6 +2005,12 @@ impl CanvasSession {
     pub fn undo(&self) -> Option<String> {
         self.await_pour();
         self.shared.lock().end_reveal();
+        // transforming, the transform's own last change goes back: the canvas's steps wait until
+        // it ends (one taken back under it would leave the box over what is no longer there)
+        if self.shared.lock().transform.is_some() {
+            self.transform_apply(crate::transform::TransformAction::Undo);
+            return None;
+        }
         // a picture being placed on a model goes first
         if self.model_picture_box().is_some() {
             self.model_picture_end(false);
@@ -2019,6 +2049,10 @@ impl CanvasSession {
     pub fn redo(&self) -> Option<String> {
         self.await_pour();
         self.shared.lock().end_reveal();
+        // transforming, nothing is redone until it ends
+        if self.shared.lock().transform.is_some() {
+            return None;
+        }
         if let Some(name) = self.text_box_redo() {
             return Some(name);
         }

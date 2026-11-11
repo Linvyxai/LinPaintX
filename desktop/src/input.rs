@@ -351,6 +351,8 @@ impl Input {
                     self.moved(session, MOUSE, p, pressure);
                     return true;
                 }
+                // a spray can's sound (a plugin's) rattles shaken above the canvas
+                session.sound_hover(p.0, p.1);
                 self.hover_shown
             }
             WindowEvent::MouseInput { state, button, .. } => {
@@ -616,6 +618,36 @@ mod tests {
     fn view(session: &CanvasSession) -> (f32, f32, (f32, f32)) {
         let m = session.view_matrix();
         (m[0].hypot(m[1]), m[1].atan2(m[0]), (m[4], m[5]))
+    }
+
+    #[test]
+    fn two_fingers_tapped_right_after_the_mouse_or_pen_undo_at_once() {
+        let (session, mut input) = (shown(), Input::default());
+        session.set_touch_settings(procraft_core::TouchSettings::default());
+        let moved = |x: f64, y: f64| WindowEvent::CursorMoved {
+            device_id: DeviceId::dummy(),
+            position: PhysicalPosition::new(x, y),
+        };
+        let button = |state| WindowEvent::MouseInput { device_id: DeviceId::dummy(), state, button: MouseButton::Left };
+        // a tablet's pen as X11 gives it: the mouse, pressed, moved and let go
+        send(&mut input, &session, &moved(100.0, 100.0));
+        send(&mut input, &session, &button(ElementState::Pressed));
+        send(&mut input, &session, &moved(200.0, 150.0));
+        send(&mut input, &session, &button(ElementState::Released));
+        input.commands.clear();
+        let tap = |input: &mut Input, ids: (u64, u64)| {
+            send(input, &session, &finger(ids.0, TouchPhase::Started, 300.0, 300.0));
+            send(input, &session, &finger(ids.1, TouchPhase::Started, 400.0, 300.0));
+            send(input, &session, &finger(ids.0, TouchPhase::Ended, 300.0, 300.0));
+            send(input, &session, &finger(ids.1, TouchPhase::Ended, 400.0, 300.0));
+        };
+        tap(&mut input, (9001, 9002));
+        assert!(input.commands.contains(&TouchCommand::Undo), "after the mouse: {:?}", input.commands);
+        // and after the pen as a pen (Windows, Wayland)
+        drag(&mut input, &session, 7, (200.0, 150.0));
+        input.commands.clear();
+        tap(&mut input, (9003, 9004));
+        assert!(input.commands.contains(&TouchCommand::Undo), "after the pen: {:?}", input.commands);
     }
 
     #[test]

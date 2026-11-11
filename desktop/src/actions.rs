@@ -14,7 +14,7 @@ use procraft_core::{
 use crate::animated_export::Animated;
 use crate::files::Format;
 use crate::icons;
-use crate::look::{Look, Themed, Weight, argb, cubic_bezier, highlight, mix, pc, text, text_width, wrapped};
+use crate::look::{Look, Themed, Weight, argb, cubic_bezier, highlight, mix, pc, text, wrapped};
 use crate::menu::{Glass, Menu};
 use crate::panel::{self, PANEL_TITLE};
 use crate::prefs::{CursorShows, CursorStyle, Prefs, RAPID_UNDO_MAX_S, RAPID_UNDO_MIN_S};
@@ -47,7 +47,6 @@ const PLUGIN_PROBLEM: f32 = 22.0;
 const PLUGIN_FOOT: f32 = 12.0;
 const PLUGINS_EMPTY: f32 = 60.0;
 const PLUGIN_INSET: f32 = 16.0;
-const PLUGIN_TAG: Themed = Themed(0x1FFFFFFF, 0x14000000);
 /// The panel ends this far above the window's bottom edge, and its rows scroll past this tall.
 const BOTTOM_MARGIN: f32 = 25.0;
 const MOST_ROWS: f32 = 760.0;
@@ -1052,7 +1051,7 @@ fn plugin_height(painter: &Painter, plugin: &PluginInfo, width: f32) -> f32 {
         .iter()
         .filter(|_| controls_show(plugin))
         .map(|c| match c {
-            PluginControl::Switch { .. } => 1.0 + ROW_HEIGHT,
+            PluginControl::Switch { .. } | PluginControl::File { .. } => 1.0 + ROW_HEIGHT,
             PluginControl::Slider { .. } => 1.0 + SLIDE_HEIGHT,
         })
         .sum();
@@ -1077,15 +1076,6 @@ fn plugin_card(
     painter.rect_filled(area, 22, argb(ACTIONS_GROUP));
     let (left, name_y) = (area.left() + PLUGIN_INSET, area.top() + 12.0);
     text(&painter, pos2(left, name_y), Align2::LEFT_TOP, &plugin.name, 17.0, Weight::SemiBold, argb(PANEL_TITLE));
-    // the tag after the name
-    if plugin.experimental {
-        let tag = "experimental";
-        let tag_left = left + text_width(&painter, &plugin.name, 17.0, Weight::SemiBold) + 8.0;
-        let tag_width = text_width(&painter, tag, 12.0, Weight::Medium) + 14.0;
-        let pill = Rect::from_min_size(pos2(tag_left, name_y + 1.0), vec2(tag_width, 19.0));
-        painter.rect_filled(pill, 9, argb(PLUGIN_TAG));
-        text(&painter, pill.center(), Align2::CENTER_CENTER, tag, 12.0, Weight::Medium, argb(ACTIONS_ROW));
-    }
     let inside = width - 2.0 * PLUGIN_INSET;
     let said = wrapped(&painter, &plugin.description, 14.0, Weight::Regular, argb(ACTIONS_ROW), inside);
     let said_height = said.size().y;
@@ -1129,6 +1119,43 @@ fn plugin_card(
                     }
                 }
                 y += SLIDE_HEIGHT;
+            }
+            PluginControl::File { control } => {
+                // its label; the name of what was picked and Clear, or Import; a click picks another
+                let cell = Rect::from_min_size(pos2(area.left(), y), vec2(width, ROW_HEIGHT));
+                let at = pos2(cell.left() + 16.0, cell.center().y);
+                text(&painter, at, Align2::LEFT_CENTER, &control.label, 17.0, Weight::Regular, argb(ACTIONS_ROW));
+                let right = pos2(cell.right() - 16.0, cell.center().y);
+                let clear = control.chosen.as_ref().map(|chosen| {
+                    let clear =
+                        text(&painter, right, Align2::RIGHT_CENTER, "Clear", 17.0, Weight::Regular, argb(pc::ACCENT));
+                    let shown: String = if chosen.chars().count() > 28 {
+                        chosen.chars().take(27).chain(['\u{2026}']).collect()
+                    } else {
+                        chosen.clone()
+                    };
+                    let name_at = pos2(clear.left() - 12.0, cell.center().y);
+                    text(&painter, name_at, Align2::RIGHT_CENTER, &shown, 15.0, Weight::Regular, argb(SLIDE_VALUE));
+                    clear
+                });
+                if clear.is_none() {
+                    text(&painter, right, Align2::RIGHT_CENTER, "Import", 17.0, Weight::Regular, argb(pc::ACCENT));
+                }
+                let response = ui.interact(cell, ui.scope_id().with(("plugin file", g, i)), Sense::click());
+                if response.clicked() {
+                    let on_clear =
+                        clear.zip(response.interact_pointer_pos()).is_some_and(|(c, at)| c.expand(8.0).contains(at));
+                    if on_clear {
+                        changed |= plugins.clear_file(control.key.clone());
+                    } else if let Some((bytes, name)) = crate::files::pick_sound(&control.label) {
+                        if plugins.set_sound_file(control.key.clone(), name, bytes) {
+                            changed = true;
+                        } else {
+                            crate::files::say("This sound couldn't be used. On the computer, pick a WAV file.");
+                        }
+                    }
+                }
+                y += ROW_HEIGHT;
             }
         }
     }
@@ -1683,6 +1710,7 @@ mod tests {
     #[test]
     fn a_plugin_nothing_answers_to_draws_and_does_nothing() {
         let stranger = PluginInfo {
+            brush_controls: Vec::new(),
             id: "someone.stranger".to_owned(),
             name: "Stranger".to_owned(),
             description: "No code answers to it.".to_owned(),
@@ -1715,6 +1743,7 @@ mod tests {
                         shown_times: 1.0,
                         unit: " px".to_owned(),
                         at_least: None,
+                        names: Vec::new(),
                         live: false,
                     },
                 },

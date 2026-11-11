@@ -23,6 +23,8 @@ struct OnHook {
     running: Shared,
     /// The hooks it is on, as bits.
     hooks: u32,
+    /// The keys of its rows in the brush studio, in their order.
+    brush_keys: Vec<String>,
 }
 
 #[derive(Default)]
@@ -125,6 +127,150 @@ impl Hooks {
             && self.through(Hook::PickLayer, false, |running, said| Ok(said | running.pick_layer()?))
     }
 
+    /// The fill-by-all hook: whether ColorDrop measures what it fills on the canvas as composited
+    /// (every layer seen) rather than on the current layer or the reference layer. It only asks.
+    pub(crate) fn fill_all_layers(&self) -> bool {
+        self.has(Hook::FillAllLayers)
+            && self.through(Hook::FillAllLayers, false, |running, said| Ok(said | running.fill_all_layers()?))
+    }
+
+    /// The colour hook: the colour (0xRRGGBB) the interface draws `role` in, if a plugin says (the
+    /// first that does).
+    pub(crate) fn interface_colour(&self, role: i32) -> Option<u32> {
+        if !self.has(Hook::InterfaceColour) {
+            return None;
+        }
+        self.through(Hook::InterfaceColour, None, |running, said| match said {
+            Some(colour) => Ok(Some(colour)),
+            None => running.interface_colour(role),
+        })
+    }
+
+    /// The sound hook: `frames` samples at `rate` of the stroke as `motion` has it, as the first
+    /// plugin on the hook makes them, told `brush` when that changed: for the sound's own thread
+    /// (the first at a rate readies the plugin, a long call). None with none on it, or if it stops.
+    pub(crate) fn stroke_sound(
+        &self,
+        frames: usize,
+        rate: u32,
+        motion: &crate::stroke_sound::SoundMotion,
+        brush: &crate::stroke_sound::SoundBrush,
+    ) -> Option<Vec<f32>> {
+        let (id, running) = self.long_calls(Hook::StrokeSound).into_iter().next()?;
+        let made = at_work(&running).stroke_sound(frames, rate, motion, brush);
+        match made {
+            Ok(samples) => samples,
+            Err(stop) => {
+                self.stopped(&id, stop);
+                None
+            }
+        }
+    }
+
+    /// The keys of the rows in the brush studio of the plugin making the sound, to tell it the
+    /// current brush's.
+    pub(crate) fn sound_brush_keys(&self) -> Vec<String> {
+        let working = self.working();
+        let first = working.on.iter().find(|p| p.hooks & Hook::StrokeSound.bit() != 0);
+        first.map(|p| p.brush_keys.clone()).unwrap_or_default()
+    }
+
+    /// The in-between hook: the frame between `this` and `next` (each `width` × `height`,
+    /// premultiplied RGBA8), as the first plugin on the hook draws it: a long call, not for the main
+    /// thread. None with none on it, if it draws none, or if it stops.
+    pub(crate) fn inbetween(&self, this: &[u8], next: &[u8], width: usize, height: usize) -> Option<Vec<u8>> {
+        let (id, running) = self.long_calls(Hook::Inbetween).into_iter().next()?;
+        match at_work(&running).inbetween(this, next, width, height) {
+            Ok(made) => made,
+            Err(stop) => {
+                self.stopped(&id, stop);
+                None
+            }
+        }
+    }
+
+    /// Whether a plugin draws in-betweens: the frame options then offer In-between.
+    pub(crate) fn tweens(&self) -> bool {
+        self.has(Hook::Inbetween)
+    }
+
+    /// Whether a plugin makes the stroke's sound: the apps play it while one does.
+    pub(crate) fn makes_stroke_sound(&self) -> bool {
+        self.has(Hook::StrokeSound)
+    }
+
+    /// The curve hook: the curve the first plugin on it offers for a snapping stroke of `points`
+    /// (window pixels), QuickShape having found `best` first (-1: a curve asked for): its nodes.
+    /// None with none on it, if it offers none, or if it stops.
+    pub(crate) fn quickshape_curve(&self, points: &[(f32, f32)], best: i32) -> Option<Vec<(f32, f32)>> {
+        let (id, running) = self.long_calls(Hook::QuickshapeCurve).into_iter().next()?;
+        let offered = at_work(&running).quickshape_curve(points, best);
+        match offered {
+            Ok(nodes) => nodes,
+            Err(stop) => {
+                self.stopped(&id, stop);
+                None
+            }
+        }
+    }
+
+    /// The triangle hook: whether the colour panel's Classic shows a triangle in place of its
+    /// square.
+    pub(crate) fn colour_triangle(&self) -> bool {
+        self.has(Hook::ColourTriangle)
+            && self.through(Hook::ColourTriangle, false, |running, said| Ok(said | running.colour_triangle()?))
+    }
+
+    /// Whether a plugin sets brushes' settings at random (the brush studio shows Randomise).
+    pub(crate) fn randomises_brushes(&self) -> bool {
+        self.has(Hook::RandomiseBrush)
+    }
+
+    /// The randomise hook: where brush setting `setting` goes, as a share of its range, if a plugin
+    /// says (the first that does).
+    pub(crate) fn randomise(&self, setting: i32, seed: i32) -> Option<f32> {
+        if !self.has(Hook::RandomiseBrush) {
+            return None;
+        }
+        self.through(Hook::RandomiseBrush, None, |running, said| match said {
+            Some(share) => Ok(Some(share)),
+            None => running.randomise(setting, seed),
+        })
+    }
+
+    /// The opacity hook: whether a layer's opacity changed while it is one of several picked sets
+    /// every picked layer's.
+    pub(crate) fn opacity_together(&self) -> bool {
+        self.has(Hook::OpacityTogether)
+            && self.through(Hook::OpacityTogether, false, |running, said| Ok(said | running.opacity_together()?))
+    }
+
+    /// The pin hook: whether a touch on the canvas with a panel open paints at once and leaves the
+    /// panel up, rather than closing it (a tap) or fading it (a drag).
+    pub(crate) fn pin_panels(&self) -> bool {
+        self.has(Hook::PinPanels)
+            && self.through(Hook::PinPanels, false, |running, said| Ok(said | running.pin_panels()?))
+    }
+
+    /// The undo notice hook: whether undo and redo go by without the notice naming what they took
+    /// back or brought back.
+    pub(crate) fn hide_undo_notice(&self) -> bool {
+        self.has(Hook::HideUndoNotice)
+            && self.through(Hook::HideUndoNotice, false, |running, said| Ok(said | running.hide_undo_notice()?))
+    }
+
+    /// The radial hook: how many parts radial symmetry makes, if a plugin says (the first that
+    /// does); the guide's usual eight otherwise.
+    pub(crate) fn radial_segments(&self) -> Option<u32> {
+        if !self.has(Hook::RadialSegments) {
+            return None;
+        }
+        self.through(Hook::RadialSegments, None, |running, said| match said {
+            Some(n) => Ok(Some(n)),
+            None => running.radial_segments(),
+        })
+    }
+
     /// The scale hook: how big the interface shows in a window `width` × `height` points at 1. The
     /// number is the plugin's, and all the app adds is what keeps every page in reach: see
     /// [`crate::interface_size`].
@@ -203,8 +349,26 @@ impl Hooks {
         working.on.retain(|p| p.id != id);
         let at = working.on.partition_point(|p| p.id < id);
         let hooks = hooks.iter().fold(0, |bits, hook| bits | hook.bit());
-        working.on.insert(at, OnHook { id, running: Arc::new(Mutex::new(running)), hooks });
+        working.on.insert(at, OnHook { id, running: Arc::new(Mutex::new(running)), hooks, brush_keys: Vec::new() });
         self.rehook(&working);
+    }
+
+    /// The keys of `id`'s rows in the brush studio, in their order.
+    pub(crate) fn brush_keys(&self, id: &str, keys: Vec<String>) {
+        if let Some(plugin) = self.working().on.iter_mut().find(|p| p.id == id) {
+            plugin.brush_keys = keys;
+        }
+    }
+
+    /// The file picked for `id`'s control `index` (none: let go) handed to it: a long call. One
+    /// that stops is off its hooks.
+    pub(crate) fn give_file(&self, id: &str, index: usize, bytes: Option<&[u8]>) {
+        let found = self.working().on.iter().find(|p| p.id == id).map(|p| Arc::clone(&p.running));
+        if let Some(running) = found
+            && let Err(stop) = at_work(&running).give_file(index, bytes)
+        {
+            self.stopped(id, stop);
+        }
     }
 
     /// Takes `id` off: from the next sample on, the app is as if it had never been.
@@ -248,6 +412,17 @@ impl CanvasSession {
     pub fn use_plugins(&self, plugins: Arc<Plugins>) {
         let hooks = plugins.hooks();
         self.shared.lock().hooks = Some(hooks);
+    }
+
+    /// The notice an undo (`undo`) or a redo of the step `name` shows: "Undo Brush stroke", or
+    /// "Redo" for a step with no name; none while a plugin hides it.
+    pub fn step_notice(&self, undo: bool, name: Option<String>) -> Option<String> {
+        let hooks = self.shared.lock().hooks.clone();
+        if hooks.is_some_and(|hooks| hooks.hide_undo_notice()) {
+            return None;
+        }
+        let word = if undo { "Undo" } else { "Redo" };
+        Some(name.map_or_else(|| word.to_owned(), |name| format!("{word} {name}")))
     }
 }
 
@@ -399,6 +574,417 @@ pub(crate) mod tests {
         assert!(plugins.set_on(ID.to_owned(), false));
         assert!(!hooks.pick_layer());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A plugin that says ColorDrop fills by every layer, in a store at `dir`.
+    fn filling_by_all(dir: &str) -> Arc<Plugins> {
+        let module =
+            wat::parse_str(r#"(module (func (export "procraft_fill_all_layers") (result i32) (i32.const 1)))"#)
+                .unwrap();
+        let plugins = Plugins::with_store(dir.to_owned());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["fill_all_layers"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        plugins
+    }
+
+    #[test]
+    fn a_fill_goes_by_every_layer_only_while_a_plugin_says_so() {
+        let dir = store("fill-all");
+        let plugins = filling_by_all(&dir);
+        let hooks = plugins.hooks();
+        assert!(!hooks.fill_all_layers(), "imported, it says nothing");
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert!(hooks.fill_all_layers());
+        assert!(plugins.set_on(ID.to_owned(), false));
+        assert!(!hooks.fill_all_layers());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn colordrop_on_an_empty_layer_stops_at_another_layers_lines_with_the_plugin_on() {
+        let Some(s) = session() else { return };
+        let dir = store("fill-all-session");
+        // a line across the canvas on the first layer, then an empty layer over it
+        s.set_brush_size(0.5);
+        s.stroke_begin(PointerKind::Finger, vec![sample(100.0, -10.0, 0.0)]);
+        s.stroke_add((1..=44).map(|i| sample(100.0, -10.0 + i as f32 * 5.0, f64::from(i) * 8.0)).collect());
+        s.stroke_end(vec![]);
+        let line = s.layers()[0].id;
+        let empty = s.add_layer();
+        assert_ne!(empty, line);
+        let red_at = |s: &CanvasSession, x: usize| {
+            s.await_pour();
+            let rgba = picture(s);
+            let at = (100 * 200 + x) * 4;
+            rgba[at] > 200 && rgba[at + 3] > 200
+        };
+        // as the app is: the empty layer fills whole
+        assert!(s.pour_begin(40.0, 100.0, 1.0, 0.0, 0.0, 0.3));
+        s.pour_end(true, None);
+        assert!(red_at(&s, 40) && red_at(&s, 160), "fills the empty layer whole");
+        s.undo();
+        // with the plugin on: as far as the line on the layer under it
+        let plugins = filling_by_all(&dir);
+        assert!(plugins.set_on(ID.to_owned(), true));
+        s.use_plugins(Arc::clone(&plugins));
+        assert!(s.pour_begin(40.0, 100.0, 1.0, 0.0, 0.0, 0.3));
+        s.pour_end(true, None);
+        assert!(red_at(&s, 40), "filled where it was dropped");
+        assert!(!red_at(&s, 160), "not past the other layer's line");
+        assert_eq!(s.layers().iter().find(|l| l.current).map(|l| l.id), Some(empty), "on the current layer");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_interface_takes_a_plugin_s_colour_while_it_is_on() {
+        let dir = store("interface-colour");
+        // red for the accent, nothing said for any other role
+        let module = wat::parse_str(
+            r#"(module (func (export "procraft_interface_colour") (param $role i32) (result i32)
+                (if (result i32) (i32.eqz (local.get $role)) (then (i32.const 0xff0000)) (else (i32.const -1)))))"#,
+        )
+        .unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["interface_colour"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        assert_eq!(plugins.accent_colour(), None, "imported, it says nothing");
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert_eq!(plugins.accent_colour(), Some(0xFF0000));
+        assert_eq!(plugins.hooks().interface_colour(1), None);
+        assert!(plugins.set_on(ID.to_owned(), false));
+        assert_eq!(plugins.accent_colour(), None);
+        // a colour past 24 bits stops it
+        let wild = wat::parse_str(
+            r#"(module (func (export "procraft_interface_colour") (param i32) (result i32) (i32.const 0x1000000)))"#,
+        )
+        .unwrap();
+        let dir2 = store("interface-colour-wild");
+        let plugins = Plugins::with_store(dir2.clone());
+        let mut manifest = coded(ID, &wild);
+        manifest["hooks"] = json!(["interface_colour"]);
+        assert_eq!(plugins.install(file(&manifest, &wild)), None);
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert_eq!(plugins.accent_colour(), None);
+        assert!(card(&plugins).problem.is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&dir2);
+    }
+
+    /// The Brush sounds plugin the app comes with, in a store of its own, not on yet.
+    fn brush_sounds(dir: &str) -> Arc<Plugins> {
+        let plugins = Plugins::with_store(dir.to_owned());
+        let (_, bytes) = crate::bundled::BUNDLED.iter().find(|(name, _)| *name == "brush-sounds").unwrap();
+        assert_eq!(plugins.install(bytes.to_vec()), None);
+        plugins
+    }
+
+    const SOUNDS: &str = "io.github.artcraftandroid.brush-sounds";
+
+    fn rms(v: &[f32]) -> f32 {
+        (v.iter().map(|x| x * x).sum::<f32>() / v.len().max(1) as f32).sqrt()
+    }
+
+    #[test]
+    fn a_stroke_sounds_as_fast_as_it_moves_while_the_sound_plugin_is_on() {
+        let Some(s) = session() else { return };
+        let dir = store("sound");
+        let plugins = brush_sounds(&dir);
+        s.use_plugins(Arc::clone(&plugins));
+        // a fast stroke under way
+        let fast: Vec<_> = (0..20).map(|i| sample(10.0 + i as f32 * 10.0, 50.0, f64::from(i) * 4.0)).collect();
+        s.stroke_begin(PointerKind::Finger, fast[..1].to_vec());
+        s.stroke_add(fast[1..].to_vec());
+        assert!(!plugins.makes_stroke_sound());
+        assert_eq!(rms(&s.stroke_sound(2_400, 48_000)), 0.0, "off: silent");
+        assert!(plugins.set_on(SOUNDS.to_owned(), true));
+        assert!(plugins.makes_stroke_sound());
+        // (the first readies the plugin's sounds)
+        s.stroke_add(vec![sample(220.0, 50.0, 84.0)]);
+        let _ = s.stroke_sound(2_400, 48_000);
+        s.stroke_add(vec![sample(240.0, 50.0, 88.0)]);
+        let heard = rms(&s.stroke_sound(2_400, 48_000));
+        let problem = plugins.plugins().into_iter().find(|p| p.id == SOUNDS).and_then(|p| p.problem);
+        assert!(heard > 0.005, "a fast stroke is heard: {heard}, {problem:?}");
+        // its volume down: silent
+        assert!(plugins.set_slider(format!("{SOUNDS}.volume"), 0.0).is_some());
+        s.stroke_add(vec![sample(260.0, 50.0, 92.0)]);
+        let _ = s.stroke_sound(2_400, 48_000);
+        s.stroke_add(vec![sample(280.0, 50.0, 96.0)]);
+        assert!(rms(&s.stroke_sound(2_400, 48_000)) < 1e-4, "at no volume");
+        // it ends: quiet again
+        assert!(plugins.set_slider(format!("{SOUNDS}.volume"), 1.0).is_some());
+        s.stroke_end(vec![]);
+        let _ = s.stroke_sound(9_600, 48_000);
+        assert!(rms(&s.stroke_sound(2_400, 48_000)) < 0.002);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_recording_picked_is_kept_with_its_plugin_and_played_by_it() {
+        let Some(s) = session() else { return };
+        let dir = store("recording");
+        let plugins = brush_sounds(&dir);
+        assert!(plugins.set_on(SOUNDS.to_owned(), true));
+        s.use_plugins(Arc::clone(&plugins));
+        // every brush the airbrush, which hisses while pressed; its recording a 440 Hz tone
+        assert!(plugins.set_slider(format!("{SOUNDS}.sound"), 5.0).is_some());
+        let tone: Vec<f32> =
+            (0..22_050).map(|i| 0.7 * (std::f32::consts::TAU * 440.0 * i as f32 / 44_100.0).sin()).collect();
+        let key = format!("{SOUNDS}.airbrush_recording");
+        assert!(!plugins.set_sound_file(key.clone(), "x".to_owned(), b"not a sound".to_vec()));
+        assert!(plugins.set_sound_file(
+            key.clone(),
+            "Tone.wav".to_owned(),
+            crate::sound_file::write_wav(&tone, 44_100)
+        ));
+        s.stroke_begin(PointerKind::Finger, vec![sample(100.0, 100.0, 0.0)]);
+        let _ = s.stroke_sound(9_600, 48_000);
+        s.stroke_add(vec![sample(101.0, 100.0, 4.0)]);
+        let heard = s.stroke_sound(48_000, 48_000);
+        let crossings = heard.windows(2).filter(|w| (w[0] < 0.0) != (w[1] < 0.0)).count();
+        assert!((800..960).contains(&crossings), "the tone: {crossings}");
+        s.stroke_end(vec![]);
+        // kept with the plugin, read back as it was, not among the settings
+        let again = Plugins::with_store(dir.clone());
+        let chosen = again.plugins().into_iter().flat_map(|p| p.controls).find_map(|c| match c {
+            crate::plugins::PluginControl::File { control } if control.key == key => control.chosen,
+            _ => None,
+        });
+        assert_eq!(chosen.as_deref(), Some("Tone.wav"));
+        assert!(again.kept_lines().iter().all(|line| !line.starts_with(&key)));
+        // let go: the file gone
+        let (file, _) = crate::plugin_file::chosen_paths(std::path::Path::new(&dir), SOUNDS, &key);
+        assert!(file.is_file());
+        assert!(plugins.clear_file(key));
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_sound_plugin_s_row_in_the_brush_studio_is_kept_with_the_brush() {
+        let dir = store("rows");
+        let plugins = brush_sounds(&dir);
+        let rows = plugins.plugins().into_iter().find(|p| p.id == SOUNDS).unwrap().brush_controls;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            (rows[0].key.as_str(), rows[0].choices.len()),
+            ("plugin:io.github.artcraftandroid.brush-sounds:sound", 8)
+        );
+        let mut brush = procraft_engine::brush::Brush::round_pen();
+        brush.set_setting(&rows[0].key, 5.0);
+        assert_eq!(brush.setting(&rows[0].key), 5.0);
+        brush.set_setting(&rows[0].key, 300.0);
+        assert_eq!(brush.setting(&rows[0].key), 255.0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_stroke_bending_twice_snaps_to_a_curve_while_a_plugin_says_so() {
+        use crate::{QuickShapeAnchor, QuickShapeKind};
+        let Some(s) = session() else { return };
+        let dir = store("curves");
+        let plugins = Plugins::with_store(dir.clone());
+        let (_, bytes) = crate::bundled::BUNDLED.iter().find(|(name, _)| *name == "quickshape-curves").unwrap();
+        assert_eq!(plugins.install(bytes.to_vec()), None);
+        const ID: &str = "io.github.artcraftandroid.quickshape-curves";
+        s.use_plugins(Arc::clone(&plugins));
+        // a zigzag: across, back and across again, as a hand draws one
+        let zigzag = |s: &CanvasSession, t0: f64| {
+            let points = [(20.0, 20.0), (180.0, 30.0), (30.0, 100.0), (180.0, 170.0)];
+            let mut samples = Vec::new();
+            for (k, pair) in points.windows(2).enumerate() {
+                let (a, b) = (pair[0], pair[1]);
+                for i in 0..20 {
+                    let f = i as f32 / 20.0;
+                    let at = (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f);
+                    samples.push(sample(at.0, at.1, t0 + ((k * 20 + i) * 8) as f64));
+                }
+            }
+            s.stroke_begin(PointerKind::Finger, samples[..1].to_vec());
+            s.stroke_add(samples[1..].to_vec());
+            s.quickshape_hold()
+        };
+        // off: a polyline, as the app is
+        let shape = zigzag(&s, 0.0).expect("it snaps");
+        assert_eq!(shape.kind, QuickShapeKind::Polyline);
+        s.quickshape_done();
+        s.stroke_end(vec![]);
+        // on: a curve, the polyline to be shown instead
+        assert!(plugins.set_on(ID.to_owned(), true));
+        let shape = zigzag(&s, 1000.0).expect("it snaps");
+        assert_eq!(shape.kind, QuickShapeKind::Curve, "{shape:?}");
+        assert!(shape.choices.contains(&QuickShapeKind::Polyline));
+        assert!(shape.anchors.len() >= 3 && shape.anchors.iter().all(|a| *a == QuickShapeAnchor::Smooth));
+        // a tap on an anchor in the middle steps it on: broken, then a corner
+        let shape = s.quickshape_cycle_anchor(3).expect("an anchor");
+        assert_eq!(shape.anchors[1], QuickShapeAnchor::Broken);
+        let shape = s.quickshape_cycle_anchor(3).expect("an anchor");
+        assert_eq!(shape.anchors[1], QuickShapeAnchor::Corner);
+        // a control is no anchor
+        assert!(s.quickshape_cycle_anchor(1).is_none());
+        // shown as the polyline, then as a curve again: the plugin fits it afresh
+        assert_eq!(s.quickshape_choose(QuickShapeKind::Polyline).map(|i| i.kind), Some(QuickShapeKind::Polyline));
+        assert_eq!(s.quickshape_choose(QuickShapeKind::Curve).map(|i| i.kind), Some(QuickShapeKind::Curve));
+        s.quickshape_done();
+        s.stroke_end(vec![]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn randomise_sets_the_studio_brush_as_a_plugin_says() {
+        let Some(s) = session() else { return };
+        let dir = store("randomise");
+        // every setting to the middle of its range, but the spacing (0) left alone
+        let module = wat::parse_str(
+            r#"(module (func (export "procraft_randomise") (param i32 i32) (result f32)
+                (if (result f32) (i32.eqz (local.get 0)) (then (f32.const -1)) (else (f32.const 0.5)))))"#,
+        )
+        .unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["randomise_brush"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        s.use_plugins(Arc::clone(&plugins));
+        let _ = s.studio_begin();
+        let keys = |keys: &[&str]| keys.iter().map(|k| (*k).to_owned()).collect::<Vec<_>>();
+        let before = s.studio_settings(keys(&["spacing", "streamline", "shape_rotation", "rendering_mode"]));
+        assert!(!plugins.randomises_brushes());
+        assert!(!s.studio_randomise(), "off, nothing changes");
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert!(plugins.randomises_brushes());
+        assert!(s.studio_randomise());
+        let after = s.studio_settings(keys(&["spacing", "streamline", "shape_rotation", "rendering_mode"]));
+        assert_eq!(after[0], before[0], "the spacing left as it was");
+        assert!((after[1] - 0.5).abs() < 1e-4, "{after:?}");
+        assert!(after[2].abs() < 1e-4, "the middle of -1 to 1: {after:?}");
+        assert_eq!(after[3].round(), 3.0, "a choice made whole: {after:?}");
+        s.studio_end(false);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn picked_layers_take_one_opacity_together_while_a_plugin_says_so() {
+        let Some(s) = session() else { return };
+        let dir = store("opacity-together");
+        let module =
+            wat::parse_str(r#"(module (func (export "procraft_opacity_together") (result i32) (i32.const 1)))"#)
+                .unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["opacity_together"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        s.use_plugins(Arc::clone(&plugins));
+        let first = s.layers()[0].id;
+        let second = s.add_layer();
+        let third = s.add_layer();
+        assert!(s.pick_layer(first));
+        let opacity = |s: &CanvasSession, id: u64| s.layers().iter().find(|l| l.id == id).map(|l| l.opacity);
+        // off: only the one
+        assert!(s.set_layer_opacity(third, 0.5, true));
+        assert_eq!((opacity(&s, first), opacity(&s, third)), (Some(1.0), Some(0.5)));
+        // on: every picked layer, as one step; one not picked keeps its own
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert!(s.set_layer_opacity(first, 0.25, false));
+        assert!(s.set_layer_opacity(first, 0.3, true));
+        assert_eq!((opacity(&s, first), opacity(&s, third)), (Some(0.3), Some(0.3)));
+        assert_eq!(opacity(&s, second), Some(1.0));
+        s.undo();
+        assert_eq!((opacity(&s, first), opacity(&s, third)), (Some(1.0), Some(0.5)));
+        // a layer not among the picked goes alone
+        assert!(s.set_layer_opacity(second, 0.7, true));
+        assert_eq!((opacity(&s, first), opacity(&s, second), opacity(&s, third)), (Some(1.0), Some(0.7), Some(0.5)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_touch_with_a_panel_open_paints_at_once_and_leaves_it_while_a_plugin_pins_it() {
+        use crate::touch::{TouchCommand, TouchMove};
+        let Some(s) = session() else { return };
+        let dir = store("pin-panels");
+        let module =
+            wat::parse_str(r#"(module (func (export "procraft_pin_panels") (result i32) (i32.const 1)))"#).unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["pin_panels"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        s.use_plugins(Arc::clone(&plugins));
+        s.set_touch_panel_open(true);
+        let closes = |out: &[TouchCommand]| {
+            out.iter().any(|c| matches!(c, TouchCommand::PanelTapped | TouchCommand::PanelFades))
+        };
+        // off: a tap only closes the panel
+        let mut out = s.touch_down(1, PointerKind::Finger, vec![sample(100.0, 100.0, 0.0)]);
+        out.extend(s.touch_up(1, vec![sample(100.0, 100.0, 40.0)]));
+        assert!(out.contains(&TouchCommand::PanelTapped), "{out:?}");
+        // on: a tap and a drag paint, and the panel stays
+        assert!(plugins.set_on(ID.to_owned(), true));
+        let mut out = s.touch_down(2, PointerKind::Finger, vec![sample(100.0, 100.0, 100.0)]);
+        out.extend(s.touch_up(2, vec![sample(100.0, 100.0, 140.0)]));
+        assert!(!closes(&out), "{out:?}");
+        let mut out = s.touch_down(3, PointerKind::Finger, vec![sample(100.0, 100.0, 200.0)]);
+        out.extend(s.touch_moves(vec![TouchMove { id: 3, samples: vec![sample(140.0, 100.0, 220.0)] }]));
+        out.extend(s.touch_moves(vec![TouchMove { id: 3, samples: vec![sample(180.0, 100.0, 240.0)] }]));
+        out.extend(s.touch_up(3, vec![sample(200.0, 100.0, 260.0)]));
+        assert!(!closes(&out), "{out:?}");
+        assert!(out.contains(&TouchCommand::StrokeEnded), "{out:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn undo_and_redo_show_no_notice_while_a_plugin_hides_it() {
+        let Some(s) = session() else { return };
+        let dir = store("undo-notice");
+        assert_eq!(s.step_notice(true, Some("Brush stroke".into())).as_deref(), Some("Undo Brush stroke"));
+        assert_eq!(s.step_notice(false, None).as_deref(), Some("Redo"));
+        let module =
+            wat::parse_str(r#"(module (func (export "procraft_hide_undo_notice") (result i32) (i32.const 1)))"#)
+                .unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["hide_undo_notice"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        s.use_plugins(Arc::clone(&plugins));
+        assert!(s.step_notice(true, Some("Brush stroke".into())).is_some(), "imported, it says nothing");
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert_eq!(s.step_notice(true, Some("Brush stroke".into())), None);
+        assert_eq!(s.step_notice(false, None), None);
+        assert!(plugins.set_on(ID.to_owned(), false));
+        assert_eq!(s.step_notice(false, Some("Fill".into())).as_deref(), Some("Redo Fill"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn radial_symmetry_goes_by_a_plugin_s_count_while_it_is_on() {
+        let dir = store("radial");
+        let module =
+            wat::parse_str(r#"(module (func (export "procraft_radial_segments") (result i32) (i32.const 6)))"#)
+                .unwrap();
+        let plugins = Plugins::with_store(dir.clone());
+        let mut manifest = coded(ID, &module);
+        manifest["hooks"] = json!(["radial_segments"]);
+        assert_eq!(plugins.install(file(&manifest, &module)), None);
+        let hooks = plugins.hooks();
+        assert_eq!(hooks.radial_segments(), None, "imported, it says nothing");
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert_eq!(hooks.radial_segments(), Some(6));
+        assert!(plugins.set_on(ID.to_owned(), false));
+        assert_eq!(hooks.radial_segments(), None);
+        // a count past what is allowed stops it
+        let wild =
+            wat::parse_str(r#"(module (func (export "procraft_radial_segments") (result i32) (i32.const 1000)))"#)
+                .unwrap();
+        let dir2 = store("radial-wild");
+        let plugins = Plugins::with_store(dir2.clone());
+        let mut manifest = coded(ID, &wild);
+        manifest["hooks"] = json!(["radial_segments"]);
+        assert_eq!(plugins.install(file(&manifest, &wild)), None);
+        assert!(plugins.set_on(ID.to_owned(), true));
+        assert_eq!(plugins.hooks().radial_segments(), None);
+        assert!(card(&plugins).problem.is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&dir2);
     }
 
     #[test]

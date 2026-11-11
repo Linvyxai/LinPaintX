@@ -56,6 +56,7 @@ mod shortcuts;
 mod sound;
 mod source_editor;
 mod startup;
+mod stroke_sound;
 mod studio;
 mod system_clipboard;
 mod text;
@@ -129,8 +130,35 @@ impl Importing {
     }
 }
 
-/// What the layers' textures may take on the GPU, bytes: as much as the layers may (2 GiB).
+/// What the layers' textures may take on the GPU, bytes: past it, the layers not worked on are kept
+/// compressed in memory until needed.
 const LAYERS_ON_GPU: u64 = 2 << 30;
+
+/// The computer's memory, bytes; none if the system doesn't say.
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn memory_total() -> Option<u64> {
+    use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+    let mut status = MEMORYSTATUSEX { dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
+    // SAFETY: `status` is a MEMORYSTATUSEX with its length set, as the call asks
+    unsafe { GlobalMemoryStatusEx(&mut status) }.ok()?;
+    Some(status.ullTotalPhys).filter(|&b| b > 0)
+}
+
+/// The computer's memory, bytes; none if the system doesn't say.
+#[cfg(target_os = "macos")]
+fn memory_total() -> Option<u64> {
+    Some(objc2_foundation::NSProcessInfo::processInfo().physicalMemory()).filter(|&b| b > 0)
+}
+
+/// The computer's memory, bytes; none if the system doesn't say.
+#[cfg(not(any(windows, target_os = "macos")))]
+fn memory_total() -> Option<u64> {
+    let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+    let line = meminfo.lines().find_map(|l| l.strip_prefix("MemTotal:"))?;
+    let kb: u64 = line.trim().strip_suffix("kB")?.trim().parse().ok()?;
+    Some(kb * 1024).filter(|&b| b > 0)
+}
 
 /// How long an artwork opens before it says so, as the tablet's.
 const SLOW_OPENING: Duration = Duration::from_millis(500);
@@ -201,9 +229,12 @@ fn getting_ready_note(ctx: &egui::Context) {
 fn main() {
     // the log, to the app folder's file too, and a crash's message into it
     startup::init();
-    // the layers' textures may take what the layers themselves may (the engine's budget): none is
-    // ever kept off the GPU, but the composite is made around the layers not being worked on, so
-    // a frame composites only those (as the tablet's)
+    // the layers may take half the computer's memory, as on the tablet (so how many a canvas holds
+    // grows with it), their textures up to 2 GiB of it; the composite is made around the layers
+    // not being worked on, so a frame composites only those
+    if let Some(total) = memory_total() {
+        procraft_core::set_layer_budget(total / 2);
+    }
     procraft_core::set_resident_budget(LAYERS_ON_GPU);
     let event_loop = match EventLoop::new() {
         Ok(l) => l,
@@ -224,6 +255,7 @@ fn main() {
         last_frame: Instant::now(),
         again: None,
         finishing_since: None,
+        stroke_sound: stroke_sound::StrokeSound::default(),
         opening: None,
         importing: None,
         reading_artwork: None,
@@ -271,6 +303,8 @@ struct App {
     again: Option<Instant>,
     /// Since when a plugin has been finishing a fill.
     finishing_since: Option<Instant>,
+    /// The strokes' sound, played while a plugin makes it.
+    stroke_sound: stroke_sound::StrokeSound,
     /// An artwork's canvas being made on a thread of its own as it opens, and since when.
     opening: Option<(Instant, std::thread::JoinHandle<()>)>,
     /// Artworks being brought in, read on a thread of their own one after another.
@@ -350,6 +384,11 @@ impl ApplicationHandler for App {
         };
         // a pen's lean, which winit's touches leave out (on Wayland the whole pen)
         pen::watch(&window, self.wake.clone());
+        // the brushes read while the gallery shows, so the first artwork opens without reading them
+        let read = std::thread::Builder::new().name("procraft-read-brushes".to_owned());
+        if let Err(e) = read.spawn(|| procraft_core::prepare_brushes(files::brushes_dir())) {
+            log::warn!("reading the brushes ahead: {e}");
+        }
         // in this machine's order, from the backend the last run used, or the next if that one
         // was at risk when it stopped
         let order = startup::backend_order();
@@ -403,6 +442,16 @@ impl ApplicationHandler for App {
         if response.repaint && event != WindowEvent::RedrawRequested {
             screen.window.request_redraw();
         }
+        // F11: the window fills its screen without its frame (a pen display's whole screen for
+        // the canvas, as the tablet's), or goes back to a window
+        if let WindowEvent::KeyboardInput { event: key, .. } = &event
+            && key.state.is_pressed()
+            && !key.repeat
+            && key.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::F11)
+        {
+            let full = screen.window.fullscreen().is_none();
+            screen.window.set_fullscreen(full.then_some(winit::window::Fullscreen::Borderless(None)));
+        }
         match event {
             WindowEvent::CloseRequested => {
                 // the artwork open is kept in the gallery, and files still being written finish
@@ -420,6 +469,8 @@ impl ApplicationHandler for App {
                 screen.resize(size.width, size.height);
                 if let Some(session) = &session {
                     session.resize_window(size.width, size.height);
+                    // minimised, time on the artwork stops counting; back, it counts again
+                    session.set_tracking(!screen.minimised());
                 }
                 screen.window.request_redraw();
             }
@@ -564,12 +615,14 @@ impl App {
         self.opening = Some((Instant::now(), std::thread::spawn(move || opened.use_gpu(gpu))));
         // the brushes as the last artwork left them
         if let Some(last) = &self.session {
-            last.keep_brushes(files::brushes_dir());
+            files::keep_brushes(last);
         }
         session.open_brushes(files::brushes_dir());
         self.ui.opened(&session, scale * screen.egui.egui_ctx().zoom_factor());
         session.show_in(size.width, size.height);
         self.input = input::Input::default();
+        // time on it counts while it is shown (not while the window is minimised)
+        session.set_tracking(!screen.minimised());
         self.session = Some(session);
         screen.window.request_redraw();
     }
@@ -659,6 +712,8 @@ impl App {
         // a canvas opening while the pipelines are still being made waits for them: it says so
         let opening = opening_words(self.opening.is_some() && screen.canvases_waited().is_some());
         screen.size_interface(self.ui.plugins(), Some(session.as_ref()));
+        // the strokes heard while a plugin makes their sound
+        self.stroke_sound.follow(Some(&session), self.ui.plugins().makes_stroke_sound());
         let raw = screen.egui.take_egui_input(&screen.window);
         let output = screen.egui.egui_ctx().clone().run_ui(raw, |ui| {
             self.ui.show(ui, &session, &mut self.input);
@@ -705,7 +760,14 @@ impl App {
             p.draw(&screen.gpu, Some(&session));
         }
         if std::mem::take(&mut self.ui.keep_brushes) {
-            session.keep_brushes(files::brushes_dir());
+            // off the window's thread: a library with many brushes brought in is tens of megabytes
+            // when something in it changed (a brush chosen only writes the choices)
+            let kept = Arc::clone(&session);
+            let thread = std::thread::Builder::new().name("procraft-keep-brushes".to_owned());
+            if let Err(e) = thread.spawn(move || files::keep_brushes(&kept)) {
+                log::warn!("keeping the brushes on a thread of their own: {e}");
+                files::keep_brushes(&session);
+            }
         }
         for action in std::mem::take(&mut self.ui.actions) {
             self.act(action, &session);
@@ -717,6 +779,7 @@ impl App {
         let Some(screen) = self.screen.as_mut() else { return };
         self.last_frame = Instant::now();
         screen.size_interface(self.ui.plugins(), None);
+        self.stroke_sound.follow(None, false);
         let raw = screen.egui.take_egui_input(&screen.window);
         let mut asked = None;
         let (gallery, interface) = (&mut self.gallery, &mut self.ui);
@@ -787,6 +850,8 @@ impl App {
                 if !busy {
                     let session = files::new_from_preset(&preset);
                     let dir = self.gallery.store.new_folder(folder);
+                    // its time-lapse made as the preset says
+                    files::keep_preset_time_lapse(&preset, &dir);
                     self.open_artwork(session, dir);
                     self.ui.started_new();
                 }
@@ -1188,6 +1253,8 @@ impl App {
     /// The artwork open is put away and kept; false if it couldn't be.
     fn leave_artwork(&mut self) -> bool {
         if let Some(session) = self.session.clone() {
+            // its time counted up to now, saved with it
+            session.set_tracking(false);
             self.ui.closing(&session);
             // no save of its own after this one
             session.stop_autosave();
@@ -1195,6 +1262,7 @@ impl App {
         let kept = self.keep_artwork();
         // still open: kept saved again
         if !kept && let (Some(session), Some(dir)) = (&self.session, &self.artwork) {
+            session.set_tracking(true);
             Arc::clone(session).start_autosave(dir.clone());
         }
         kept
@@ -1208,7 +1276,7 @@ impl App {
         if let Some((_, made)) = self.opening.take() {
             let _ = made.join();
         }
-        session.keep_brushes(files::brushes_dir());
+        files::keep_brushes(&session);
         let (brush, mask) = self.ui.colours.brush_and_mask();
         files::keep_colours(brush, mask);
         let edits = session.edits();
@@ -1289,4 +1357,13 @@ impl App {
 fn frame_gap(window: &Window) -> Duration {
     let millihertz = window.current_monitor().and_then(|m| m.refresh_rate_millihertz()).filter(|&m| m > 0);
     Duration::from_secs_f64(1000.0 / f64::from(millihertz.unwrap_or(60_000)))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_computers_memory_is_read() {
+        let total = super::memory_total().expect("the system says how much memory there is");
+        assert!(total >= 1 << 30, "{total} bytes");
+    }
 }
