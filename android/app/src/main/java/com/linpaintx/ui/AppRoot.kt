@@ -200,7 +200,7 @@ fun AppRoot(vm: CanvasViewModel) {
                         TransformToolbar(vm, toolbarWidth)
                     }
                 }
-                if (vm.transforming && vm.transformOriginal != null && !vm.barsHidden) {
+                if (vm.transforming && !vm.barsHidden) {
                     BackgroundRemovalPanel(
                         vm,
                         Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 8.dp, end = 8.dp).zIndex(5f),
