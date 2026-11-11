@@ -659,26 +659,27 @@ private val SliderRest get() = if (Pc.light) Color(0xFFDDDDDD) else Color(0xFF5A
 /** The background-removal controls while a photo is being transformed, re-applying it on the picture as it came in. */
 @Composable
 fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
-    val hasOriginal = vm.transformOriginal != null
+    // the removal works on the picture as it came in, and that is kept only while one is placed
+    if (vm.transformOriginal == null) return
     Column(
         modifier.width(320.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xE61C1C1E)).padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().height(36.dp).clickable(enabled = hasOriginal) {
+            Modifier.fillMaxWidth().height(36.dp).clickable {
                 vm.changeRemoveBackground(!vm.removeBackground)
                 vm.reapplyBackgroundRemoval()
             },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (!hasOriginal) "Вставьте фото" else if (vm.backgroundRemovalBusy) "Определяем объект…" else "Удалить фон",
-                color = if (hasOriginal) Color.White else Color(0xFF888888),
+                if (vm.backgroundRemovalBusy) "Определяем объект…" else "Удалить фон",
+                color = Color.White,
                 fontSize = 15.sp,
                 modifier = Modifier.weight(1f),
             )
-            Switch(vm.removeBackground, enabled = hasOriginal)
+            Switch(vm.removeBackground, enabled = true)
         }
-        if (vm.removeBackground && hasOriginal) {
+        if (vm.removeBackground) {
             OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
                 vm.changeBackgroundThreshold(it)
                 vm.reapplyBackgroundRemoval()

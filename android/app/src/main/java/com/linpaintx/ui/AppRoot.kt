@@ -200,7 +200,9 @@ fun AppRoot(vm: CanvasViewModel) {
                         TransformToolbar(vm, toolbarWidth)
                     }
                 }
-                if (vm.transforming && !vm.barsHidden) {
+                // only while a picture is being transformed: transformOriginal is set exactly then,
+                // so a plain layer's transform keeps its own toolbars and no dead panel
+                if (vm.transforming && vm.transformOriginal != null && !vm.barsHidden) {
                     BackgroundRemovalPanel(
                         vm,
                         Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 8.dp, end = 8.dp).zIndex(5f),
