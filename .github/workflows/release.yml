@@ -21,9 +21,12 @@
 # it is new, its failing leaves its file out rather than holding up the release; so does Windows
 # on ARM's.
 #
-# A manual run (Actions › Release › Run workflow) is a dry run: it builds them at the version in
-# gradle.properties and keeps them as the run's artifacts, and releases nothing. It also builds
-# the iPad app's unsigned .ipa (ios/), which stays out of releases until that app is finished.
+# A manual run (Actions › Release › Run workflow) started from a branch is a dry run: it builds them
+# at the version in gradle.properties, keeps them as the run's artifacts and releases nothing.
+# Started on a version tag it is a real release instead — the steps key off the ref they were given,
+# which is the way to ship while GitHub itself leaves the push events for tags undispatched.
+# Either way it also builds the iPad app's unsigned .ipa (ios/), which stays out of releases until
+# that app is finished.
 name: Release
 
 on:
