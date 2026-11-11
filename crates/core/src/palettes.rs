@@ -60,7 +60,7 @@ impl Palettes {
 
     /// A new empty palette at the end.
     pub fn add(&self) {
-        self.change(|p, _| p.push(Palette::empty("Untitled Palette")));
+        self.change(|p, _| p.push(Palette::empty("Новая палитра")));
     }
 
     /// Our example palettes back, those missing added at the end.

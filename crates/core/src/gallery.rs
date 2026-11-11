@@ -12,10 +12,10 @@ const ARTWORK_FILE: &str = "artwork.json";
 const STACK_FILE: &str = "stack.json";
 /// The folders' order, one name a line, first first.
 const ORDER_FILE: &str = "order.txt";
-const UNTITLED: &str = "Untitled Artwork";
-const STACK: &str = "Stack";
+const UNTITLED: &str = "Новая работа";
+const STACK: &str = "Стопка";
 /// The stack the gallery's recovery puts what it finds in.
-const RECOVERED: &str = "Recovered Artworks";
+const RECOVERED: &str = "Восстановленные работы";
 
 /// A saved artwork: its folder, its name and size, and when it was last changed (milliseconds
 /// since 1970).
@@ -426,7 +426,7 @@ impl ArtworkStore {
         self.make_stack(&artworks, None).to_string_lossy().into_owned()
     }
 
-    /// The stack in `dir` named `name` ("Stack" if it is empty).
+    /// The stack in `dir` named `name` ("Стопка" if it is empty).
     pub fn rename_stack(&self, dir: String, name: String) {
         write_stack_name(Path::new(&dir), &name);
     }
@@ -645,7 +645,7 @@ mod tests {
         let after = shown(&store, None);
         assert_eq!(after.len(), 3);
         // the stack first, holding them all
-        assert!(after[0].starts_with("Recovered Artworks["), "{after:?}");
+        assert!(after[0].starts_with("Восстановленные работы["), "{after:?}");
         let mut found: Vec<&str> =
             after[0].trim_start_matches("Recovered Artworks[").trim_end_matches(']').split(',').collect();
         found.sort_unstable();

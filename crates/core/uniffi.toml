@@ -1,7 +1,7 @@
 # UniFFI bindings of the `procraft_core` library: Kotlin for the Android app, Swift for the iPad app.
 
 [bindings.kotlin]
-package_name = "io.github.artcraftandroid.procraft.core"
+package_name = "com.linpaintx.core"
 cdylib_name = "procraft_core"
 
 # The Swift file is compiled into the iPad app; its C half (ProCraftCoreFFI, a header and a module

@@ -24,10 +24,10 @@ struct Moved {
 }
 
 const MOVED: &[Moved] = &[
-    Moved { key: "eyedropper_layer", starts: 0.0, name: "Eyedropper picks from layer" },
-    Moved { key: "interface_size", starts: 1.0, name: "Interface size" },
-    Moved { key: "paste_into_mask", starts: 0.0, name: "Paste into masks" },
-    Moved { key: "fill_gap", starts: 0.0, name: "ColorDrop gap closing" },
+    Moved { key: "eyedropper_layer", starts: 0.0, name: "Пипетка берёт цвет со слоя" },
+    Moved { key: "interface_size", starts: 1.0, name: "Размер интерфейса" },
+    Moved { key: "paste_into_mask", starts: 0.0, name: "Вставка в маски" },
+    Moved { key: "fill_gap", starts: 0.0, name: "Замыкание промежутков заливки" },
 ];
 
 impl Moved {

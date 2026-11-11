@@ -27,6 +27,10 @@ pub enum CursorStyle {
 pub const DRAG_FORMATS: [&str; 5] = ["ProCraft", "PSD", "JPEG", "PNG", "TIFF"];
 pub const DRAG_IMAGE_FORMATS: [&str; 3] = ["JPEG", "PNG", "TIFF"];
 
+/// The undo history kept on disk beyond the canvas's last steps, by index; the first keeps it all.
+pub const HISTORY_LIMIT_CHOICES: [&str; 6] = ["None", "256 MB", "512 MB", "1 GB", "2 GB", "4 GB"];
+pub const HISTORY_LIMIT_BYTES: [u64; 6] = [0, 256 << 20, 512 << 20, 1 << 30, 2 << 30, 4 << 30];
+
 pub const RAPID_UNDO_MIN_S: f32 = 0.1;
 pub const RAPID_UNDO_MAX_S: f32 = 1.5;
 
@@ -86,6 +90,13 @@ pub struct Prefs {
     /// [`DRAG_FORMATS`]), and a picture's format when one is wanted (into [`DRAG_IMAGE_FORMATS`]).
     pub drag_format: usize,
     pub drag_image_format: usize,
+    /// The undo history kept on disk beyond the canvas's last steps (an index into
+    /// [`HISTORY_LIMIT_CHOICES`]).
+    pub history_limit: usize,
+    /// A photo inserted has its background removed (U2-Net), with this cut and feather (0..1).
+    pub remove_background: bool,
+    pub background_threshold: f32,
+    pub background_softness: f32,
     /// Recolor's Flood, kept from one time to the next.
     pub recolor_threshold: f32,
 }
@@ -125,6 +136,10 @@ impl Default for Prefs {
             colour_history_shown: false,
             drag_format: 0,
             drag_image_format: 0,
+            history_limit: 0,
+            remove_background: false,
+            background_threshold: 0.5,
+            background_softness: 0.5,
             recolor_threshold: 0.0,
         }
     }
@@ -187,6 +202,12 @@ impl Prefs {
                 "drag_image_format" => {
                     p.drag_image_format = value.parse::<usize>().map_or(0, |t| t.min(DRAG_IMAGE_FORMATS.len() - 1))
                 }
+                "history_limit" => {
+                    p.history_limit = value.parse::<usize>().map_or(0, |t| t.min(HISTORY_LIMIT_CHOICES.len() - 1))
+                }
+                "remove_background" => p.remove_background = on,
+                "background_threshold" => p.background_threshold = unit.unwrap_or(0.5),
+                "background_softness" => p.background_softness = unit.unwrap_or(0.5),
                 "recolor_threshold" => p.recolor_threshold = unit.unwrap_or(0.0),
                 "actions_tab" => p.actions_tab = value.parse::<usize>().map_or(0, |t| t.min(5)),
                 "curve" => {
@@ -201,6 +222,8 @@ impl Prefs {
         }
         // the interface shows as it was left
         crate::look::set_light(p.light_interface);
+        // the undo history kept on disk beyond the canvas's last steps
+        procraft_core::set_history_limit(HISTORY_LIMIT_BYTES.get(p.history_limit).copied().unwrap_or(0));
         p
     }
 
@@ -238,6 +261,10 @@ impl Prefs {
             format!("color_history_shown {}", self.colour_history_shown),
             format!("drag_format {}", self.drag_format),
             format!("drag_image_format {}", self.drag_image_format),
+            format!("history_limit {}", self.history_limit),
+            format!("remove_background {}", self.remove_background),
+            format!("background_threshold {}", self.background_threshold),
+            format!("background_softness {}", self.background_softness),
             format!("recolor_threshold {}", self.recolor_threshold),
         ];
         let lines: Vec<String> = lines.into_iter().chain(self.plugins.kept_lines()).collect();

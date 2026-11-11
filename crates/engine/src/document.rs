@@ -398,6 +398,8 @@ pub struct Document {
     /// Background colour, 0..1 in the document's profile.
     pub background: [f32; 3],
     pub background_visible: bool,
+    #[serde(default)]
+    pub background_checkerboard: bool,
     /// Bottom layer first.
     #[serde(deserialize_with = "readable_layers")]
     layers: Vec<Layer>,
@@ -493,14 +495,15 @@ fn default_dpi() -> f32 {
 }
 
 impl Document {
-    /// A canvas of `width` × `height` pixels (each clamped to 1..=[`MAX_CANVAS_EDGE`]) with a white
-    /// background and one empty layer.
+    /// A transparent canvas of `width` × `height` pixels (each clamped to
+    /// 1..=[`MAX_CANVAS_EDGE`]) with one empty layer.
     pub fn new(width: u32, height: u32) -> Document {
         let mut doc = Document {
             width: width.clamp(1, MAX_CANVAS_EDGE),
             height: height.clamp(1, MAX_CANVAS_EDGE),
             background: [1.0, 1.0, 1.0],
-            background_visible: true,
+            background_visible: false,
+            background_checkerboard: false,
             layers: Vec::new(),
             current: LayerId(0),
             picked: Vec::new(),
@@ -857,7 +860,7 @@ impl Document {
             part.append(&mut moved);
             moved = part;
         }
-        let group = self.blank(LayerKind::Group, "New group".to_owned(), parent);
+        let group = self.blank(LayerKind::Group, "Новая группа".to_owned(), parent);
         let gid = group.id;
         for l in &mut moved {
             if items.contains(&l.id) {
@@ -1056,7 +1059,7 @@ impl Document {
     /// Adds an empty layer above the current one (in its group) and makes it current. It is named
     /// after the number of entries the stack will have, so a deleted layer's number comes back.
     pub fn add_layer(&mut self) -> LayerId {
-        let name = format!("Layer {}", self.layers.len() + 1);
+        let name = format!("Слой {}", self.layers.len() + 1);
         // above the current layer's mask, or above the current group, in the same group
         let (at, parent) = match self.layer(self.current) {
             Some(c) => {
@@ -1192,7 +1195,7 @@ impl Document {
         if self.layer(id)?.kind != LayerKind::Paint || self.mask_of(id).is_some() {
             return None;
         }
-        let mask = self.blank(LayerKind::Mask, "Layer Mask".to_owned(), Some(id));
+        let mask = self.blank(LayerKind::Mask, "Маска слоя".to_owned(), Some(id));
         let new = mask.id;
         self.layers.insert(at + 1, mask);
         self.current = new;
@@ -1216,7 +1219,7 @@ impl Document {
             self.layer_mut(id)?.parent = Some(below);
             return Some(below);
         }
-        let group = self.blank(LayerKind::Group, "New group".to_owned(), self.group_of(id));
+        let group = self.blank(LayerKind::Group, "Новая группа".to_owned(), self.group_of(id));
         let new = group.id;
         self.layers.insert(unit.end, group);
         self.layer_mut(id)?.parent = Some(new);
@@ -1573,7 +1576,7 @@ impl Document {
         for l in &mut self.layers {
             l.opacity = if l.opacity.is_finite() { l.opacity.clamp(0.0, 1.0) } else { 1.0 };
             if l.name.trim().is_empty() {
-                l.name = "Layer".to_owned();
+                l.name = "Слой".to_owned();
             }
         }
         let top = self.layers.iter().map(|l| l.id.0).max().unwrap_or(0);
@@ -1702,7 +1705,7 @@ mod tests {
         let d = Document::new(0, 99_999);
         assert_eq!((d.width(), d.height()), (1, MAX_CANVAS_EDGE));
         assert_eq!(d.layers().len(), 1);
-        assert_eq!(d.layers()[0].name, "Layer 1");
+        assert_eq!(d.layers()[0].name, "Слой 1");
         assert_eq!(d.current(), d.layers()[0].id);
     }
 
@@ -1767,7 +1770,7 @@ mod tests {
         // a new layer goes above the mask, not between
         let c = d.add_layer();
         assert_eq!(d.index_of(c), Some(3));
-        assert_eq!(d.layer(c).unwrap().name, "Layer 4", "the mask counts in the number");
+        assert_eq!(d.layer(c).unwrap().name, "Слой 4", "the mask counts in the number");
         // combine down: c and b (with its mask) in a group above them
         let g = d.combine_down(c).unwrap();
         assert_eq!(d.index_of(g), Some(4));
@@ -1887,7 +1890,7 @@ mod tests {
         // a layer above the group, combined down, joins it at its top
         assert!(d.set_current(g));
         let c = d.add_layer();
-        assert_eq!(d.layer(c).unwrap().name, "Layer 4", "the group counts in the number");
+        assert_eq!(d.layer(c).unwrap().name, "Слой 4", "the group counts in the number");
         assert_eq!(d.group_of(c), None);
         assert_eq!(d.combine_down(c), Some(g));
         assert_eq!(ids(&d), vec![a, b, c, g]);
@@ -1910,7 +1913,7 @@ mod tests {
         // flattening leaves one layer where the group was, named after its bottom layer
         let flat = d.flatten(inner).unwrap();
         assert_eq!(ids(&d), vec![flat, a]);
-        assert_eq!(d.layer(flat).unwrap().name, "Layer 2");
+        assert_eq!(d.layer(flat).unwrap().name, "Слой 2");
         assert_eq!(d.current(), flat);
         assert!(d.flatten(flat).is_none());
         // a group duplicates with everything in it; a layer with its mask
@@ -2312,7 +2315,7 @@ mod tests {
         d.toggle_pick(one);
         d.toggle_pick(five);
         let g = d.group_chosen().unwrap();
-        assert_eq!(names(&d), ["2", "4", "1", "3", "5", "New group"]);
+        assert_eq!(names(&d), ["2", "4", "1", "3", "5", "Новая группа"]);
         assert!([one, three, five].iter().all(|l| d.group_of(*l) == Some(g)));
         assert_eq!(d.current(), three);
         assert!(d.picked().is_empty());

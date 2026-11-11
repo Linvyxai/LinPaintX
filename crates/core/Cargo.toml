@@ -25,6 +25,7 @@ thiserror = { workspace = true }
 pollster = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+bincode = { workspace = true }
 png = { workspace = true }
 # the time-lapse's frames, kept as JPEG; a model's textures, PNG or JPEG
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }

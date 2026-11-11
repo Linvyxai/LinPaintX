@@ -52,6 +52,7 @@ impl Setting {
 enum Pick {
     DragFormat,
     DragImageFormat,
+    HistoryLimit,
 }
 
 impl Pick {
@@ -59,6 +60,7 @@ impl Pick {
         match self {
             Pick::DragFormat => &mut p.drag_format,
             Pick::DragImageFormat => &mut p.drag_image_format,
+            Pick::HistoryLimit => &mut p.history_limit,
         }
     }
 
@@ -66,6 +68,14 @@ impl Pick {
         match self {
             Pick::DragFormat => &DRAG_FORMATS,
             Pick::DragImageFormat => &DRAG_IMAGE_FORMATS,
+            Pick::HistoryLimit => &crate::prefs::HISTORY_LIMIT_CHOICES,
+        }
+    }
+
+    /// The history limit, if this choice is it, kept by the shared core.
+    fn apply(self, i: usize) {
+        if matches!(self, Pick::HistoryLimit) {
+            procraft_core::set_history_limit(crate::prefs::HISTORY_LIMIT_BYTES.get(i).copied().unwrap_or(0));
         }
     }
 }
@@ -79,7 +89,7 @@ enum Row {
 }
 
 /// The groups of rows, each under its heading (none for "").
-const GROUPS: [(&str, &[Row]); 5] = [
+const GROUPS: [(&str, &[Row]); 6] = [
     (
         "",
         &[
@@ -105,6 +115,10 @@ const GROUPS: [(&str, &[Row]); 5] = [
                 "Strokes made in an adjustment undo together once it is left.",
             ),
         ],
+    ),
+    (
+        "Undo History",
+        &[Row::Choice(Pick::HistoryLimit, "History size on disk")],
     ),
     (
         "Maximum Speed Distance",
@@ -393,6 +407,7 @@ fn draw_row(ui: &egui::Ui, row: &Row, at: Rect, prefs: &mut Prefs, id: (usize, u
                 }
                 if let Some(i) = tapped {
                     *pick.of(prefs) = i;
+                    pick.apply(i);
                     prefs.keep();
                     return true;
                 }

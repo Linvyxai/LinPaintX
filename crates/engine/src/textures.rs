@@ -113,6 +113,13 @@ pub mod grain {
     pub const ROUGH_CANVAS: u32 = 36;
     pub const SPRAYED: u32 = 37;
     pub const DRY_PATCHES: u32 = 38;
+    pub const BRUSHED_METAL: u32 = 39;
+    pub const HAMMERED_METAL: u32 = 40;
+    pub const DIAMOND_PLATE: u32 = 41;
+    pub const MACHINED_RINGS: u32 = 42;
+    pub const CRACKED_GLAZE: u32 = 43;
+    pub const DROPLETS: u32 = 44;
+    pub const CARBON_WEAVE: u32 = 45;
 }
 
 /// The Coarse grain's tooth: below this the fibres darken it, by this much a unit.
@@ -246,9 +253,9 @@ fn make_shapes() -> Vec<GrayImage> {
     let mut shapes = vec![
         // full well out towards its edge: stamped along a stroke it builds up to a soft line most of
         // its width across, with a short fade at each side
-        GrayImage { name: "Soft round", pixels: field(|x, y| smooth(1.0 - radius(x, y)).powf(0.62)) },
+        GrayImage { name: "Мягкий круг", pixels: field(|x, y| smooth(1.0 - radius(x, y)).powf(0.62)) },
         GrayImage {
-            name: "Grainy disc",
+            name: "Зернистый диск",
             pixels: field(|x, y| {
                 let edge = 1.0 - radius(x, y);
                 let n = fbm(x * 12.0, y * 12.0, 12, 3, 11);
@@ -256,7 +263,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Chunk",
+            name: "Кусочек",
             pixels: field(|x, y| {
                 let n = fbm(x * 4.0, y * 4.0, 4, 4, 23);
                 let r = radius(x, y) + (n - 0.5) * 0.55;
@@ -265,7 +272,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Bristles",
+            name: "Щетина",
             pixels: field(|x, y| {
                 let across = (x - 0.5).abs() * 2.0;
                 let along = (y - 0.5).abs() * 2.0;
@@ -276,7 +283,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Splatter",
+            name: "Брызги",
             pixels: {
                 let dots = scatter_points(41, 26);
                 field(|x, y| {
@@ -288,7 +295,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Flat",
+            name: "Плоская",
             pixels: field(|x, y| {
                 let across = (x - 0.5).abs() * 2.0;
                 let along = (y - 0.5).abs() * 2.0;
@@ -296,7 +303,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Pastel",
+            name: "Пастель",
             pixels: field(|x, y| {
                 // a worn block: squarish, ragged at its edge, patchy inside
                 let n = fbm(x * 6.0, y * 6.0, 6, 4, 31);
@@ -306,9 +313,9 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         // its drops pushed out towards the square's edge
-        GrayImage { name: "Blot", pixels: blot(|cx, cy| ((cx - 0.5) * 2.2 + 0.5, (cy - 0.5) * 2.2 + 0.5)) },
+        GrayImage { name: "Клякса", pixels: blot(|cx, cy| ((cx - 0.5) * 2.2 + 0.5, (cy - 0.5) * 2.2 + 0.5)) },
         GrayImage {
-            name: "Leaf",
+            name: "Лист",
             pixels: field(|x, y| {
                 // pointing up, widest below the middle, a pale midrib and a short stem
                 let (u, v) = ((x - 0.5) * 2.0, (y - 0.5) * 2.0);
@@ -322,7 +329,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Grass",
+            name: "Трава",
             pixels: field(|x, y| {
                 // blades from the bottom, each leaning and narrowing to its tip
                 (0..11).fold(0.0f32, |acc, k| {
@@ -340,7 +347,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Sparkle",
+            name: "Искра",
             pixels: field(|x, y| {
                 // four long points and four short ones, each narrowing to its tip, over a small glow
                 let (u, v) = ((x - 0.5).abs() * 2.0, (y - 0.5).abs() * 2.0);
@@ -357,7 +364,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Cloud",
+            name: "Облако",
             pixels: {
                 let puffs = scatter_points(71, 9);
                 field(move |x, y| {
@@ -373,11 +380,11 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Square",
+            name: "Квадрат",
             pixels: field(|x, y| f32::from(u8::from((x - 0.5).abs() < 0.4 && (y - 0.5).abs() < 0.4))),
         },
         GrayImage {
-            name: "Dry",
+            name: "Сухая",
             pixels: field(|x, y| {
                 // a flat stroke's worth of hairs, broken where the paint ran out
                 let across = (x - 0.5).abs() * 2.0;
@@ -390,7 +397,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Ring",
+            name: "Кольцо",
             pixels: field(|x, y| {
                 let r = radius(x, y);
                 let band = smooth(((0.06 - (r - 0.82).abs()) * 40.0).clamp(0.0, 1.0));
@@ -398,7 +405,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Spray",
+            name: "Распыление",
             pixels: {
                 // fine droplets, thick in the middle and thinning out
                 let drops: Vec<(f32, f32, f32)> = (0..420)
@@ -417,7 +424,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Hatch",
+            name: "Штриховка",
             pixels: field(|x, y| {
                 let lines = 0.5 + 0.5 * ((x + y) * std::f32::consts::TAU * 9.0).cos();
                 let ink = smooth(((lines - 0.55) * 6.0).clamp(0.0, 1.0));
@@ -425,7 +432,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Wisp",
+            name: "Завиток",
             pixels: field(|x, y| {
                 // bands bent by noise: smoke curling
                 let warp = fbm(x * 3.0, y * 3.0, 3, 3, 109);
@@ -435,7 +442,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Star",
+            name: "Звезда",
             pixels: field(|x, y| {
                 // five points, one straight up, the edges between them curving in
                 let (u, v) = centred(x, y);
@@ -445,7 +452,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Fur",
+            name: "Мех",
             pixels: field(|x, y| {
                 // fine hairs from a band low down, bending as they rise and narrowing to their tips
                 (0..48).fold(0.0f32, |acc, k| {
@@ -461,7 +468,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Droplet",
+            name: "Капля",
             pixels: field(|x, y| {
                 // round below and drawn up to a point; a strong rim, a paler middle, a bright spot
                 let (u, v) = centred(x, y);
@@ -478,7 +485,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Flame",
+            name: "Пламя",
             pixels: field(|x, y| {
                 // a tongue of fire: round and full at its foot, flickering up to a point
                 let (u, v) = centred(x, y);
@@ -497,7 +504,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Bubble",
+            name: "Пузырь",
             pixels: field(|x, y| {
                 // a thin skin, a faint inside and a curved highlight to the upper left
                 let r = radius(x, y);
@@ -509,7 +516,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Stone",
+            name: "Камень",
             pixels: {
                 // an angular pebble: straight edges between seven corners, lit from the upper left
                 let corners: Vec<(f32, f32)> = (0..7)
@@ -531,7 +538,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Streak",
+            name: "Полоса",
             pixels: field(|x, y| {
                 // a long thin line, thickest a little below the middle, fading out at both ends
                 let (u, v) = centred(x, y);
@@ -540,7 +547,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Flower",
+            name: "Цветок",
             pixels: field(|x, y| {
                 // five rounded petals round a paler middle
                 let (u, v) = centred(x, y);
@@ -552,7 +559,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Twig",
+            name: "Веточка",
             pixels: {
                 // a stick with three side shoots, each thinning to its end
                 let parts = [
@@ -571,7 +578,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Crack",
+            name: "Трещина",
             pixels: {
                 let lines = cracks(149);
                 field(move |x, y| {
@@ -581,7 +588,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Sponge",
+            name: "Губка",
             pixels: field(|x, y| {
                 // a round dab full of holes of every size
                 let n = fbm(x * 4.0, y * 4.0, 4, 2, 151);
@@ -592,7 +599,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Triangle",
+            name: "Треугольник",
             pixels: field(|x, y| {
                 // pointing up, its middle at the centre
                 let (u, v) = centred(x, y);
@@ -601,14 +608,14 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Diamond",
+            name: "Ромб",
             pixels: field(|x, y| {
                 let (u, v) = centred(x, y);
                 smooth((1.0 - u.abs() / 0.6 - v.abs() / 0.95) * 20.0)
             }),
         },
         GrayImage {
-            name: "Needles",
+            name: "Иголки",
             pixels: {
                 // a sprig: a stem with pairs of needles slanting up, shorter towards its tip
                 let mut parts = vec![((0.0, 0.92), (0.0, -0.9), 0.025)];
@@ -629,7 +636,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Feather",
+            name: "Перо",
             pixels: field(|x, y| {
                 // a vane round a quill, its barbs slanting out and up, split here and there
                 let (u, v) = centred(x, y);
@@ -644,7 +651,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Confetti",
+            name: "Конфетти",
             pixels: {
                 // little paper strips turned every way
                 let strips: Vec<(f32, f32, f32, f32, f32, f32)> = (0..22)
@@ -667,7 +674,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Hair",
+            name: "Волосы",
             pixels: field(|x, y| {
                 // a lock of long strands, each waving a little
                 let ends = smooth((y - 0.06) * 12.0) * smooth((0.94 - y) * 12.0);
@@ -679,7 +686,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Smudge",
+            name: "Размазывание",
             pixels: field(|x, y| {
                 // a soft oval dragged along: streaks run its length
                 let (u, v) = centred(x, y);
@@ -688,7 +695,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Moss",
+            name: "Мох",
             pixels: field(|x, y| {
                 // clumped fuzz, thick in the middle and sparse at the edge
                 let falloff = 1.0 - radius(x, y);
@@ -697,7 +704,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Heart",
+            name: "Сердце",
             pixels: {
                 let outline = heart();
                 field(move |x, y| {
@@ -708,7 +715,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Snowflake",
+            name: "Снежинка",
             pixels: field(|x, y| {
                 // six arms, each with two pairs of side branches, round a small hexagon
                 let (u, v) = centred(x, y);
@@ -727,7 +734,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Scribble",
+            name: "Каракуля",
             pixels: {
                 // a looping line wandering round the middle
                 let points: Vec<(f32, f32)> = (0..=96)
@@ -749,7 +756,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Drip",
+            name: "Потёк",
             pixels: field(|x, y| {
                 // a blob with paint running down from it to a bead
                 let (u, v) = centred(x, y);
@@ -761,7 +768,7 @@ fn make_shapes() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Bolt",
+            name: "Молния",
             pixels: {
                 // a zigzag from the top edge's middle to the bottom's, with two short forks, in a
                 // faint glow: laid end to end along a stroke, one bolt runs into the next
@@ -785,7 +792,7 @@ fn make_shapes() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Block",
+            name: "Блок",
             pixels: field(|x, y| {
                 // a solid upright block, half as wide as it is tall, with a few specks out of it
                 let (dx, dy) = ((x - 0.5).abs(), (y - 0.47).abs());
@@ -803,20 +810,20 @@ fn make_shapes() -> Vec<GrayImage> {
         pixels: shrunk(shapes.get(index as usize).map_or(&[][..], |s| &s.pixels[..]), by),
     };
     let more = [
-        shrunk(shape::GRAINY_DISC, SHRINK_DISC, "Grainy dot"),
-        shrunk(shape::CHUNK, SHRINK_CHUNK, "Small chunk"),
-        shrunk(shape::PASTEL, SHRINK_PASTEL, "Small pastel"),
+        shrunk(shape::GRAINY_DISC, SHRINK_DISC, "Зернистая точка"),
+        shrunk(shape::CHUNK, SHRINK_CHUNK, "Маленький кусочек"),
+        shrunk(shape::PASTEL, SHRINK_PASTEL, "Маленькая пастель"),
     ];
     // a solid dab: the small chunk filled in (stock stamped dabs are solid through most of
     // their area: inked mean about 0.85, mostly over 0.9, against the chunk's 0.68)
     let dab = more.get(1).map(|c| c.pixels.iter().map(|&v| (f32::from(v) * DAB_GAIN).min(255.0) as u8).collect());
     shapes.extend(more);
-    shapes.push(GrayImage { name: "Solid dab", pixels: dab.unwrap_or_default() });
+    shapes.push(GrayImage { name: "Плотный мазок", pixels: dab.unwrap_or_default() });
     shapes.extend(stock_strokes());
     // a hard, flat oval lying across its square (the stock slim oval's proportions: as wide as
     // most of the square, a quarter as tall), for flat brushes that turn with the pen
     shapes.push(GrayImage {
-        name: "Slim oval",
+        name: "Узкий овал",
         pixels: field(|x, y| {
             let r = ((x - 0.5) / SLIM_OVAL_HALF.0).hypot((y - 0.5) / SLIM_OVAL_HALF.1);
             // about a texel of anti-aliasing at the edge
@@ -826,14 +833,14 @@ fn make_shapes() -> Vec<GrayImage> {
     // a faint round falling away from its middle (the stock ultra soft tip's falloff: dim, and
     // gone just inside its square's edge), so stamped along a stroke it builds up rounded
     shapes.push(GrayImage {
-        name: "Ultra soft round",
+        name: "Очень мягкий круг",
         pixels: field(|x, y| ULTRA_SOFT_PEAK * smooth(1.0 - radius(x, y))),
     });
     // a stock ink blot: the blot with its drops just off its body's edge, as stock blots' specks
     // lie (within about 0.9 to 1.3 of the body's radius from the middle); pushed far out, they
     // would each draw a line of their own along a stroke whose stamps don't turn
     shapes.push(GrayImage {
-        name: "Stock blot",
+        name: "Стандартная клякса",
         pixels: blot(|cx, cy| {
             let (dx, dy) = (cx - 0.5, cy - 0.5);
             let d = dx.hypot(dy).max(1e-6);
@@ -920,11 +927,11 @@ fn stock_strokes() -> [GrayImage; 5] {
         })
         .collect();
     [
-        GrayImage { name: "Flat stroke", pixels: flat },
-        GrayImage { name: "Dots", pixels: field(move |x, y| dots(&round, x, y)) },
-        GrayImage { name: "Square dots", pixels: field(move |x, y| dots(&square, x, y)) },
+        GrayImage { name: "Плоский штрих", pixels: flat },
+        GrayImage { name: "Точки", pixels: field(move |x, y| dots(&round, x, y)) },
+        GrayImage { name: "Квадратные точки", pixels: field(move |x, y| dots(&square, x, y)) },
         GrayImage {
-            name: "Bleed",
+            name: "Растекание",
             pixels: field(|x, y| {
                 // a drop of watery paint dried: a ragged edge where the pigment gathered, paler and
                 // grainy inside, palest in the middle
@@ -939,7 +946,7 @@ fn stock_strokes() -> [GrayImage; 5] {
             }),
         },
         GrayImage {
-            name: "Mess",
+            name: "Беспорядок",
             pixels: field(|x, y| {
                 // a thick dab smeared out: solid nearly to its rough edge, which frays into bits
                 let n = fbm(x * 4.0, y * 4.0, 4, 4, 2171);
@@ -1000,9 +1007,9 @@ fn shrunk(pixels: &[u8], by: f32) -> Vec<u8> {
 
 fn make_grains() -> Vec<GrayImage> {
     let mut grains = vec![
-        GrayImage { name: "Paper", pixels: field(|x, y| contrast(fbm(x * 32.0, y * 32.0, 32, 4, 101), 1.6)) },
+        GrayImage { name: "Бумага", pixels: field(|x, y| contrast(fbm(x * 32.0, y * 32.0, 32, 4, 101), 1.6)) },
         GrayImage {
-            name: "Coarse",
+            name: "Грубая",
             pixels: field(|x, y| {
                 // fine fibres crossing both ways, light with darker threads between (as a charcoal
                 // paper's tooth lets paint through)
@@ -1014,7 +1021,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Weave",
+            name: "Плетение",
             pixels: field(|x, y| {
                 // horizontal and vertical threads, crossing over and under in a checker
                 let across = 0.5 + 0.5 * (y * TAU * 16.0).sin();
@@ -1025,13 +1032,13 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Fibre",
+            name: "Волокно",
             pixels: field(|x, y| {
                 contrast(0.6 * fbm(x * 64.0, y * 4.0, 64, 3, 404) + 0.4 * fbm(x * 4.0, y * 64.0, 4, 3, 505), 1.8)
             }),
         },
         GrayImage {
-            name: "Linen",
+            name: "Лён",
             pixels: field(|x, y| {
                 // uneven threads: their thickness wanders
                 let across = value_noise(x * 4.0, y * 4.0, 4, 601);
@@ -1043,7 +1050,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Wash",
+            name: "Заливка",
             pixels: field(|x, y| {
                 // broad pools of pigment, granulated
                 let pools = fbm(x * 4.0, y * 4.0, 4, 3, 701);
@@ -1052,7 +1059,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Concrete",
+            name: "Бетон",
             pixels: field(|x, y| {
                 let surface = fbm(x * 16.0, y * 16.0, 16, 4, 801);
                 let pits = fbm(x * 32.0, y * 32.0, 32, 2, 809);
@@ -1061,7 +1068,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Halftone",
+            name: "Полутон",
             pixels: field(|x, y| {
                 // a dot grid, 16 across
                 let (fx, fy) = ((x * 16.0).fract() - 0.5, (y * 16.0).fract() - 0.5);
@@ -1069,7 +1076,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Hatching",
+            name: "Штриховка",
             pixels: field(|x, y| {
                 // two sets of diagonal lines, slightly wavering
                 let w = (fbm(x * 8.0, y * 8.0, 8, 2, 901) - 0.5) * 0.04;
@@ -1079,7 +1086,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Noise",
+            name: "Шум",
             pixels: field(|x, y| {
                 // near white, darkened here and there by fine flecks about two texels across: each
                 // texel the average of sparse specks over it and its neighbours to the right and
@@ -1096,7 +1103,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Crumpled",
+            name: "Мятая бумага",
             pixels: field(|x, y| {
                 // ridges where folds were
                 let ridged = 1.0 - (fbm(x * 6.0, y * 6.0, 6, 4, 1103) * 2.0 - 1.0).abs();
@@ -1104,7 +1111,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Stipple",
+            name: "Точки",
             pixels: field(|x, y| {
                 // a dot in each of 32 cells across, placed and sized at random
                 let (cx, cy) = ((x * 32.0).floor() as i32, (y * 32.0).floor() as i32);
@@ -1115,7 +1122,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Wood",
+            name: "Дерево",
             pixels: field(|x, y| {
                 // growth rings running across, bent round knots, fine fibres along them
                 let bend = fbm(x * 2.0, y * 2.0, 2, 3, 1301);
@@ -1125,7 +1132,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Brick",
+            name: "Кирпич",
             pixels: field(|x, y| {
                 // eight courses of four bricks, every other one shifted by half; worn faces, deep joints
                 let row = (y * 8.0).floor() as i32;
@@ -1138,7 +1145,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Scales",
+            name: "Чешуя",
             pixels: field(|x, y| {
                 // rows of round scales, each row lying over the one above, darker at their edges
                 let (px, py) = (x * 8.0, y * 16.0);
@@ -1157,14 +1164,14 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Cells",
+            name: "Ячейки",
             pixels: field(|x, y| {
                 let (f1, f2) = cells(x, y, 12, 1321);
                 smooth((f2 - f1 - 0.06) * 8.0) * (0.8 + 0.2 * f1)
             }),
         },
         GrayImage {
-            name: "Marble",
+            name: "Мрамор",
             pixels: field(|x, y| {
                 // thin dark veins wandering through a pale stone
                 let warp = fbm(x * 4.0, y * 4.0, 4, 5, 1331);
@@ -1173,14 +1180,14 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Stripes",
+            name: "Полосы",
             pixels: field(|x, y| {
                 let wobble = (fbm(x * 4.0, y * 4.0, 4, 2, 1341) - 0.5) * 0.4;
                 smooth((0.5 + 0.5 * ((x * 12.0 + wobble) * TAU).cos() - 0.5) * 6.0)
             }),
         },
         GrayImage {
-            name: "Grunge",
+            name: "Гранж",
             pixels: field(|x, y| {
                 // blotches, flecks knocked out of them
                 let blotch = contrast(fbm(x * 6.0, y * 6.0, 6, 5, 1351), 2.4);
@@ -1189,14 +1196,14 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Sand",
+            name: "Песок",
             pixels: field(|x, y| {
                 let fine = value_noise(x * 128.0, y * 128.0, 128, 1361);
                 contrast(0.7 * fine + 0.3 * value_noise(x * 64.0, y * 64.0, 64, 1367), 2.6)
             }),
         },
         GrayImage {
-            name: "Hexagons",
+            name: "Шестиугольники",
             pixels: field(|x, y| {
                 // a honeycomb's walls: 14 cells across, 16 rows (as near to regular as tiling allows)
                 let (cols, rows) = (14.0f32, 16.0f32);
@@ -1213,7 +1220,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Caustics",
+            name: "Каустика",
             pixels: field(|x, y| {
                 // light netted on the bottom of a pool: bright where the cells meet
                 let wx = (fbm(x * 3.0, y * 3.0, 3, 3, 1381) - 0.5) * 0.15;
@@ -1223,7 +1230,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Leather",
+            name: "Кожа",
             pixels: field(|x, y| {
                 let (f1, f2) = cells(x, y, 24, 1401);
                 let crease = smooth((f2 - f1) * 6.0) * (0.8 + 0.2 * f1);
@@ -1232,7 +1239,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Bark",
+            name: "Кора",
             pixels: field(|x, y| {
                 // deep furrows running up and down
                 let ridges = 1.0 - (fbm_xy(x * 16.0, y * 2.0, (16, 2), 4, 1411) * 2.0 - 1.0).abs();
@@ -1240,7 +1247,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Scratches",
+            name: "Царапины",
             pixels: {
                 // fine lines every way across a worn surface
                 let lines: Vec<(f32, f32, f32, f32, f32)> = (0..60)
@@ -1261,7 +1268,7 @@ fn make_grains() -> Vec<GrayImage> {
             },
         },
         GrayImage {
-            name: "Checker",
+            name: "Шахматная клетка",
             pixels: field(|x, y| {
                 // shifted by half a square, so its edges fall inside one, not between two
                 let (i, j) = ((x * 16.0 + 0.5).floor() as i32, (y * 16.0 + 0.5).floor() as i32);
@@ -1269,7 +1276,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Speckle",
+            name: "Крапинки",
             pixels: field(|x, y| {
                 // a sparse spray of tiny dots
                 let (ci, cj) = ((x * 32.0).floor() as i32, (y * 32.0).floor() as i32);
@@ -1282,7 +1289,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Twill",
+            name: "Саржа",
             pixels: field(|x, y| {
                 // diagonal ribs, each thread showing in short steps
                 let rib = 0.5 + 0.5 * ((x + y) * 32.0 * TAU).cos();
@@ -1291,7 +1298,7 @@ fn make_grains() -> Vec<GrayImage> {
             }),
         },
         GrayImage {
-            name: "Rust",
+            name: "Ржавчина",
             pixels: field(|x, y| {
                 // patches eaten away, pitted inside
                 let n = fbm(x * 8.0, y * 8.0, 8, 5, 1451);
@@ -1300,9 +1307,9 @@ fn make_grains() -> Vec<GrayImage> {
                 contrast(0.35 + 0.65 * patches * (1.0 - 0.6 * pits), 1.3)
             }),
         },
-        GrayImage { name: "Recycled", pixels: recycled() },
-        GrayImage { name: "Paper sheet", pixels: sheet() },
-        GrayImage { name: "Worn paper", pixels: worn() },
+        GrayImage { name: "Переработанная бумага", pixels: recycled() },
+        GrayImage { name: "Бумажный лист", pixels: sheet() },
+        GrayImage { name: "Потёртая бумага", pixels: worn() },
     ];
     // stand-ins for stock grains: our own patterns with their values spread as measured from
     // brushes drawn with the stock ones
@@ -1314,13 +1321,74 @@ fn make_grains() -> Vec<GrayImage> {
     let charcoal = respread(&grains, grain::COARSE, &CHARCOAL_SPREAD);
     let fine_noise = respread(&grains, grain::NOISE, &FINE_NOISE_SPREAD);
     let speckled = ranked(&soft_noise(1601, 0.4), &SPECKLED_SPREAD);
-    grains.push(GrayImage { name: "Charcoal", pixels: charcoal });
-    grains.push(GrayImage { name: "Fine noise", pixels: fine_noise });
-    grains.push(GrayImage { name: "Speckled", pixels: speckled });
-    grains.push(GrayImage { name: "Mottled", pixels: ranked(&soft_noise(4001, 0.4), &MOTTLED_SPREAD) });
-    grains.push(GrayImage { name: "Rough canvas", pixels: rough_canvas() });
-    grains.push(GrayImage { name: "Sprayed", pixels: ranked(&soft_noise(4201, 0.4), &SPRAYED_SPREAD) });
-    grains.push(GrayImage { name: "Dry patches", pixels: dry_patches() });
+    grains.push(GrayImage { name: "Уголь", pixels: charcoal });
+    grains.push(GrayImage { name: "Мелкий шум", pixels: fine_noise });
+    grains.push(GrayImage { name: "Крапчатая", pixels: speckled });
+    grains.push(GrayImage { name: "Пятнистая", pixels: ranked(&soft_noise(4001, 0.4), &MOTTLED_SPREAD) });
+    grains.push(GrayImage { name: "Грубый холст", pixels: rough_canvas() });
+    grains.push(GrayImage { name: "Распылённая", pixels: ranked(&soft_noise(4201, 0.4), &SPRAYED_SPREAD) });
+    grains.push(GrayImage { name: "Сухие пятна", pixels: dry_patches() });
+    grains.push(GrayImage {
+        name: "Шлифованный металл",
+        pixels: field(|x, y| {
+            let long = fbm_xy(x * 4.0, y * 128.0, (4, 128), 3, 5003);
+            let hair = 0.5 + 0.5 * (y * TAU * 96.0 + value_noise(x * 8.0, y * 8.0, 8, 5009) * 2.0).sin();
+            contrast(0.72 * long + 0.28 * hair, 1.7)
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Кованый металл",
+        pixels: field(|x, y| {
+            let (f1, f2) = cells(x, y, 18, 5101);
+            let dents = (1.0 - f1 * 18.0).clamp(0.0, 1.0);
+            let rims = smooth((f2 - f1) * 15.0);
+            contrast(0.25 + 0.5 * dents + 0.25 * rims, 1.8)
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Рифлёный металл",
+        pixels: field(|x, y| {
+            let (u, v) = ((x * 8.0).fract() - 0.5, (y * 8.0).fract() - 0.5);
+            let one = segment(u, v, (-0.28, -0.12), (0.28, 0.12)).0;
+            let two = segment(u, v, (-0.28, 0.12), (0.28, -0.12)).0;
+            let ridge = smooth(((0.085 - one.min(two)) * 28.0).clamp(0.0, 1.0));
+            0.2 + 0.8 * ridge
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Токарные кольца",
+        pixels: field(|x, y| {
+            let (u, v) = (x - 0.5, y - 0.5);
+            let ring = 0.5 + 0.5 * ((u * u + v * v).sqrt() * TAU * 42.0).cos();
+            contrast(0.75 * ring + 0.25 * fbm(x * 64.0, y * 64.0, 64, 2, 5209), 1.8)
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Треснувшая глазурь",
+        pixels: field(|x, y| {
+            let (f1, f2) = cells(x, y, 15, 5303);
+            let crack = 1.0 - smooth(((f2 - f1) - 0.012) * 90.0);
+            (0.95 - 0.9 * crack) * (0.9 + 0.1 * f1)
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Капли",
+        pixels: field(|x, y| {
+            let (f1, _) = cells(x, y, 20, 5407);
+            let drop = smooth(((0.032 - f1) * 30.0).clamp(0.0, 1.0));
+            let rim = smooth((0.055 - f1).abs().mul_add(-55.0, 1.0).clamp(0.0, 1.0));
+            (0.15 + 0.55 * drop + 0.3 * rim).min(1.0)
+        }),
+    });
+    grains.push(GrayImage {
+        name: "Карбоновое плетение",
+        pixels: field(|x, y| {
+            let a = 0.5 + 0.5 * ((x + y) * TAU * 24.0).cos();
+            let b = 0.5 + 0.5 * ((x - y) * TAU * 24.0).cos();
+            let over = ((x * 12.0).floor() as i32 + (y * 12.0).floor() as i32).rem_euclid(2) == 0;
+            contrast(if over { 0.7 * a + 0.3 * b } else { 0.3 * a + 0.7 * b }, 2.0)
+        }),
+    });
     grains
 }
 

@@ -183,7 +183,7 @@ pub fn read(bytes: &[u8]) -> Result<Imported, PsdError> {
         let rgba = flat.as_ref().map(|f| premultiplied(f)).ok_or(damaged("picture"))?;
         let id = LayerId(1);
         built = Built {
-            layers: vec![paint_layer(id, "Layer 1".to_owned(), None)],
+            layers: vec![paint_layer(id, "Слой 1".to_owned(), None)],
             pixels: vec![(id, rgba)],
             top: id,
             ..built
@@ -223,7 +223,7 @@ pub fn read(bytes: &[u8]) -> Result<Imported, PsdError> {
     Ok(Imported {
         document,
         pixels,
-        name: "Untitled Artwork".to_owned(),
+        name: "Новая работа".to_owned(),
         author: String::new(),
         strokes: 0,
         tracked_seconds: 0.0,
@@ -765,7 +765,7 @@ fn build(records: &[Record], f: &Format) -> Built {
     let mut made: Vec<Option<Made>> = crate::par::side_by_side_within(&numbers, w * h * 4, made_of);
     for (i, r) in records.iter().enumerate() {
         // a layer without a name is numbered by where it is, counting from 2 at the bottom
-        let name = if r.name.is_empty() { format!("Layer {}", i + 2) } else { r.name.clone() };
+        let name = if r.name.is_empty() { format!("Слой {}", i + 2) } else { r.name.clone() };
         match r.section {
             Some(3) => {
                 open.push(new_id());
@@ -816,7 +816,7 @@ fn build(records: &[Record], f: &Format) -> Built {
             let mid = new_id();
             layers.push(Layer {
                 kind: LayerKind::Mask,
-                name: "Mask".to_owned(),
+                name: "Маска".to_owned(),
                 visible: !m.hidden,
                 ..paint_layer(mid, String::new(), Some(id))
             });

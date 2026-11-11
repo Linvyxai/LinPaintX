@@ -39,7 +39,7 @@ pub fn source_library(grain: bool) -> Vec<SourceImage> {
     let images = if grain { textures::grains() } else { textures::shapes() };
     // the grains start with a blank one: plain white, no texture
     let blank = grain.then(|| SourceImage {
-        name: "Blank".to_owned(),
+        name: "Без текстуры".to_owned(),
         pixels: vec![255; textures::TEXTURE_SIZE * textures::TEXTURE_SIZE],
     });
     blank

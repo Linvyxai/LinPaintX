@@ -73,6 +73,8 @@ pub enum Act {
     /// Insert a file or a photo, or Paste, swiped open: what they bring goes on a private layer.
     InsertPrivateFile,
     InsertPrivatePhoto,
+    /// A photo inserted has its background removed first (U2-Net).
+    RemoveBackground,
     PastePrivate,
     /// On a model: its 2D texture shown flat, strokes reaching through it, the lighting studio.
     ModelFlat,
@@ -137,6 +139,8 @@ enum Slid {
     Stabilization,
     MotionFiltering,
     MotionExpression,
+    BackgroundThreshold,
+    BackgroundSoftness,
 }
 
 enum Row {
@@ -285,6 +289,27 @@ fn groups(tab: usize, showing: &Showing, prefs: &Prefs) -> Vec<Vec<Row>> {
                 Private("Take a photo", "Take a private photo", None, None),
                 Button("Add text", None, Some(Act::AddText)),
             ],
+            {
+                // the background of a photo coming in is removed, with its cut and feather
+                let mut rows = vec![Switch("Remove background", prefs.remove_background, Some(Act::RemoveBackground))];
+                if prefs.remove_background {
+                    rows.push(Slide(
+                        "Threshold",
+                        format!("{:.0}%", prefs.background_threshold * 100.0),
+                        prefs.background_threshold,
+                        SLIDE_HEIGHT,
+                        Slid::BackgroundThreshold,
+                    ));
+                    rows.push(Slide(
+                        "Edge softness",
+                        format!("{:.0}%", prefs.background_softness * 100.0),
+                        prefs.background_softness,
+                        SLIDE_HEIGHT,
+                        Slid::BackgroundSoftness,
+                    ));
+                }
+                rows
+            },
             vec![
                 Button("Cut", None, Some(Act::Cut)),
                 Button("Copy", None, Some(Act::Copy)),
@@ -647,6 +672,8 @@ impl Actions {
                     Slid::Stabilization => prefs.stabilization = at,
                     Slid::MotionFiltering => prefs.motion_filtering = at,
                     Slid::MotionExpression => prefs.motion_expression = at,
+                    Slid::BackgroundThreshold => prefs.background_threshold = at,
+                    Slid::BackgroundSoftness => prefs.background_softness = at,
                 }
                 Some(Act::Prefs)
             }

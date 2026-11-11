@@ -1593,10 +1593,11 @@ impl Interface {
         // read one after another on a thread of their own (a video's frames take seconds), what
         // each came to told on a frame after (`inserted`); a picture alone is transformed
         let transform = paths.len() == 1;
+        let background = (self.prefs.remove_background, self.prefs.background_threshold, self.prefs.background_softness);
         let (session, (done, inserting)) = (Arc::clone(session), std::sync::mpsc::channel());
         std::thread::spawn(move || {
             for path in paths {
-                if done.send((read_insert(&session, &path, private), transform)).is_err() {
+                if done.send((read_insert(&session, &path, private, background), transform)).is_err() {
                     return;
                 }
             }
@@ -2352,6 +2353,10 @@ impl Interface {
                     }
                     Some(Act::Flip { horizontal }) => session.flip_canvas(horizontal),
                     Some(Act::AddText) => self.add_text(ctx, session),
+                    Some(Act::RemoveBackground) => {
+                        self.prefs.remove_background = !self.prefs.remove_background;
+                        self.prefs.keep();
+                    }
                     Some(
                         act @ (Act::InsertFile | Act::InsertPhoto | Act::InsertPrivateFile | Act::InsertPrivatePhoto),
                     ) => {
@@ -2716,7 +2721,7 @@ enum Inserted {
 /// each fitted on a layer of their own at the animation's frame rate (or 15 a second; for each
 /// time a frame falls due, the video's frame nearest it; 999 at most), a moving picture's frames,
 /// or a picture on a layer of its own.
-fn read_insert(session: &CanvasSession, path: &std::path::Path, private: bool) -> Inserted {
+fn read_insert(session: &CanvasSession, path: &std::path::Path, private: bool, background: (bool, f32, f32)) -> Inserted {
     let extension = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     if VIDEOS.contains(&extension.as_str()) {
         let settings = session.animation_settings();
@@ -2753,8 +2758,16 @@ fn read_insert(session: &CanvasSession, path: &std::path::Path, private: bool) -
     match image::load_from_memory(&bytes) {
         Ok(picture) => {
             let rgba = picture.to_rgba8();
-            let image =
+            let mut image =
                 procraft_core::ThumbnailImage { width: rgba.width(), height: rgba.height(), rgba: rgba.into_raw() };
+            // the background is removed, if the user asked for it (the network runs on this thread)
+            if background.0 {
+                let matted =
+                    procraft_core::remove_background(image.rgba.clone(), image.width, image.height, background.1, background.2);
+                if let Some(matted) = matted {
+                    image.rgba = matted;
+                }
+            }
             let on_model = session.model_info().is_some() && !session.model_flat();
             Inserted::Picture(if on_model {
                 session.model_picture_begin(image, true)

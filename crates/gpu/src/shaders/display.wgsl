@@ -8,6 +8,7 @@ struct DisplayUniform {
     // the canvas's colours to the target's, in linear light: three rows, c0.w 1 to apply them
     c0: vec4<f32>,
     c1: vec4<f32>,
+    // c2.w: 0 without transparency grid, 1 for its light variant, 2 for dark
     c2: vec4<f32>,
 }
 
@@ -52,16 +53,16 @@ fn linear_to_srgb(c: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_display(i: Out) -> @location(0) vec4<f32> {
-    return shown(textureSample(composite, smp, i.uv));
+    return shown(textureSample(composite, smp, i.uv), i.pos.xy);
 }
 
 // a canvas colour (premultiplied) as the target shows it
-fn shown(c: vec4<f32>) -> vec4<f32> {
+fn shown(c: vec4<f32>, position: vec2<f32>) -> vec4<f32> {
     // see-through parts (a hidden background) show what is drawn behind the canvas, the surround
-    if (c.a <= 0.0) {
+    if (c.a <= 0.0 && du.c2.w <= 0.5) {
         return vec4<f32>(0.0);
     }
-    var rgb = c.rgb / c.a;
+    var rgb = select(vec3<f32>(0.0), c.rgb / c.a, c.a > 0.0);
     // in perceptual greys, as a soft proof to a grey profile (sRGB's tone curve) shows it: each
     // colour as the grey of its luminance (Rec. 709 on linear light, as the colour panel's HSY′
     // luma is, so colours of one Y′ show as one grey), keeping its CIE lightness
@@ -84,7 +85,18 @@ fn shown(c: vec4<f32>) -> vec4<f32> {
     if (du.m1.z > 0.5) {
         rgb = srgb_to_linear(rgb);
     }
-    return vec4<f32>(rgb * c.a, c.a);
+    let shown_color = vec4<f32>(rgb * c.a, c.a);
+    if (du.c2.w > 0.5) {
+        let alternate = (u32(floor(position.x / 12.0)) + u32(floor(position.y / 12.0))) & 1u;
+        let light = select(vec3<f32>(0.82), vec3<f32>(0.94), alternate == 0u);
+        let dark = select(vec3<f32>(0.18), vec3<f32>(0.29), alternate == 0u);
+        var checker = select(light, dark, du.c2.w > 1.5);
+        if (du.m1.z > 0.5) {
+            checker = srgb_to_linear(checker);
+        }
+        return vec4<f32>(shown_color.rgb + checker * (1.0 - shown_color.a), 1.0);
+    }
+    return shown_color;
 }
 
 // ---- a veil: part of the canvas as it was, over it but for a hole ---------------------------
@@ -134,7 +146,7 @@ fn fs_veil(i: Out) -> @location(0) vec4<f32> {
     if (cover <= 0.0) {
         return vec4<f32>(0.0);
     }
-    let s = shown(c);
+    let s = shown(c, i.pos.xy);
     // where the picture is see-through, what was round the canvas showed through it
     let rgb = s.rgb + vu.surround.rgb * (1.0 - s.a);
     return vec4<f32>(rgb * cover, cover);

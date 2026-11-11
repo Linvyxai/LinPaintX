@@ -208,7 +208,7 @@ fn empty_texture(side: u32) -> Document {
     let mut doc = Document::new(side, side);
     doc.background_visible = false;
     if let Some(id) = doc.layers().first().map(|l| l.id) {
-        doc.rename(id, "Base Layer");
+        doc.rename(id, "Базовый слой");
     }
     doc
 }
@@ -842,7 +842,7 @@ impl Scene {
     pub(crate) fn set_names(&self) -> Vec<String> {
         let parts = self.mesh.parts.iter().enumerate();
         parts
-            .map(|(i, p)| if p.material.is_empty() { format!("Texture Set {}", i + 1) } else { p.material.clone() })
+            .map(|(i, p)| if p.material.is_empty() { format!("Набор текстур {}", i + 1) } else { p.material.clone() })
             .collect()
     }
 

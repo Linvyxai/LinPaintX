@@ -36,7 +36,7 @@ impl CanvasPreset {
             size_height: size.1,
             dpi,
             background: 0xFF_FFFF,
-            background_hidden: false,
+            background_hidden: true,
             time_lapse_resolution: 0,
             time_lapse_quality: 1,
             time_lapse_hevc: false,
@@ -71,13 +71,13 @@ impl CanvasPreset {
         let whole = |k: &str, or: u64| j.get(k).and_then(serde_json::Value::as_u64).unwrap_or(or) as u32;
         let flag = |k: &str| j.get(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
         CanvasPreset {
-            name: text("name", "Untitled Canvas"),
+            name: text("name", "Новый холст"),
             unit: text("unit", "px"),
             size_width: number("width", 1080.0),
             size_height: number("height", 1080.0),
             dpi: number("dpi", 300.0),
             background: whole("background", 0xFF_FFFF),
-            background_hidden: flag("hidden"),
+            background_hidden: j.get("hidden").and_then(serde_json::Value::as_bool).unwrap_or(true),
             time_lapse_resolution: whole("resolution", 0),
             time_lapse_quality: whole("quality", 1),
             time_lapse_hevc: flag("hevc"),
@@ -144,13 +144,13 @@ pub fn profile_chip(profile: String) -> String {
 pub fn standard_presets() -> Vec<CanvasPreset> {
     let comic = cmyk_profiles().into_iter().next().unwrap_or_else(|| SRGB.to_owned());
     vec![
-        CanvasPreset::new("Square", "px", (2048.0, 2048.0), 132.0, SRGB),
+        CanvasPreset::new("Квадрат", "px", (2048.0, 2048.0), 132.0, SRGB),
         CanvasPreset::new("4K", "px", (4096.0, 1714.0), 132.0, SRGB),
         CanvasPreset::new("A4", "mm", (210.0, 297.0), 300.0, SRGB),
-        CanvasPreset::new("4 \u{d7} 6 Photo", "in", (6.0, 4.0), 300.0, SRGB),
-        CanvasPreset::new("Paper", "in", (11.0, 8.5), 300.0, SRGB),
+        CanvasPreset::new("Фото 4 \u{d7} 6", "in", (6.0, 4.0), 300.0, SRGB),
+        CanvasPreset::new("Бумага", "in", (11.0, 8.5), 300.0, SRGB),
         // printed: CMYK
-        CanvasPreset::new("Comic", "in", (6.0, 9.5), 400.0, &comic),
+        CanvasPreset::new("Комикс", "in", (6.0, 9.5), 400.0, &comic),
     ]
 }
 
@@ -181,7 +181,7 @@ mod tests {
         let a4 = list.iter().find(|p| p.name == "A4").unwrap();
         assert_eq!((preset_width(a4.clone()), preset_height(a4.clone())), (2480, 3508));
         assert_eq!(preset_label(a4.clone()), "210 \u{d7} 297mm");
-        let paper = list.iter().find(|p| p.name == "Paper").unwrap();
+        let paper = list.iter().find(|p| p.name == "Бумага").unwrap();
         assert_eq!(preset_label(paper.clone()), "11\u{2033} \u{d7} 8.5\u{2033}");
         assert_eq!((preset_width(paper.clone()), preset_height(paper.clone())), (3300, 2550));
         let square = list.first().unwrap();

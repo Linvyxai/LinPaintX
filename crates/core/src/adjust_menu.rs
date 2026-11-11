@@ -28,22 +28,22 @@ pub enum Adjustment {
 
 /// Each adjustment: its name, whether its amount is swiped, and its amount when first painted on.
 const ADJUSTMENTS: [(Adjustment, &str, bool, Option<f32>); 16] = [
-    (Adjustment::Hsb, "Hue, Saturation, Brightness", false, None),
-    (Adjustment::ColorBalance, "Color Balance", false, None),
-    (Adjustment::Curves, "Curves", false, None),
-    (Adjustment::GradientMap, "Gradient Map", true, None),
-    (Adjustment::GaussianBlur, "Gaussian Blur", true, Some(0.6)),
-    (Adjustment::MotionBlur, "Motion Blur", true, Some(0.6)),
-    (Adjustment::PerspectiveBlur, "Perspective Blur", true, Some(0.4)),
-    (Adjustment::Noise, "Noise", true, Some(0.69)),
-    (Adjustment::Sharpen, "Sharpen", true, Some(0.4)),
-    (Adjustment::Bloom, "Bloom", true, Some(0.5)),
-    (Adjustment::Glitch, "Glitch", true, Some(0.5)),
-    (Adjustment::Halftone, "Halftone", true, Some(0.12)),
-    (Adjustment::ChromaticAberration, "Chromatic Aberration", true, Some(1.0)),
-    (Adjustment::Liquify, "Liquify", false, None),
-    (Adjustment::Clone, "Clone", false, None),
-    (Adjustment::Plugin, "Plugin", false, None),
+    (Adjustment::Hsb, "Оттенок, насыщенность, яркость", false, None),
+    (Adjustment::ColorBalance, "Цветовой баланс", false, None),
+    (Adjustment::Curves, "Кривые", false, None),
+    (Adjustment::GradientMap, "Карта градиента", true, None),
+    (Adjustment::GaussianBlur, "Размытие по Гауссу", true, Some(0.6)),
+    (Adjustment::MotionBlur, "Размытие в движении", true, Some(0.6)),
+    (Adjustment::PerspectiveBlur, "Перспективное размытие", true, Some(0.4)),
+    (Adjustment::Noise, "Шум", true, Some(0.69)),
+    (Adjustment::Sharpen, "Резкость", true, Some(0.4)),
+    (Adjustment::Bloom, "Свечение", true, Some(0.5)),
+    (Adjustment::Glitch, "Глитч", true, Some(0.5)),
+    (Adjustment::Halftone, "Полутон", true, Some(0.12)),
+    (Adjustment::ChromaticAberration, "Хроматическая аберрация", true, Some(1.0)),
+    (Adjustment::Liquify, "Пластика", false, None),
+    (Adjustment::Clone, "Клонирование", false, None),
+    (Adjustment::Plugin, "Плагин", false, None),
 ];
 
 fn entry(a: Adjustment) -> (Adjustment, &'static str, bool, Option<f32>) {

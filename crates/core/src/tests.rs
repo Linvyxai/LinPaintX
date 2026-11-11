@@ -21,6 +21,9 @@ fn session(canvas: u32, window: u32) -> Option<std::sync::Arc<CanvasSession>> {
     let s = CanvasSession::new(canvas, canvas);
     {
         let mut st = s.shared.lock();
+        // Most renderer tests predate transparent new artworks and exercise paint over the old
+        // opaque white baseline. Product constructors remain transparent.
+        st.doc.background_visible = true;
         st.window_size = (window, window);
         st.view = Some(View::fit((canvas, canvas), (window, window)));
         st.gpu = Some(gpu);
@@ -796,7 +799,13 @@ fn background_settings() {
     let Some(s) = session(100, 100) else { return };
     assert!(s.set_background_color(0.0, 0.0, 0.0, true));
     assert_eq!(pixel(&s, 10, 10), [0, 0, 0, 255]);
-    assert!(s.set_background_visible(false));
+    {
+        let mut st = s.shared.lock();
+        st.doc.background_visible = false;
+        if let Some(canvas) = st.canvas.as_mut() {
+            canvas.invalidate();
+        }
+    }
     assert!(!s.set_background_visible(false), "no change, no step");
     assert_eq!(pixel(&s, 10, 10), [0, 0, 0, 0]);
     s.undo();
@@ -1236,6 +1245,160 @@ fn an_artwork_opened_again_has_every_layer_as_it_was() {
     for ((id, a), (_, b)) in before.iter().zip(&after) {
         assert!(a == b, "layer {id} differs when opened again");
     }
+}
+
+#[test]
+fn undo_reaches_back_past_the_window_through_the_artwork() {
+    let Some(s) = session(16, 16) else { return };
+    let layer = s.layers().into_iter().find(|l| l.current).map(|l| l.id).unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("linpaintx-deep-undo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    // saved once, so the spilled history has a folder to go in
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    let blank = pixel(&s, 8, 8);
+    // more steps than the canvas's window keeps: the oldest spill to the artwork
+    for i in 0..130u32 {
+        s.set_color(i as f32 / 130.0, 0.5, 0.5);
+        assert!(s.fill_layer(layer));
+    }
+    let last = pixel(&s, 8, 8);
+    assert_ne!(last, blank, "the fills must have painted over the background");
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    // reopen: only the last steps are in memory, the rest in the folder
+    let opened = CanvasSession::open(dir.to_string_lossy().into_owned()).unwrap();
+    let Some(gpu) = s.shared.lock().gpu.clone() else { return };
+    opened.use_gpu(gpu);
+
+    let mut undone = 0;
+    while opened.info().can_undo {
+        assert!(opened.undo().is_some(), "step {undone}");
+        undone += 1;
+        assert!(undone <= 130, "undid more steps than were made");
+    }
+    assert_eq!(undone, 130, "every step must be undoable from the artwork");
+    assert_eq!(pixel(&opened, 8, 8), blank, "undoing every step must put the picture back as it was");
+
+    let mut redone = 0;
+    while opened.info().can_redo {
+        assert!(opened.redo().is_some());
+        redone += 1;
+        assert!(redone <= 130, "redid more steps than were made");
+    }
+    assert_eq!(redone, 130, "every step must be redoable");
+    assert_eq!(pixel(&opened, 8, 8), last, "redoing every step must restore the last fill");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn structural_steps_spill_and_come_back() {
+    let Some(s) = session(16, 16) else { return };
+    let dir = std::env::temp_dir().join(format!("linpaintx-structural-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    // more layer steps than the window keeps: the oldest spill to the artwork
+    for _ in 0..130 {
+        assert_ne!(s.add_layer(), 0, "a layer must be added");
+    }
+    let made = s.layers().len();
+    assert!(made >= 130, "{made}");
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    let opened = CanvasSession::open(dir.to_string_lossy().into_owned()).unwrap();
+    let Some(gpu) = s.shared.lock().gpu.clone() else { return };
+    opened.use_gpu(gpu);
+
+    let mut undone = 0;
+    while opened.info().can_undo {
+        assert!(opened.undo().is_some(), "step {undone}");
+        undone += 1;
+        assert!(undone <= 130, "undid more steps than were made");
+    }
+    assert_eq!(undone, 130, "every step must be undoable from the artwork");
+    assert!(opened.layers().len() < made, "the added layers must be removed by undoing");
+
+    let mut redone = 0;
+    while opened.info().can_redo {
+        assert!(opened.redo().is_some());
+        redone += 1;
+        assert!(redone <= 130, "redid more steps than were made");
+    }
+    assert_eq!(redone, 130, "every step must be redoable");
+    assert_eq!(opened.layers().len(), made, "the layers must come back by redoing");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn redo_survives_being_spilled_and_reopened() {
+    let Some(s) = session(16, 16) else { return };
+    let layer = s.layers().into_iter().find(|l| l.current).map(|l| l.id).unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("linpaintx-redo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    for i in 0..130u32 {
+        s.set_color(i as f32 / 130.0, 0.5, 0.5);
+        assert!(s.fill_layer(layer));
+    }
+    let last = pixel(&s, 8, 8);
+
+    // undo everything: the redo stack grows past the window and spills to the artwork
+    while s.info().can_undo {
+        assert!(s.undo().is_some());
+    }
+    assert!(!s.info().can_undo);
+    assert!(s.info().can_redo);
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+
+    let opened = CanvasSession::open(dir.to_string_lossy().into_owned()).unwrap();
+    let Some(gpu) = s.shared.lock().gpu.clone() else { return };
+    opened.use_gpu(gpu);
+
+    let mut redone = 0;
+    while opened.info().can_redo {
+        assert!(opened.redo().is_some());
+        redone += 1;
+        assert!(redone <= 130, "redid more steps than were made");
+    }
+    assert_eq!(redone, 130, "every undone step must be redoable after reopening");
+    assert_eq!(pixel(&opened, 8, 8), last, "redoing everything must restore the last fill");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn undo_and_redo_survive_saving_and_reopening() {
+    let Ok(gpu) = Gpu::headless() else { return };
+    let s = CanvasSession::new(32, 32);
+    {
+        let mut st = s.shared.lock();
+        st.window_size = (32, 32);
+        st.view = Some(View::fit((32, 32), (32, 32)));
+        st.gpu = Some(gpu);
+        st.ensure_canvas();
+    }
+    let layer = s.layers().into_iter().find(|l| l.current).map(|l| l.id).unwrap_or(0);
+    s.set_color(0.8, 0.1, 0.2);
+    assert!(s.fill_layer(layer));
+    let filled = pixel(&s, 10, 10);
+    assert_eq!(filled[3], 255);
+
+    let dir = std::env::temp_dir().join(format!("linpaintx-history-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    s.save(dir.to_string_lossy().into_owned()).unwrap();
+    assert!(dir.join("history.bin").exists());
+
+    let opened = CanvasSession::open(dir.to_string_lossy().into_owned()).unwrap();
+    let Some(gpu) = s.shared.lock().gpu.clone() else { return };
+    opened.use_gpu(gpu);
+    assert!(opened.info().can_undo);
+    assert!(opened.undo().is_some());
+    assert_eq!(pixel(&opened, 10, 10)[3], 0);
+    assert!(opened.info().can_redo);
+    assert!(opened.redo().is_some());
+    assert_eq!(pixel(&opened, 10, 10), filled);
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -3242,7 +3405,7 @@ fn groups_nest_flatten_and_merge_down() {
     let flat = s.flatten_group(inner).unwrap();
     assert!(near(pixel(&s, 50, 50), [128, 255, 128]), "{:?}", pixel(&s, 50, 50));
     assert!(near(pixel(&s, 70, 70), [128, 128, 255]));
-    assert_eq!((info(flat).name.as_str(), info(flat).opacity, info(flat).parent), ("Layer 2", 0.5, Some(outer)));
+    assert_eq!((info(flat).name.as_str(), info(flat).opacity, info(flat).parent), ("Слой 2", 0.5, Some(outer)));
     s.undo();
     assert!(s.layers().iter().any(|l| l.id == inner));
     s.redo();
@@ -3285,7 +3448,7 @@ fn brushes_and_sets_are_made_copied_and_deleted() {
     // a new brush at the top of the set is chosen; deleting the current brush moves the tool to
     // the one in its place
     assert_eq!(s.new_brush(start.set), Some(0));
-    assert_eq!((s.current_brush().index, s.current_brush().name.as_str()), (0, "Untitled Brush"));
+    assert_eq!((s.current_brush().index, s.current_brush().name.as_str()), (0, "Новая кисть"));
     assert!(s.delete_brush(start.set, 0));
     assert_eq!(s.current_brush().name, first[start.index as usize]);
     assert_eq!(s.new_brush(start.set), Some(0));
@@ -3303,7 +3466,7 @@ fn brushes_and_sets_are_made_copied_and_deleted() {
     let lib = other.brush_library();
     assert_eq!(lib.len(), sets + 1);
     assert_eq!(lib[0].name, "Mine");
-    assert_eq!(lib[start.set as usize + 1].brushes[0].name, "Untitled Brush");
+    assert_eq!(lib[start.set as usize + 1].brushes[0].name, "Новая кисть");
     assert!(other.select_brush(start.set + 1, start.index + 1));
     other.studio_begin();
     assert_eq!(other.studio_settings(vec!["spacing".to_owned()]), vec![0.4]);
@@ -3824,7 +3987,7 @@ fn a_custom_canvas_keeps_its_size_dpi_background_and_name() {
     assert_eq!((info.width, info.height), (1, 5));
     assert!(info.dpi.is_finite() && info.dpi >= 1.0);
     assert!(s.background().visible);
-    assert_eq!(s.name(), "Untitled Artwork");
+    assert_eq!(s.name(), "Новая работа");
 }
 
 #[test]
@@ -4365,7 +4528,7 @@ fn a_brush_paints_with_a_shape_of_the_users_own_and_keeps_it() {
     // the grains' library starts with the Blank, which isn't a shipped grain
     let library = crate::studio::source_library(true);
     assert_eq!(library.len(), procraft_engine::textures::grains().len() + 1);
-    assert!(library.first().is_some_and(|b| b.name == "Blank" && b.pixels.iter().all(|&v| v == 255)));
+    assert!(library.first().is_some_and(|b| b.name == "Без текстуры" && b.pixels.iter().all(|&v| v == 255)));
 }
 
 #[test]
@@ -4491,8 +4654,8 @@ fn a_canvas_keeps_its_colour_profile() {
 fn an_export_is_named_after_its_artwork() {
     use crate::project::export_file_name;
     assert_eq!(export_file_name(" Sky / Sea: 2 ".to_owned(), false), "Sky  Sea 2");
-    assert_eq!(export_file_name("?!".to_owned(), false), "Untitled Artwork");
-    assert_eq!(export_file_name(String::new(), true), "Untitled_Artwork");
+    assert_eq!(export_file_name("?!".to_owned(), false), "Новая работа");
+    assert_eq!(export_file_name(String::new(), true), "Новая_работа");
     assert_eq!(export_file_name("Night walk".to_owned(), true), "Night_walk");
 }
 
@@ -6174,7 +6337,7 @@ fn a_documents_pages_come_in_as_page_layers() {
     assert_eq!(s.name(), "Comic");
     let names: Vec<String> = s.layers().iter().map(|l| l.name.clone()).collect();
     // listed top first: the first page at the bottom
-    assert_eq!(names, ["Page 2", "Page 1"]);
+    assert_eq!(names, ["Страница 2", "Страница 1"]);
     assert!(s.animation_settings().is_some_and(|a| a.pages));
     // a page missing
     assert_eq!(
@@ -10533,10 +10696,10 @@ fn add_frame_names_its_layer_frame_or_page_by_the_count() {
     let frame = s.add_frame();
     let name =
         |s: &CanvasSession, id: u64| s.layers().into_iter().find(|l| l.id == id).map(|l| l.name).unwrap_or_default();
-    assert_eq!(name(&s, frame), "Frame 2");
+    assert_eq!(name(&s, frame), "Кадр 2");
     let next = s.add_frame();
-    assert_eq!(name(&s, next), "Frame 3");
+    assert_eq!(name(&s, next), "Кадр 3");
     // a plain new layer keeps its own name
     let layer = s.add_layer();
-    assert!(name(&s, layer).starts_with("Layer"));
+    assert!(name(&s, layer).starts_with("Слой"));
 }

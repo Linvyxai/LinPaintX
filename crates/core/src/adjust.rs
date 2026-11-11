@@ -207,7 +207,8 @@ impl State {
         canvas.begin_pencil_stroke(current, style);
         canvas.add_stamps(&stamps);
         self.stroke = Some(builder);
-        self.redraw_painted_on();
+        self.pencil_filter_frame = None;
+        self.redraw_painted_on(true);
     }
 
     /// Keeps the stroke just painted on as its own undo step, and goes on with the adjustment.
@@ -247,12 +248,26 @@ impl State {
     }
 
     /// Draws the adjustment again after more of it was painted on.
-    pub(crate) fn redraw_painted_on(&mut self) {
+    pub(crate) fn redraw_painted_on(&mut self, force: bool) -> bool {
+        let now = std::time::Instant::now();
+        // A full-canvas filter pass for every 120/240 Hz input packet can hold the shared render
+        // lock longer than the next packet. The mask stamps may queue; preview them at most at
+        // 30 Hz and always once more when the stroke ends.
+        if !force
+            && self
+                .pencil_filter_frame
+                .is_some_and(|last| now.duration_since(last) < std::time::Duration::from_millis(33))
+        {
+            return false;
+        }
         if self.pencil
             && let (Some(filter), Some(canvas)) = (self.last_filter, self.canvas.as_mut())
         {
             canvas.set_filter(filter);
+            self.pencil_filter_frame = Some(now);
+            return true;
         }
+        false
     }
 
     /// Ends an open adjustment: `commit` keeps it as one undo step, otherwise the layer goes back.

@@ -126,7 +126,7 @@ impl Gradients {
             at = (after as usize + 1).min(list.len());
             let stops =
                 vec![GradientStop { position: 0.0, rgb: 0x000000 }, GradientStop { position: 1.0, rgb: 0xFFFFFF }];
-            list.insert(at, GradientInfo { name: "Gradient".into(), stops });
+            list.insert(at, GradientInfo { name: "Градиент".into(), stops });
         });
         at as u32
     }
@@ -274,7 +274,7 @@ mod tests {
         lib.delete_stop(at, 0);
         assert_eq!(lib.list()[1].stops.len(), 2);
         lib.rename(at, "  ".into());
-        assert_eq!(lib.list()[1].name, "Gradient");
+        assert_eq!(lib.list()[1].name, "Градиент");
         // what was written comes back
         let again = Gradients::open(path.to_string_lossy().into_owned());
         assert_eq!(again.list(), lib.list());

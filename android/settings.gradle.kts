@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ProCraft"
+rootProject.name = "LinPaintX"
 include(":app")

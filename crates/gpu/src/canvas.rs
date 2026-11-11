@@ -801,12 +801,24 @@ struct DisplayUniform {
 impl DisplayUniform {
     /// The map `m` and target encoding `srgb`, colours moved by `convert` if there is one, or by
     /// the bound table if `lut`.
-    fn new(m0: [f32; 4], m1: [f32; 4], convert: Option<[[f32; 3]; 3]>, lut: bool) -> DisplayUniform {
+    fn new(m0: [f32; 4], m1: [f32; 4], convert: Option<[[f32; 3]; 3]>, lut: bool, checkerboard: f32) -> DisplayUniform {
         let row = |r: [f32; 3], on: f32| [r[0], r[1], r[2], on];
         let table = if lut { 1.0 } else { 0.0 };
         match convert.filter(|_| !lut) {
-            Some([r0, r1, r2]) => DisplayUniform { m0, m1, c0: row(r0, 1.0), c1: row(r1, 0.0), c2: row(r2, 0.0) },
-            None => DisplayUniform { m0, m1, c0: [0.0; 4], c1: [0.0, 0.0, 0.0, table], c2: [0.0; 4] },
+            Some([r0, r1, r2]) => DisplayUniform {
+                m0,
+                m1,
+                c0: row(r0, 1.0),
+                c1: row(r1, 0.0),
+                c2: row(r2, checkerboard),
+            },
+            None => DisplayUniform {
+                m0,
+                m1,
+                c0: [0.0; 4],
+                c1: [0.0, 0.0, 0.0, table],
+                c2: [0.0, 0.0, 0.0, checkerboard],
+            },
         }
     }
 }
@@ -1649,6 +1661,86 @@ struct Step {
     flip: Option<(Vec<LayerId>, bool)>,
 }
 
+/// Undo and redo history in a device-independent form, stored with an artwork.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct CanvasHistory {
+    pub steps_made: u64,
+    pub undo: Vec<HistoryStep>,
+    pub redo: Vec<HistoryStep>,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct HistoryStep {
+    pub made: u64,
+    pub name: Option<String>,
+    #[serde(with = "doc_bytes")]
+    pub doc: Option<Box<Document>>,
+    pub pixels: Vec<HistoryPixels>,
+    pub selection: Option<Option<Vec<u8>>>,
+    pub flip: Option<(Vec<LayerId>, bool)>,
+}
+
+/// `Document` stored as JSON bytes inside the bincode-serialized history: a document reads itself
+/// back leniently (a damaged file keeps what it can), which bincode can't do, so it goes as JSON.
+mod doc_bytes {
+    use procraft_engine::document::Document;
+    use serde::{Deserialize, Serialize};
+
+    pub fn serialize<S: serde::Serializer>(doc: &Option<Box<Document>>, s: S) -> Result<S::Ok, S::Error> {
+        let bytes: Option<Vec<u8>> = doc.as_ref().map(serde_json::to_vec).transpose().map_err(serde::ser::Error::custom)?;
+        Serialize::serialize(&bytes, s)
+    }
+
+    pub fn deserialize<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Box<Document>>, D::Error> {
+        let bytes: Option<Vec<u8>> = Deserialize::deserialize(d)?;
+        match bytes {
+            Some(bytes) => Ok(Some(Box::new(serde_json::from_slice::<Document>(&bytes).map_err(serde::de::Error::custom)?))),
+            None => Ok(None),
+        }
+    }
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct HistoryPixels {
+    pub layer: LayerId,
+    pub rect: [i32; 4],
+    pub rgba: Vec<u8>,
+}
+
+/// Where the steps that fall out of the canvas's in-memory window go, and come back from: the
+/// app keeps the whole history on disk (in the artwork), so undo and redo can reach back any
+/// number of steps, while the canvas holds only the last [`MAX_UNDO`] at once. None for scratch
+/// canvases, which just drop them.
+pub trait HistoryStore: Send {
+    /// Stores an undo step that fell out of the window (its pixels already read back to bytes),
+    /// oldest first.
+    fn spill_undo(&mut self, step: HistoryStep);
+    /// Stores a redo step that fell out of the window, the deepest undone first.
+    fn spill_redo(&mut self, step: HistoryStep);
+    /// Takes the newest stored undo step back (the next to undo), if any.
+    fn take_undo(&mut self) -> Option<HistoryStep>;
+    /// Takes the newest stored redo step back (the next to redo), if any.
+    fn take_redo(&mut self) -> Option<HistoryStep>;
+    /// How many undo steps are still stored (beyond the in-memory window).
+    fn stored_undo(&self) -> usize;
+    /// How many redo steps are still stored.
+    fn stored_redo(&self) -> usize;
+    /// The newest stored undo step's number and name, for the undo button and its label.
+    fn newest_undo(&self) -> Option<(u64, Option<String>)>;
+    /// The newest stored redo step's number and name.
+    fn newest_redo(&self) -> Option<(u64, Option<String>)>;
+    /// A new step made: everything stored as redo is dropped.
+    fn clear_redo(&mut self);
+    /// The history is dropped (forgotten).
+    fn clear(&mut self);
+    /// A last chance to persist anything not written as it goes (the metadata), before a save.
+    fn flush(&mut self) {}
+    /// A save cut short can leave the store and the saved window overlapping: drops stored undo
+    /// steps not older than the window's oldest (`min_undo`), and stored redo steps not newer
+    /// than the window's newest (`max_redo`).
+    fn reconcile(&mut self, _min_undo: u64, _max_redo: u64) {}
+}
+
 impl Step {
     /// What it holds: its pixels on the GPU, and the selection it puts back (a byte a canvas
     /// pixel), so many selection changes can't outgrow the history's budget either.
@@ -1656,6 +1748,23 @@ impl Step {
         let selection = self.selection.as_ref().and_then(Option::as_ref).map_or(0, |s| s.len() as u64);
         self.pixels.iter().map(Snapshot::bytes).sum::<u64>() + selection
     }
+}
+
+/// Reads a step's pixels back to bytes so it can be stored; the step (and its textures) are let
+/// go. None if the GPU could not read one back (the step is dropped).
+fn cool_step(gpu: &Gpu, step: Step) -> Option<HistoryStep> {
+    let mut pixels = Vec::with_capacity(step.pixels.len());
+    for snapshot in step.pixels {
+        let rect = snapshot.rect;
+        match read_texture(gpu, &snapshot.texture, rect.width(), rect.height()) {
+            Ok(rgba) => pixels.push(HistoryPixels { layer: snapshot.layer, rect: [rect.x0, rect.y0, rect.x1, rect.y1], rgba }),
+            Err(e) => {
+                log::error!("spilling a history step: {e}");
+                return None;
+            }
+        }
+    }
+    Some(HistoryStep { made: step.made, name: step.name, doc: step.doc, pixels, selection: step.selection, flip: step.flip })
 }
 
 /// The pipelines every canvas on a device draws with, made once for the device (see
@@ -1905,6 +2014,9 @@ pub struct Canvas {
     renders: u64,
     undo: Vec<Step>,
     redo: Vec<Step>,
+    /// Where steps spilled out of `undo`/`redo` go (the full history lives there, on disk): the
+    /// app keeps the whole history while the canvas holds only the last steps.
+    history_store: Option<Box<dyn HistoryStore + Send>>,
     transforming: Option<Transforming>,
     /// Other layers transformed along with it (layers picked together).
     transform_more: Vec<Transforming>,
@@ -2196,6 +2308,7 @@ impl Canvas {
             dirty: IRect::from_size(width, height),
             undo: Vec::new(),
             redo: Vec::new(),
+            history_store: None,
             transforming: None,
             transform_more: Vec::new(),
             backdrop: None,
@@ -2425,9 +2538,10 @@ impl Canvas {
         self.active.map(|a| a.style.tool)
     }
 
-    /// Whether an undo is possible, counting queued work.
+    /// Whether an undo is possible, counting queued work and steps stored beyond the window.
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
+            || self.history_store.as_ref().is_some_and(|s| s.stored_undo() > 0)
             || self.ops.iter().any(|op| {
                 matches!(
                     op,
@@ -2451,7 +2565,7 @@ impl Canvas {
     }
 
     pub fn can_redo(&self) -> bool {
-        !self.redo.is_empty()
+        !self.redo.is_empty() || self.history_store.as_ref().is_some_and(|s| s.stored_redo() > 0)
     }
 
     /// Drops what could be redone, as a new step would: the canvas is set aside for something new
@@ -2459,6 +2573,9 @@ impl Canvas {
     pub fn forget_redo(&mut self) {
         for dropped in std::mem::take(&mut self.redo) {
             self.keep_spare_snapshot(dropped);
+        }
+        if let Some(store) = self.history_store.as_mut() {
+            store.clear_redo();
         }
     }
 
@@ -2470,21 +2587,33 @@ impl Canvas {
     /// The name of the step undo would undo next, and of the step redo would redo, as the
     /// history is after the work run so far.
     pub fn undo_name(&self) -> Option<String> {
-        self.undo.last().and_then(|s| s.name.clone())
+        self.undo
+            .last()
+            .and_then(|s| s.name.clone())
+            .or_else(|| self.history_store.as_ref().and_then(|s| s.newest_undo()).and_then(|(_, n)| n))
     }
 
     pub fn redo_name(&self) -> Option<String> {
-        self.redo.last().and_then(|s| s.name.clone())
+        self.redo
+            .last()
+            .and_then(|s| s.name.clone())
+            .or_else(|| self.history_store.as_ref().and_then(|s| s.newest_redo()).and_then(|(_, n)| n))
     }
 
     /// Which step undo would undo next, and redo would redo, numbered as [`Canvas::steps_made`]
     /// counted them when they were made.
     pub fn undo_step(&self) -> Option<u64> {
-        self.undo.last().map(|s| s.made)
+        self.undo
+            .last()
+            .map(|s| s.made)
+            .or_else(|| self.history_store.as_ref().and_then(|s| s.newest_undo()).map(|(m, _)| m))
     }
 
     pub fn redo_step(&self) -> Option<u64> {
-        self.redo.last().map(|s| s.made)
+        self.redo
+            .last()
+            .map(|s| s.made)
+            .or_else(|| self.history_store.as_ref().and_then(|s| s.newest_redo()).map(|(m, _)| m))
     }
 
     /// Marks where the history is once the queued work is done, for [`Canvas::collapse_steps`].
@@ -2504,6 +2633,36 @@ impl Canvas {
     /// changes whenever something new is done.
     pub fn steps_made(&self) -> u64 {
         self.steps_made
+    }
+
+    /// Where steps that fall out of the in-memory window go (the full history, kept on disk by
+    /// the app). None keeps the current behaviour: steps past [`MAX_UNDO`] are dropped. Set before
+    /// any history is made (on opening an artwork); spilled steps already stored elsewhere stay.
+    pub fn set_history_store(&mut self, store: Option<Box<dyn HistoryStore + Send>>) {
+        self.history_store = store;
+    }
+
+    /// Whether a [`HistoryStore`] is set (steps spill to disk rather than being dropped).
+    pub fn has_history_store(&self) -> bool {
+        self.history_store.is_some()
+    }
+
+    /// Persists anything the store keeps only in memory (the spilled steps' metadata) before a
+    /// save reads it.
+    pub fn flush_history_store(&mut self) {
+        if let Some(store) = self.history_store.as_mut() {
+            store.flush();
+        }
+    }
+
+    /// Drops stored steps that overlap the resident window (a save cut short left both): kept only
+    /// where undo and redo would reach them in order.
+    pub fn reconcile_history_store(&mut self) {
+        let min_undo = self.undo.iter().map(|s| s.made).min().unwrap_or(u64::MAX);
+        let max_redo = self.redo.iter().map(|s| s.made).max().unwrap_or(0);
+        if let Some(store) = self.history_store.as_mut() {
+            store.reconcile(min_undo, max_redo);
+        }
     }
 
     /// How many times the composite has been redrawn: it changes whenever the picture does.
@@ -2786,6 +2945,91 @@ impl Canvas {
         self.undo.iter().chain(&self.redo).map(Step::bytes).sum()
     }
 
+    /// Copies undo and redo to memory so they can be stored with the artwork.
+    pub fn history_snapshot(&self, gpu: &Gpu) -> Result<CanvasHistory, GpuError> {
+        let read_step = |step: &Step| -> Result<HistoryStep, GpuError> {
+            let pixels = step
+                .pixels
+                .iter()
+                .map(|snapshot| {
+                    let rect = snapshot.rect;
+                    Ok(HistoryPixels {
+                        layer: snapshot.layer,
+                        rect: [rect.x0, rect.y0, rect.x1, rect.y1],
+                        rgba: read_texture(gpu, &snapshot.texture, rect.width(), rect.height())?,
+                    })
+                })
+                .collect::<Result<Vec<_>, GpuError>>()?;
+            Ok(HistoryStep {
+                made: step.made,
+                name: step.name.clone(),
+                doc: step.doc.clone(),
+                pixels,
+                selection: step.selection.clone(),
+                flip: step.flip.clone(),
+            })
+        };
+        Ok(CanvasHistory {
+            steps_made: self.steps_made,
+            undo: self.undo.iter().map(read_step).collect::<Result<_, _>>()?,
+            redo: self.redo.iter().map(read_step).collect::<Result<_, _>>()?,
+        })
+    }
+
+    /// Restores history read from an artwork. Invalid or oversized history is rejected without
+    /// changing the canvas.
+    pub fn restore_history(&mut self, gpu: &Gpu, history: CanvasHistory) -> Result<(), GpuError> {
+        if history.undo.len() > MAX_UNDO || history.redo.len() > MAX_UNDO {
+            return Err(GpuError::Readback("too many saved history steps".to_owned()));
+        }
+        let mut bytes = 0u64;
+        let mut build = |saved: HistoryStep| -> Result<Step, GpuError> {
+            bytes = bytes.saturating_add(saved.pixels.iter().map(|p| p.rgba.len() as u64).sum::<u64>());
+            bytes = bytes.saturating_add(saved.selection.as_ref().and_then(Option::as_ref).map_or(0, |s| s.len() as u64));
+            if bytes > MAX_UNDO_BYTES {
+                return Err(GpuError::Readback("saved history is too large".to_owned()));
+            }
+            self.admit_step(gpu, saved)
+        };
+        let undo = history.undo.into_iter().map(&mut build).collect::<Result<Vec<_>, _>>()?;
+        let redo = history.redo.into_iter().map(&mut build).collect::<Result<Vec<_>, _>>()?;
+        self.steps_made = history.steps_made.max(undo.iter().chain(&redo).map(|s| s.made).max().unwrap_or(0));
+        self.undo = undo;
+        self.redo = redo;
+        Ok(())
+    }
+
+    /// Makes a resident [`Step`] from a [`HistoryStep`] read back from the store, its pixels
+    /// uploaded to the GPU. Invalid pixels are rejected.
+    fn admit_step(&mut self, gpu: &Gpu, saved: HistoryStep) -> Result<Step, GpuError> {
+        let full = self.full();
+        let selection_bytes = u64::from(self.width) * u64::from(self.height);
+        if let Some(Some(selection)) = &saved.selection
+            && selection.len() as u64 != selection_bytes
+        {
+            return Err(GpuError::Readback("saved history has a selection of the wrong size".to_owned()));
+        }
+        let mut pixels = Vec::with_capacity(saved.pixels.len());
+        for part in saved.pixels {
+            let rect = IRect::new(part.rect[0], part.rect[1], part.rect[2], part.rect[3]);
+            let expected = u64::from(rect.width()) * u64::from(rect.height()) * 4;
+            if rect.is_empty() || rect.intersect(full) != rect || part.rgba.len() as u64 != expected {
+                return Err(GpuError::Readback("saved history has invalid layer pixels".to_owned()));
+            }
+            let texture = texture(&gpu.device, "restored undo", rect.width(), rect.height(), LAYER_FORMAT);
+            self.upload_now(gpu, &texture, IRect::from_size(rect.width(), rect.height()), &part.rgba, 0, rect.width() as usize * 4);
+            pixels.push(Snapshot { layer: part.layer, rect, texture });
+        }
+        Ok(Step {
+            made: saved.made,
+            name: saved.name,
+            doc: saved.doc.map(|doc| Box::new(doc.repaired())),
+            pixels,
+            selection: saved.selection,
+            flip: saved.flip,
+        })
+    }
+
     /// Drops the open stroke.
     pub fn cancel_stroke(&mut self) {
         self.prediction.clear();
@@ -2913,6 +3157,7 @@ impl Canvas {
                 [rect.x0 as f32 / cw, rect.y0 as f32 / ch, fw / cw, fh / ch],
                 None,
                 false,
+                0.0,
             ));
             {
                 let mut pass = render_pass(&mut encoder, "veil", &view, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -3026,6 +3271,9 @@ impl Canvas {
     pub fn forget_history(&mut self) {
         self.undo.clear();
         self.redo.clear();
+        if let Some(store) = self.history_store.as_mut() {
+            store.clear();
+        }
     }
 
     /// Drops the steps (to undo and to redo) that change the document's layers, keeping those
@@ -3034,6 +3282,11 @@ impl Canvas {
     pub fn forget_document_steps(&mut self) {
         self.undo.retain(|s| s.doc.is_none());
         self.redo.retain(|s| s.doc.is_none());
+        // structural steps stored beyond the window would undo out of step with the shared
+        // layers too; the whole stored history is dropped rather than kept half out of step.
+        if let Some(store) = self.history_store.as_mut() {
+            store.clear();
+        }
     }
 
     /// An undo step that changes nothing here, named `name`: a change kept outside the canvas
@@ -3421,7 +3674,7 @@ impl Canvas {
         before: Option<Vec<u8>>,
     ) {
         self.render(gpu, doc, None);
-        self.push_step(Step {
+        self.push_step(gpu, Step {
             made: 0,
             name: None,
             doc: None,
@@ -4065,7 +4318,7 @@ impl Canvas {
                     // a dual brush's paint laid apart, put together over the whole stroke once more
                     // (its second's first stamps may have come before the paint laid apart began)
                     self.synthesize(device, &mut encoder, &mut smudge_uniforms, stroke.bounds);
-                    self.finish_smudge(device, &mut encoder, stroke.bounds, false);
+                    self.finish_smudge(gpu, device, &mut encoder, stroke.bounds, false);
                     history_changed = true;
                 }
                 // painting an adjustment on leaves the layer to the adjustment
@@ -4076,11 +4329,11 @@ impl Canvas {
                     }
                 }
                 Op::Commit(stroke) => {
-                    self.commit(device, &mut encoder, &mut uniforms, stroke);
+                    self.commit(gpu, device, &mut encoder, &mut uniforms, stroke);
                     history_changed = true;
                 }
                 Op::Cancel if self.smudge.is_some() => {
-                    self.finish_smudge(device, &mut encoder, IRect::EMPTY, true);
+                    self.finish_smudge(gpu, device, &mut encoder, IRect::EMPTY, true);
                 }
                 Op::Cancel => {
                     drop(render_pass(
@@ -4118,16 +4371,36 @@ impl Canvas {
                     }
                 }
                 Op::Undo => {
+                    if self.undo.is_empty() {
+                        let saved = self.history_store.as_mut().and_then(|s| s.take_undo());
+                        if let Some(saved) = saved {
+                            match self.admit_step(gpu, saved) {
+                                Ok(step) => self.undo.push(step),
+                                Err(e) => log::error!("loading an undo step: {e}"),
+                            }
+                        }
+                    }
                     if let Some(step) = self.undo.pop() {
                         let inverse = self.apply_step(gpu, &mut encoder, doc, step);
                         self.redo.push(inverse);
+                        self.spill_overflow(gpu, true);
                         history_changed = true;
                     }
                 }
                 Op::Redo => {
+                    if self.redo.is_empty() {
+                        let saved = self.history_store.as_mut().and_then(|s| s.take_redo());
+                        if let Some(saved) = saved {
+                            match self.admit_step(gpu, saved) {
+                                Ok(step) => self.redo.push(step),
+                                Err(e) => log::error!("loading a redo step: {e}"),
+                            }
+                        }
+                    }
                     if let Some(step) = self.redo.pop() {
                         let inverse = self.apply_step(gpu, &mut encoder, doc, step);
                         self.undo.push(inverse);
+                        self.spill_overflow(gpu, false);
                         history_changed = true;
                     }
                 }
@@ -4149,7 +4422,7 @@ impl Canvas {
                     if !rect.is_empty()
                         && let Some(snapshot) = self.snapshot(device, &mut encoder, id, rect)
                     {
-                        self.push_step(Step {
+                        self.push_step(gpu, Step {
                             made: 0,
                             name: None,
                             doc: None,
@@ -4170,7 +4443,7 @@ impl Canvas {
                             let colour = wgpu::Color { r, g, b, a: 1.0 };
                             drop(render_pass(&mut encoder, "fill", &layer.view, wgpu::LoadOp::Clear(colour)));
                         }
-                        self.push_step(Step {
+                        self.push_step(gpu, Step {
                             made: 0,
                             name: None,
                             doc: None,
@@ -4186,7 +4459,7 @@ impl Canvas {
                     let full = self.full();
                     let kept = painted.map_or(full, |r| r.intersect(full));
                     if let Some(snapshot) = self.snapshot(device, &mut encoder, id, kept) {
-                        self.push_step(Step {
+                        self.push_step(gpu, Step {
                             made: 0,
                             name: None,
                             doc: None,
@@ -4230,7 +4503,7 @@ impl Canvas {
                     let held = self.held.take();
                     if keep {
                         if held.is_some() || before.is_some() {
-                            self.push_step(Step {
+                            self.push_step(gpu, Step {
                                 made: 0,
                                 name: None,
                                 doc: before,
@@ -4261,7 +4534,7 @@ impl Canvas {
                         selection: None,
                         flip: Some((layers.clone(), horizontal)),
                     };
-                    self.push_step(step);
+                    self.push_step(gpu, step);
                     self.encode_flip(device, &mut encoder, &layers, horizontal);
                     self.dirty = self.full();
                     history_changed = true;
@@ -4273,7 +4546,7 @@ impl Canvas {
                         .collect();
                     let document_changed = before.is_some();
                     if !snapshots.is_empty() || document_changed {
-                        self.push_step(Step {
+                        self.push_step(gpu, Step {
                             made: 0,
                             name: None,
                             doc: before,
@@ -4470,7 +4743,7 @@ impl Canvas {
                             // painted on: only where it was painted changed, and nothing if nowhere
                             if !rect.is_empty() {
                                 let texture = region_copy(device, &mut encoder, &t.before, rect);
-                                self.push_step(Step {
+                                self.push_step(gpu, Step {
                                     made: 0,
                                     name: None,
                                     doc: None,
@@ -4500,7 +4773,7 @@ impl Canvas {
                             if spare.is_some() {
                                 self.spare_before = spare;
                             }
-                            self.push_step(Step {
+                            self.push_step(gpu, Step {
                                 made: 0,
                                 name: None,
                                 doc: None,
@@ -4536,7 +4809,7 @@ impl Canvas {
                     self.dirty = self.full();
                 }
                 Op::Record(before) => {
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4548,7 +4821,7 @@ impl Canvas {
                     history_changed = true;
                 }
                 Op::OutsideChange(name) => {
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: Some(name),
                         doc: None,
@@ -4568,7 +4841,7 @@ impl Canvas {
                             );
                         }
                     }
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4591,7 +4864,7 @@ impl Canvas {
                         within,
                     );
                     self.blend_layer_into(device, &mut encoder, &mut uniforms, &before, upper, lower);
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4620,7 +4893,7 @@ impl Canvas {
                             self.blend_layer_into(device, &mut encoder, &mut uniforms, &before, upper, lower);
                         }
                     }
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4634,7 +4907,7 @@ impl Canvas {
                 Op::ApplyMask { layer, mask, before } => {
                     let pixels =
                         self.masked_in_place(device, &mut encoder, &mut uniforms, layer, mask).into_iter().collect();
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4649,7 +4922,7 @@ impl Canvas {
                     // a new layer: no pixels of its own to keep
                     self.flatten(device, &mut encoder, &mut uniforms, &before, group, into);
                     let pixels = Vec::new();
-                    self.push_step(Step {
+                    self.push_step(gpu, Step {
                         made: 0,
                         name: None,
                         doc: Some(before),
@@ -4715,8 +4988,11 @@ impl Canvas {
             // GPU needn't write the whole target out and read it back for a pass of its own
             let shows = |b: &Backdrop<'_>| !(b.regions.is_empty() && b.windows.is_empty()) && b.sigma > 0.0;
             let backdrop = target.backdrop.filter(shows);
-            let glass = backdrop.map(|b| (b, self.frost_ready(device, &mut encoder, &mut uniforms, &target, b, None)));
-            self.display(device, &mut encoder, &mut uniforms, &target, predicted, glass);
+            let checkerboard = if doc.background_checkerboard { 2.0 } else { 1.0 };
+            let glass = backdrop.map(|b| {
+                (b, self.frost_ready(device, &mut encoder, &mut uniforms, &target, b, None, checkerboard))
+            });
+            self.display(device, &mut encoder, &mut uniforms, &target, predicted, glass, checkerboard);
         }
         self.write_uniforms(gpu, &uniforms);
         gpu.queue.submit([encoder.finish()]);
@@ -5223,6 +5499,7 @@ impl Canvas {
     /// layer back as it was.
     fn finish_smudge(
         &mut self,
+        gpu: &Gpu,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         bounds: IRect,
@@ -5258,7 +5535,7 @@ impl Canvas {
             copy_at(&texture, 0, 0),
             extent(rect.width(), rect.height()),
         );
-        self.push_step(Step {
+        self.push_step(gpu, Step {
             made: 0,
             name: None,
             doc: None,
@@ -5270,6 +5547,7 @@ impl Canvas {
 
     fn commit(
         &mut self,
+        gpu: &Gpu,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         uniforms: &mut UniformData,
@@ -5283,7 +5561,7 @@ impl Canvas {
             let pixels: Vec<Snapshot> =
                 parts.iter().filter_map(|r| self.snapshot(device, encoder, stroke.layer, r.intersect(rect))).collect();
             if !pixels.is_empty() {
-                self.push_step(Step { made: 0, name: None, doc: None, pixels, selection: None, flip: None });
+                self.push_step(gpu, Step { made: 0, name: None, doc: None, pixels, selection: None, flip: None });
             }
             let opacity = stroke.style.opacity.clamp(0.0, 1.0);
             let locked = stroke.style.preserve_alpha;
@@ -6007,7 +6285,7 @@ impl Canvas {
     }
 
     /// A new step: it joins the history and anything undone can no longer be redone.
-    fn push_step(&mut self, mut step: Step) {
+    fn push_step(&mut self, gpu: &Gpu, mut step: Step) {
         self.steps_made += 1;
         step.made = self.steps_made;
         if step.name.is_none() {
@@ -6016,12 +6294,34 @@ impl Canvas {
         for dropped in std::mem::take(&mut self.redo) {
             self.keep_spare_snapshot(dropped);
         }
+        if let Some(store) = self.history_store.as_mut() {
+            store.clear_redo();
+        }
         self.undo.push(step);
-        let mut bytes: u64 = self.undo.iter().map(Step::bytes).sum();
-        while self.undo.len() > MAX_UNDO || (bytes > MAX_UNDO_BYTES && self.undo.len() > 1) {
-            let dropped = self.undo.remove(0);
-            bytes = bytes.saturating_sub(dropped.bytes());
-            self.keep_spare_snapshot(dropped);
+        self.spill_overflow(gpu, false);
+    }
+
+    /// Spills the oldest steps of `undo` (or `redo`) out of the in-memory window to the store;
+    /// without a store they are dropped as before.
+    fn spill_overflow(&mut self, gpu: &Gpu, redo: bool) {
+        let mut dropped = Vec::new();
+        {
+            let stack = if redo { &mut self.redo } else { &mut self.undo };
+            let mut bytes: u64 = stack.iter().map(Step::bytes).sum();
+            while stack.len() > MAX_UNDO || (bytes > MAX_UNDO_BYTES && stack.len() > 1) {
+                let d = stack.remove(0);
+                bytes = bytes.saturating_sub(d.bytes());
+                dropped.push(d);
+            }
+        }
+        for d in dropped {
+            let Some(store) = self.history_store.as_mut() else {
+                self.keep_spare_snapshot(d);
+                continue;
+            };
+            if let Some(step) = cool_step(gpu, d) {
+                if redo { store.spill_redo(step) } else { store.spill_undo(step) };
+            }
         }
     }
 
@@ -6925,6 +7225,7 @@ impl Canvas {
         target: &Target<'_>,
         predicted: std::ops::Range<u32>,
         glass: Option<(Backdrop<'_>, f32)>,
+        checkerboard: f32,
     ) {
         let srgb = target.format.is_srgb();
         let Pipelines {
@@ -6972,6 +7273,7 @@ impl Canvas {
             [m.e, m.f, if srgb { 1.0 } else { 0.0 }, if target.grey { 1.0 } else { 0.0 }],
             target.convert,
             target.lut.is_some(),
+            checkerboard,
         ));
         let surround = target.surround.map(|c| if srgb { srgb_to_linear(c) } else { c });
         let clear =
@@ -7031,6 +7333,7 @@ impl Canvas {
                 [m.e, m.f, if srgb { 1.0 } else { 0.0 }, if target.grey { 1.0 } else { 0.0 }],
                 target.convert,
                 target.lut.is_some(),
+                0.0,
             ));
             pass.set_pipeline(pipeline);
             pass.set_bind_group(0, if crisp { &veil.crisp } else { &veil.bind }, &[]);
@@ -7195,7 +7498,7 @@ impl Canvas {
             crisp_from: f32::INFINITY,
             grey: false,
         };
-        let k = self.frost_ready(&gpu.device, &mut encoder, &mut uniforms, &target, backdrop, Some(scene));
+        let k = self.frost_ready(&gpu.device, &mut encoder, &mut uniforms, &target, backdrop, Some(scene), 0.0);
         if let (Some(small), Some(frost)) = (self.backdrop.as_ref(), self.screen.frost.get(&target.format)) {
             let mut pass = render_pass(&mut encoder, "frost", target.view, wgpu::LoadOp::Load);
             draw_glass(&mut pass, frost, small, &self.uniform_bind, &mut uniforms, backdrop, target.size, k);
@@ -7214,6 +7517,7 @@ impl Canvas {
         target: &Target<'_>,
         backdrop: Backdrop<'_>,
         other: Option<SmallScene<'_>>,
+        checkerboard: f32,
     ) -> f32 {
         let k = (backdrop.sigma / BACKDROP_TEXELS).floor().clamp(1.0, 16.0);
         let size = ((target.size.0 as f32 / k).ceil() as u32, (target.size.1 as f32 / k).ceil() as u32);
@@ -7289,6 +7593,7 @@ impl Canvas {
             [m.e, m.f, if srgb { 1.0 } else { 0.0 }, if target.grey { 1.0 } else { 0.0 }],
             target.convert,
             target.lut.is_some(),
+            checkerboard,
         ));
         let surround = target.surround.map(|c| if srgb { srgb_to_linear(c) } else { c });
         let clear =
@@ -7507,6 +7812,7 @@ impl Canvas {
             [rect.x0 as f32 / cw, rect.y0 as f32 / ch, rw / cw, rh / ch],
             None,
             false,
+            0.0,
         ));
         let mut encoder =
             gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("thumbnail") });

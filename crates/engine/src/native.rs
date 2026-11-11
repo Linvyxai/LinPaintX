@@ -187,7 +187,7 @@ pub fn read(bytes: &[u8]) -> Result<Imported, ReadError> {
         pixels,
         reference: read_reference(&root),
         reference_picture,
-        name: root.string("name").filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "Untitled Artwork".to_owned()),
+        name: root.string("name").filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "Новая работа".to_owned()),
         author: root.string("authorName").unwrap_or_default(),
         strokes: root.int("strokeCount").and_then(|s| u64::try_from(s).ok()).unwrap_or(0),
         tracked_seconds: root
@@ -622,7 +622,7 @@ fn add_item(
             }
             layers.push(Layer {
                 id: gid,
-                name: item.string("name").unwrap_or_else(|| "New group".to_owned()),
+                name: item.string("name").unwrap_or_else(|| "Новая группа".to_owned()),
                 visible: !item.bool("isHidden").unwrap_or(false),
                 opacity: item.real("opacity").unwrap_or(1.0) as f32,
                 blend: BlendMode::Normal,
@@ -653,7 +653,7 @@ fn add_item(
             let name = item.string("name").or_else(|| text.as_ref().and_then(LayerText::name));
             layers.push(Layer {
                 id: lid,
-                name: name.unwrap_or_else(|| "Layer".to_owned()),
+                name: name.unwrap_or_else(|| "Слой".to_owned()),
                 visible: !item.bool("hidden").unwrap_or(false),
                 opacity: item.real("opacity").unwrap_or(1.0) as f32,
                 blend: blend_from(blend),
@@ -676,7 +676,7 @@ fn add_item(
                 let mid = id();
                 layers.push(Layer {
                     id: mid,
-                    name: "Layer Mask".to_owned(),
+                    name: "Маска слоя".to_owned(),
                     visible: !mask.bool("hidden").unwrap_or(false),
                     opacity: 1.0,
                     blend: BlendMode::Normal,
@@ -1775,7 +1775,7 @@ mod tests {
         });
         let back = read(&bytes).unwrap();
         let d = &back.document;
-        assert_eq!(back.name, "Untitled Artwork");
+        assert_eq!(back.name, "Новая работа");
         let group = d.layers().iter().find(|l| l.kind == LayerKind::Group).unwrap();
         assert_eq!(group.name, "Pair");
         assert!(group.collapsed);

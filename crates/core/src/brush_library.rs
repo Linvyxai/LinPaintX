@@ -99,7 +99,7 @@ pub(crate) fn place_of(library: &[LibrarySet], origin: (usize, usize)) -> (usize
 
 /// What a new brush starts as.
 fn blank_brush() -> Brush {
-    Brush { name: "Untitled Brush".to_owned(), ..Brush::round_pen() }
+    Brush { name: "Новая кисть".to_owned(), ..Brush::round_pen() }
 }
 
 /// What a brush file gave a grain, as kept: its image's width and, if it has one at more than the
@@ -893,7 +893,7 @@ impl CanvasSession {
         let mut st = self.shared.lock();
         st.library.insert(
             0,
-            LibrarySet { name: "Untitled Set".to_owned(), brushes: Vec::new(), origins: Vec::new(), icon: BRUSH_ICON },
+            LibrarySet { name: "Новый набор".to_owned(), brushes: Vec::new(), origins: Vec::new(), icon: BRUSH_ICON },
         );
         st.move_brush_refs(|(s, i)| Some((s + 1, i)));
         0
@@ -1252,7 +1252,7 @@ impl CanvasSession {
             let icon = saved.set.icon_now();
             let origins = saved.set.brushes.iter().map(|b| b.from).collect();
             let brushes = saved.set.brushes.into_iter().map(|b| st.restored(b)).collect();
-            let name = if saved.set.name.trim().is_empty() { "Untitled Set".to_owned() } else { saved.set.name };
+            let name = if saved.set.name.trim().is_empty() { "Новый набор".to_owned() } else { saved.set.name };
             st.library.insert(0, LibrarySet { name, brushes, origins, icon });
             st.move_brush_refs(|(rs, ri)| Some((rs + 1, ri)));
             return Some(0);

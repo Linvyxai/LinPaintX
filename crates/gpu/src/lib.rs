@@ -14,9 +14,9 @@ use std::sync::{Arc, OnceLock};
 
 pub use canvas::plugin_filter::{FilterCode, FilterProgram, FilterRun, read_filter};
 pub use canvas::{
-    Backdrop, Canvas, DisplayLut, Filter, LiquifyMode, LiquifyStamp, Readback, ReadyToPark, RemakeStats, Resample,
-    SecondStroke, SelectionLook, SharedStroke, SmallScene, Stripes, StrokeStyle, StrokeTool, SurroundGrid, Target,
-    Thumbnail, most_resident, read_texture, start_reading, textures_bytes,
+    Backdrop, Canvas, CanvasHistory, DisplayLut, Filter, HistoryPixels, HistoryStep, HistoryStore, LiquifyMode, LiquifyStamp, Readback,
+    ReadyToPark, RemakeStats, Resample, SecondStroke, SelectionLook, SharedStroke, SmallScene, Stripes, StrokeStyle, StrokeTool,
+    SurroundGrid, Target, Thumbnail, most_resident, read_texture, start_reading, textures_bytes,
 };
 pub use lighting::Lighting;
 pub use scene::{

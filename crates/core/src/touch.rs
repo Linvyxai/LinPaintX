@@ -1053,10 +1053,9 @@ impl CanvasSession {
                     }
                     return out;
                 }
-                let (from, (last_x, last_ms)) = (t.down_at, t.pour_last);
+                let from = t.down_at;
                 t.pour_last = (at.0, last.time_ms);
                 let start = !std::mem::replace(&mut t.adjust_displacing, true);
-                let step = drag_step((at.0 - last_x) / t.scale, last.time_ms - last_ms);
                 drop(t);
                 let (open, displacing) = {
                     let st = self.shared.lock();
@@ -1083,8 +1082,7 @@ impl CanvasSession {
                     Some(Adjustment::MotionBlur) => self.adjustment_motion(at.0 - from.0, at.1 - from.1),
                     // displacing, the drag moves the fringes
                     Some(_) if displacing => self.adjustment_chroma_drag(at.0 - from.0, at.1 - from.1, start),
-                    // across the canvas the amount follows the drag, faster the faster it goes
-                    Some(a) if crate::adjust_menu::adjustment_swiped(a) => self.adjustment_amount_by(step),
+                    // the amount is set by its own slider, not swiped across the canvas
                     _ => return out,
                 }
                 out.push(TouchCommand::AdjustChanged);
@@ -1442,7 +1440,7 @@ impl CanvasSession {
         }
         self.end_shape_with(t, out);
         let adjusting = self.shared.lock().adjust.open();
-        let draws = is_pen(kind) || kind == PointerKind::Mouse;
+        let draws = is_pen(kind) || kind == PointerKind::Mouse || t.settings.finger_paint;
         if let Some((open, pencil)) = adjusting
             && (open == Adjustment::Clone || (pencil && draws))
         {
@@ -1455,8 +1453,8 @@ impl CanvasSession {
                 t.mode = Mode::Puck;
                 return;
             }
-            // cloning, and the pen (or a mouse, a desktop's drawing tool) painting an adjustment
-            // on, paint (no eyedropper); the clone source follows the brush
+            // cloning, and painting an adjustment on with the brush (Pencil), paints with the pen, a
+            // mouse, or a finger set to paint; the clone source follows the brush
             t.mode = if is_pen(kind) { Mode::Pen } else { Mode::Finger };
             t.hold_at = at;
             self.clone_stroke_at(at, true);
@@ -3019,26 +3017,42 @@ mod tests {
     }
 
     #[test]
-    fn an_adjustments_amount_is_swiped_and_a_tap_asks_for_its_menu() {
+    fn an_adjustments_amount_is_set_by_its_slider_and_a_tap_asks_for_its_menu() {
         let s = session();
         s.shared.lock().adjust = crate::adjusting::Adjusting::opened(Adjustment::GaussianBlur);
+        // a swipe across the canvas changes nothing (the amount is its own slider now)
         let out = s.touch_down(1, PointerKind::Finger, at(10.0, 30.0, 0.0));
         assert!(!out.iter().any(|c| matches!(c, TouchCommand::Cursor { .. })), "{out:?}");
         let out = s.touch_move(1, at(60.0, 30.0, 30.0));
-        assert!(out.contains(&TouchCommand::AdjustChanged), "{out:?}");
-        let swiped = s.adjustment_shown().amount;
-        assert!(swiped > 0.0, "{swiped}");
-        let out = s.touch_up(1, at(60.0, 30.0, 40.0));
-        assert!(!out.iter().any(|c| matches!(c, TouchCommand::AdjustMenu { .. })), "{out:?}");
-        // back the other way, the amount goes down
+        assert!(!out.contains(&TouchCommand::AdjustChanged), "{out:?}");
+        assert_eq!(s.adjustment_shown().amount, 0.0);
+        // the amount is set outright by the slider, and the swipe leaves it be
+        s.set_adjustment_amount(0.6);
+        assert_eq!(s.adjustment_shown().amount, 0.6);
         s.touch_down(1, PointerKind::Finger, at(60.0, 30.0, 100.0));
         s.touch_move(1, at(20.0, 30.0, 130.0));
         s.touch_up(1, at(20.0, 30.0, 140.0));
-        assert!(s.adjustment_shown().amount < swiped);
+        assert_eq!(s.adjustment_shown().amount, 0.6, "the swipe no longer moves the amount");
         // a tap asks for the menu where it was
         s.touch_down(1, PointerKind::Finger, at(30.0, 30.0, 300.0));
         let out = s.touch_up(1, at(31.0, 30.0, 350.0));
         assert!(out.contains(&TouchCommand::AdjustMenu { x: 31.0, y: 30.0 }), "{out:?}");
+    }
+
+    #[test]
+    fn a_finger_paints_an_adjustment_on_in_pencil_mode() {
+        let s = session();
+        {
+            let mut st = s.shared.lock();
+            st.adjust = crate::adjusting::Adjusting::opened(Adjustment::GaussianBlur);
+        }
+        s.adjustment_pencil(true);
+        // a finger paints the adjustment on (a stroke), rather than swiping its amount
+        s.touch_down(1, PointerKind::Finger, at(10.0, 30.0, 0.0));
+        let out = s.touch_move(1, at(60.0, 30.0, 30.0));
+        assert!(!out.contains(&TouchCommand::AdjustChanged), "paints, not the amount: {out:?}");
+        let out = s.touch_up(1, at(60.0, 30.0, 40.0));
+        assert!(out.contains(&TouchCommand::StrokeEnded), "the finger's stroke ends: {out:?}");
     }
 
     /// A session with perspective blur open on a 1000 × 800 canvas seen one to one, its puck in
@@ -3073,17 +3087,15 @@ mod tests {
         assert!(!out.iter().any(|c| matches!(c, TouchCommand::AdjustMenu { .. })), "{out:?}");
         assert_eq!(puck(&s), [600.0, 450.0, 600.0, 350.0]);
         assert_eq!(s.adjustment_shown().amount, 0.0);
-        // away from it the amount is swiped, the puck staying
+        // away from it a swipe changes nothing (the amount is its own slider now)
         s.touch_down(1, PointerKind::Finger, at(900.0, 400.0, 100.0));
         s.touch_move(1, at(980.0, 400.0, 130.0));
         s.touch_up(1, at(980.0, 400.0, 140.0));
-        let amount = s.adjustment_shown().amount;
-        assert!(amount > 0.0);
+        assert_eq!(s.adjustment_shown().amount, 0.0);
         assert_eq!(puck(&s), [600.0, 450.0, 600.0, 350.0]);
-        // undo puts the puck back, the amount staying; redo moves it again
-        assert_eq!(s.undo().as_deref(), Some("Perspective Blur"));
+        // undo puts the puck back; redo moves it again
+        s.undo();
         assert_eq!(puck(&s), [500.0, 400.0, 500.0, 300.0]);
-        assert_eq!(s.adjustment_shown().amount, amount);
         s.redo();
         assert_eq!(puck(&s), [600.0, 450.0, 600.0, 350.0]);
     }
@@ -3106,11 +3118,11 @@ mod tests {
         s.touch_move(1, at(410.0, 440.0, 230.0));
         s.touch_up(1, at(410.0, 440.0, 240.0));
         assert_eq!(puck(&s), [530.0, 440.0, 630.0, 440.0]);
-        // beyond its reach (150 points) the amount is swiped
+        // beyond its reach (150 points) a swipe changes nothing (the amount is its own slider)
         s.touch_down(1, PointerKind::Finger, at(530.0, 140.0, 300.0));
         s.touch_move(1, at(600.0, 140.0, 330.0));
         s.touch_up(1, at(600.0, 140.0, 340.0));
-        assert!(s.adjustment_shown().amount > 0.0);
+        assert_eq!(s.adjustment_shown().amount, 0.0);
         assert_eq!(puck(&s), [530.0, 440.0, 630.0, 440.0]);
         // undo steps back the move, then the turn
         s.undo();

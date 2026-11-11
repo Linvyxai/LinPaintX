@@ -74,6 +74,7 @@ mod text_draw;
 mod timelapse;
 mod touch;
 mod transform;
+mod undo_history;
 #[cfg(target_os = "android")]
 mod window;
 // the iPad app's window is its layer: taken and drawn into as Android's is
@@ -126,8 +127,9 @@ pub use history::ColourHistory;
 pub use hues::{HueControl, RING_HUES, SLIDER_HUES, hue_at, hue_position, hue_stops};
 pub use keys::{KeyCombo, KeyDrag, KeyShortcut, ShortcutGroup, ShortcutRow, key_shortcut, key_shortcut_list};
 pub use layers::{
-    BlendModeInfo, Blocked, HiddenBy, LayerInfo, LayerOption, LayerOptionRow, LayerType, ThumbnailImage, blend_modes,
-    brush_blend_modes, combine_blend_modes, grain_blend_modes, layers_for, set_resident_budget,
+    BlendModeInfo, Blocked, HiddenBy, LayerInfo, LayerOption, LayerOptionRow, LayerType, ThumbnailImage,
+    apply_background_mask, background_mask, blend_modes, brush_blend_modes, combine_blend_modes, grain_blend_modes,
+    layers_for, remove_background, set_resident_budget,
 };
 pub use liquify::liquify_reach;
 pub use modes::{ModeButton, ModeSwitch, Modes, mode_switch};
@@ -189,6 +191,7 @@ pub use transform::{
     GuideSettings, Interpolation, ScreenBox, TransformAction, TransformBox, TransformHandle, TransformKind, handle_at,
     mesh_handle_at, screen_box, shown_mesh_points,
 };
+pub use undo_history::set_history_limit;
 
 /// Colour around the canvas, sRGB; and with the light interface.
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
@@ -381,6 +384,16 @@ impl State {
     }
 }
 
+/// Gives `canvas` the artwork's spilled history (in the folder `dir` names), once: the steps the
+/// canvas drops out of its window are kept there instead of being lost.
+pub(crate) fn attach_history_journal(dir: Option<&str>, canvas: &mut procraft_gpu::Canvas) {
+    let Some(dir) = dir else { return };
+    if canvas.has_history_store() {
+        return;
+    }
+    canvas.set_history_store(Some(Box::new(undo_history::HistoryJournal::open(std::path::Path::new(dir)))));
+}
+
 pub(crate) struct State {
     pub(crate) doc: Document,
     /// Fitted once the window's size is known.
@@ -502,6 +515,11 @@ pub(crate) struct State {
     pub(crate) info: project::ArtworkInfo,
     /// Saved layer pixels waiting for the canvas (an opened artwork before it is shown).
     pub(crate) pending_pixels: Vec<(procraft_engine::document::LayerId, project::Opened)>,
+    /// Undo and redo read with an artwork, installed once its GPU canvas exists.
+    pub(crate) pending_history: Option<procraft_gpu::CanvasHistory>,
+    /// The artwork's folder, for the history spilled beyond the canvas's window (none until an
+    /// artwork is opened or first saved).
+    pub(crate) history_dir: Option<String>,
     /// The canvas couldn't be made from these pixels (a failure elsewhere doesn't stop the next try).
     pub(crate) canvas_failed: bool,
     /// Let go of (see [`CanvasSession::release_canvas`]): no canvas is made again.
@@ -551,6 +569,8 @@ pub(crate) struct State {
     /// Crop and Resize as it is edited.
     crop_edit: crop_edit::CropEdit,
     last_filter: Option<procraft_gpu::Filter>,
+    /// Last expensive full-canvas filter preview while an adjustment was painted on.
+    pencil_filter_frame: Option<std::time::Instant>,
     /// The liquify brush as it goes.
     liquify: liquify::LiquifyRun,
     /// The brush studio is open on this (set, brush), and the brush as it opened.
@@ -890,7 +910,16 @@ impl State {
             Ok(c)
         });
         match made.and_then(|made| made) {
-            Ok(c) => self.canvas = Some(c),
+            Ok(mut c) => {
+                if let Some(history) = self.pending_history.take()
+                    && let Err(e) = c.restore_history(gpu, history)
+                {
+                    log::error!("restoring artwork history: {e}");
+                }
+                attach_history_journal(self.history_dir.as_deref(), &mut c);
+                c.reconcile_history_store();
+                self.canvas = Some(c);
+            }
             Err(e) => {
                 log::error!("canvas: {e}");
                 self.error = Some(e.to_string());
@@ -1195,8 +1224,15 @@ impl Shared {
         }
         let same = st.doc == doc && st.pending_pixels.iter().map(|(id, _)| *id).eq(ids.iter().copied());
         match made.and_then(|made| made) {
-            Ok(c) if same => {
+            Ok(mut c) if same => {
                 st.pending_pixels.clear();
+                if let Some(history) = st.pending_history.take()
+                    && let Err(e) = c.restore_history(&gpu, history)
+                {
+                    log::error!("restoring artwork history: {e}");
+                }
+                attach_history_journal(st.history_dir.as_deref(), &mut c);
+                c.reconcile_history_store();
                 st.canvas = Some(c);
             }
             Ok(_) => st.ensure_canvas(),
@@ -1333,6 +1369,7 @@ impl CanvasSession {
             filters: plugin_filter::Filters::default(),
             crop_edit: crop_edit::CropEdit::default(),
             last_filter: None,
+            pencil_filter_frame: None,
             liquify: liquify::LiquifyRun::default(),
             studio: None,
             studio_second: false,
@@ -1358,6 +1395,8 @@ impl CanvasSession {
             guide_before: None,
             name,
             pending_pixels: project::opened(pixels),
+            pending_history: None,
+            history_dir: None,
             canvas_failed: false,
             closed: false,
             fit_insets: [0.0; 4],
@@ -1587,8 +1626,9 @@ impl CanvasSession {
         }
         st.remember_input(&canvas_samples);
         let (Some(builder), Some(canvas)) = (st.stroke.as_mut(), st.canvas.as_mut()) else { return };
-        if draw_samples(canvas, builder, st.second.as_mut(), &canvas_samples, &st.doc.stroke_guide()) {
-            st.redraw_painted_on();
+        if draw_samples(canvas, builder, st.second.as_mut(), &canvas_samples, &st.doc.stroke_guide())
+            && (!st.pencil || st.redraw_painted_on(false))
+        {
             self.shared.frame(st);
         }
     }
@@ -1655,7 +1695,7 @@ impl CanvasSession {
             second.add(&canvas_samples);
         }
         close_stroke(canvas, builder, second, &st.doc.stroke_guide());
-        st.redraw_painted_on();
+        st.redraw_painted_on(true);
         st.bake_painted_on();
         st.remember_last_stroke();
         self.shared.frame(st);

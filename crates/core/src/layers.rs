@@ -70,6 +70,7 @@ pub struct BackgroundInfo {
     pub g: f32,
     pub b: f32,
     pub visible: bool,
+    pub checkerboard: bool,
 }
 
 /// A small premultiplied RGBA image, rows top to bottom.
@@ -78,6 +79,34 @@ pub struct ThumbnailImage {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
+}
+
+/// Removes the background of a straight (non-premultiplied) RGBA8 picture with a U2-Net neural
+/// network: its alpha is multiplied by the saliency mask. `threshold` (0..1) is where the cut
+/// lands, `softness` (0..1) how feathered the edges are. None if the network can't run (the
+/// picture is then used unchanged).
+#[uniffi::export]
+pub fn remove_background(rgba: Vec<u8>, width: u32, height: u32, threshold: f32, softness: f32) -> Option<Vec<u8>> {
+    procraft_engine::matting::remove_background(&rgba, width, height, threshold, softness)
+}
+
+/// Finds a photo's subject once. The returned mask can be reused while the cut controls move.
+#[uniffi::export]
+pub fn background_mask(rgba: Vec<u8>, width: u32, height: u32) -> Option<Vec<u8>> {
+    procraft_engine::matting::background_mask(&rgba, width, height)
+}
+
+/// Applies a previously found subject mask with the requested cut and feather.
+#[uniffi::export]
+pub fn apply_background_mask(
+    rgba: Vec<u8>,
+    width: u32,
+    height: u32,
+    mask: Vec<u8>,
+    threshold: f32,
+    softness: f32,
+) -> Option<Vec<u8>> {
+    procraft_engine::matting::apply_background_mask(&rgba, width, height, &mask, threshold, softness)
 }
 
 /// What a row of a layer's options menu does.
@@ -118,10 +147,10 @@ fn lock_name(d: &Document, id: LayerId, on: bool) -> &'static str {
     let by_group = |l: &procraft_engine::document::Layer| !on && !l.locked && !d.locked_groups(id).is_empty();
     let group = d.layer(id).is_some_and(|l| l.kind == LayerKind::Group || by_group(l));
     match (on, group) {
-        (true, false) => "Lock layer",
-        (false, false) => "Unlock layer",
-        (true, true) => "Lock Layer Group",
-        (false, true) => "Unlock Layer Group",
+        (true, false) => "Заблокировать слой",
+        (false, false) => "Разблокировать слой",
+        (true, true) => "Заблокировать группу слоёв",
+        (false, true) => "Разблокировать группу слоёв",
     }
 }
 
@@ -137,67 +166,67 @@ fn layer_options(l: &LayerInfo, masked: bool, guided: bool) -> Vec<LayerOptionRo
         rows.push(LayerOptionRow { option, label: label.to_owned(), enabled: true, switch_on });
     };
     if unlocked {
-        row(O::Rename, "Rename", None);
+        row(O::Rename, "Переименовать", None);
     }
     match l.kind {
         LayerType::Group => {
             if unlocked {
-                row(O::Ungroup, "Ungroup", None);
-                row(O::Flatten, "Flatten", None);
+                row(O::Ungroup, "Разгруппировать", None);
+                row(O::Flatten, "Объединить группу", None);
             }
         }
         LayerType::Mask => {
             if unlocked {
-                row(O::Select, "Select", None);
-                row(O::Fill, "Fill Layer", None);
-                row(O::Clear, "Clear", None);
-                row(O::Invert, "Invert", None);
+                row(O::Select, "Выбрать", None);
+                row(O::Fill, "Залить слой", None);
+                row(O::Clear, "Очистить", None);
+                row(O::Invert, "Инвертировать", None);
             }
         }
         LayerType::Paint => {
-            row(O::Select, "Select", None);
-            row(O::Copy, "Copy", None);
+            row(O::Select, "Выбрать", None);
+            row(O::Copy, "Копировать", None);
             // a text layer's pixels come from its text: nothing to fill, clear, lock or invert
             if !l.text && unlocked {
-                row(O::Fill, "Fill Layer", None);
-                row(O::Clear, "Clear", None);
-                row(O::AlphaLock, "Alpha Lock", Some(l.alpha_lock));
+                row(O::Fill, "Залить слой", None);
+                row(O::Clear, "Очистить", None);
+                row(O::AlphaLock, "Блокировка альфа-канала", Some(l.alpha_lock));
             }
             // one mask each: with one, its Merge Mask comes last instead
             if !masked {
-                row(O::Mask, "Mask", None);
+                row(O::Mask, "Маска", None);
             }
             if l.can_clip {
-                row(O::ClippingMask, "Clipping Mask", Some(l.clipped));
+                row(O::ClippingMask, "Обтравочная маска", Some(l.clipped));
             }
             if l.text {
                 if unlocked {
-                    row(O::EditText, "Edit Text", None);
-                    row(O::Rasterize, "Rasterize", None);
+                    row(O::EditText, "Изменить текст", None);
+                    row(O::Rasterize, "Растрировать", None);
                 }
             } else {
                 // offered once the canvas's drawing guide has been on (on or off since), or while
                 // the layer has it
                 if guided || l.assisted {
-                    row(O::DrawingAssist, "Drawing Assist", Some(l.assisted));
+                    row(O::DrawingAssist, "Помощник рисования", Some(l.assisted));
                 }
                 if unlocked {
-                    row(O::Invert, "Invert", None);
+                    row(O::Invert, "Инвертировать", None);
                 }
             }
-            row(O::Reference, "Reference", Some(l.reference));
+            row(O::Reference, "Референс", Some(l.reference));
         }
     }
     if l.kind != LayerType::Mask && unlocked {
         if l.can_merge {
-            row(O::MergeDown, "Merge Down", None);
+            row(O::MergeDown, "Объединить с нижним", None);
         }
         if l.can_combine {
-            row(O::CombineDown, "Combine Down", None);
+            row(O::CombineDown, "Свести с нижним", None);
         }
     }
     if masked && unlocked {
-        row(O::MergeMask, "Merge Mask", None);
+        row(O::MergeMask, "Применить маску", None);
     }
     rows
 }
@@ -389,7 +418,7 @@ impl CanvasSession {
     pub fn background(&self) -> BackgroundInfo {
         let st = self.shared.lock();
         let [r, g, b] = st.doc.background;
-        BackgroundInfo { r, g, b, visible: st.doc.background_visible }
+        BackgroundInfo { r, g, b, visible: st.doc.background_visible, checkerboard: st.doc.background_checkerboard }
     }
 
     /// A new empty layer above the current one; it becomes current.
@@ -409,7 +438,7 @@ impl CanvasSession {
             let pages = d.animation.as_ref().is_some_and(|a| a.pages);
             let id = d.add_layer();
             let n = procraft_engine::animation::frames(d).len();
-            d.rename(id, &format!("{} {n}", if pages { "Page" } else { "Frame" }));
+            d.rename(id, &format!("{} {n}", if pages { "Страница" } else { "Кадр" }));
             Some(id.0)
         })
         .unwrap_or(0)
@@ -830,7 +859,8 @@ impl CanvasSession {
     /// "Undo lock Layer Group").
     pub fn set_layer_locked(&self, id: u64, on: bool) -> bool {
         let said = lock_name(&self.shared.lock().doc, LayerId(id), on);
-        let name = said[..1].to_lowercase() + &said[1..];
+        let mut chars = said.chars();
+        let name = chars.next().map_or_else(String::new, |first| first.to_lowercase().chain(chars).collect());
         self.change(&name, |d| {
             let id = LayerId(id);
             let differs = if on { d.layer(id).is_some_and(|l| !l.locked) } else { d.is_locked(id) };
@@ -862,6 +892,15 @@ impl CanvasSession {
         self.change(if visible { "show background" } else { "hide background" }, |d| {
             (d.background_visible != visible).then(|| {
                 d.background_visible = visible;
+            })
+        })
+        .is_some()
+    }
+
+    pub fn set_background_checkerboard(&self, on: bool) -> bool {
+        self.change(if on { "show background checkerboard" } else { "hide background checkerboard" }, |d| {
+            (d.background_checkerboard != on).then(|| {
+                d.background_checkerboard = on;
             })
         })
         .is_some()

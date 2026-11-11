@@ -61,7 +61,7 @@ pub fn read_store(text: &str) -> Option<(Vec<Palette>, usize)> {
             // one damaged in part keeps what can be read: a name it can't be "Untitled Palette",
             // colours it can't be empty slots (dropped, it would be gone at the next write)
             p.as_object()?;
-            let name = p.get("name").and_then(Value::as_str).unwrap_or("Untitled Palette").to_owned();
+            let name = p.get("name").and_then(Value::as_str).unwrap_or("Новая палитра").to_owned();
             let colors = p.get("colors").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default();
             // a colour kept with its alpha, as a signed 32-bit number, keeps its red, green and blue
             Some(Palette::new(name, colors.iter().map(|c| c.as_i64().map(|v| (v as u32) & 0xFF_FFFF))))
@@ -126,7 +126,7 @@ pub fn read_swatches(bytes: &[u8]) -> Option<Palette> {
         s.is_object().then(|| hsb_to_rgb(f("hue"), f("saturation"), f("brightness")))
     });
     let name =
-        root.get("name").and_then(Value::as_str).map(str::trim).filter(|n| !n.is_empty()).unwrap_or("Untitled Palette");
+        root.get("name").and_then(Value::as_str).map(str::trim).filter(|n| !n.is_empty()).unwrap_or("Новая палитра");
     Some(Palette::new(name, colors))
 }
 
@@ -566,7 +566,7 @@ mod tests {
         let damaged = r#"{"default":0,"palettes":[{"colors":[1193046]},{"name":"Bare","colors":"x"},7]}"#;
         let (palettes, _) = read_store(damaged).unwrap();
         let shown: Vec<(&str, Option<u32>)> = palettes.iter().map(|p| (p.name.as_str(), p.colors[0])).collect();
-        assert_eq!(shown, vec![("Untitled Palette", Some(0x123456)), ("Bare", None)]);
+        assert_eq!(shown, vec![("Новая палитра", Some(0x123456)), ("Bare", None)]);
     }
 
     #[test]

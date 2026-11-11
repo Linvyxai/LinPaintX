@@ -114,12 +114,12 @@ abstract class UniffiBindgen : DefaultTask() {
 }
 
 android {
-    namespace = "io.github.artcraftandroid.procraft"
+    namespace = "com.linpaintx"
     compileSdk = 37
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "io.github.artcraftandroid.procraft"
+        applicationId = "com.linpaintx"
         minSdk = minApi
         targetSdk = 36
         versionCode = appVersionCode

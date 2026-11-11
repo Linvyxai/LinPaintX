@@ -605,6 +605,11 @@ impl CanvasSession {
         self.change_adjustment(|a, _| a.amount = (a.amount + step).clamp(0.0, 1.0));
     }
 
+    /// The amount set outright (0..1), as a slider would.
+    pub fn set_adjustment_amount(&self, amount: f32) {
+        self.change_adjustment(|a, _| a.amount = amount.clamp(0.0, 1.0));
+    }
+
     /// A motion blur's drag reached (`dx`, `dy`) window pixels from where it began: along it,
     /// longer the further it goes.
     pub fn adjustment_motion(&self, dx: f32, dy: f32) {

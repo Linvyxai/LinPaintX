@@ -24,7 +24,7 @@ pub(crate) fn take(id: u64) -> Option<NativeWindow> {
 /// `NativeWindows.acquire(surface: Surface): Long`: registers the surface's native window and
 /// returns its id (0 if there is none).
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_artcraftandroid_procraft_canvas_NativeWindows_acquire(
+pub extern "system" fn Java_com_linpaintx_canvas_NativeWindows_acquire(
     env: *mut JNIEnv,
     _class: jclass,
     surface: jobject,
@@ -42,7 +42,7 @@ pub extern "system" fn Java_io_github_artcraftandroid_procraft_canvas_NativeWind
 
 /// `NativeWindows.release(id: Long)`: lets go of a window that was never attached.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_artcraftandroid_procraft_canvas_NativeWindows_release(
+pub extern "system" fn Java_com_linpaintx_canvas_NativeWindows_release(
     _env: *mut JNIEnv,
     _class: jclass,
     id: jlong,

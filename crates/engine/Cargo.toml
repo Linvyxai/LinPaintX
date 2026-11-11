@@ -14,3 +14,6 @@ workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 miniz_oxide = { workspace = true }
+# background removal (U2-Net): ONNX inference on the CPU, no C++ runtime; the transformers
+# feature is for language models and is left out to keep the binary small
+tract-onnx = { version = "0.23", default-features = false }

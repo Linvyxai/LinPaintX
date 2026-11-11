@@ -2,7 +2,7 @@
 # functions and structures by reflection: keep both.
 -keep class com.sun.jna.** { *; }
 -keep class * implements com.sun.jna.** { *; }
--keep class io.github.artcraftandroid.procraft.core.** { *; }
+-keep class com.linpaintx.core.** { *; }
 # the JNI functions the library exports are found by these names
--keep class io.github.artcraftandroid.procraft.canvas.NativeWindows { *; }
+-keep class com.linpaintx.canvas.NativeWindows { *; }
 -dontwarn java.awt.**

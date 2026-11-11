@@ -31,8 +31,15 @@ const AUTOSAVE_EVERY: std::time::Duration = std::time::Duration::from_millis(if 
 const AUTOSAVE_AGAIN: std::time::Duration = std::time::Duration::from_millis(if cfg!(test) { 5 } else { 250 });
 /// A package's preview's longest side, pixels.
 const PACKAGE_PREVIEW_SIDE: u32 = 1024;
-const FORMAT: &str = "procraft-artwork";
+const FORMAT: &str = "linpaintx-artwork";
+const LEGACY_FORMAT: &str = "procraft-artwork";
 const VERSION: u32 = 1;
+const HISTORY_FILE: &str = "history.bin";
+const HISTORY_FILE_MAX: u64 = 800 << 20;
+
+fn supported_format(format: &str) -> bool {
+    matches!(format, FORMAT | LEGACY_FORMAT)
+}
 
 /// Whether the artwork in `dir` plays: a model, which turns, or Animation Assist or Page Assist on, from its file alone.
 #[uniffi::export]
@@ -168,6 +175,7 @@ pub(crate) struct SaveSnapshot {
     gpu: Option<procraft_gpu::Gpu>,
     /// The Reference window's picture, if it has one.
     reference_picture: Option<Arc<Vec<u8>>>,
+    history: Option<procraft_gpu::CanvasHistory>,
 }
 
 /// How much of a save's layers may still be on their way back from the GPU when the lock is let
@@ -282,6 +290,7 @@ impl crate::State {
         let mut files = Vec::new();
         let mut composite = None;
         let mut unshown = None;
+        let mut history = self.pending_history.clone();
         let mut changed_ids = Vec::new();
         // shown but its canvas still being made (on another thread): made now, so the save has its
         // picture for the gallery
@@ -290,6 +299,8 @@ impl crate::State {
         }
         if let (Some(canvas), Some(gpu)) = (self.canvas.as_mut(), self.gpu.as_ref()) {
             canvas.render(gpu, &mut self.doc, None);
+            canvas.flush_history_store();
+            history = Some(canvas.history_snapshot(gpu).map_err(|e| file_error("reading undo history", e))?);
             let changed_now = canvas.take_changed();
             changed_ids = changed_now.iter().copied().collect();
             let mut read_all = || -> Result<(), MobileError> {
@@ -354,6 +365,7 @@ impl crate::State {
             model,
             gpu,
             reference_picture,
+            history,
         })
     }
 }
@@ -442,6 +454,11 @@ impl CanvasSession {
             if !st.idle() {
                 return Ok(false);
             }
+            st.history_dir = Some(dir.to_owned());
+            let history_dir = st.history_dir.clone();
+            if let Some(canvas) = st.canvas.as_mut() {
+                crate::attach_history_journal(history_dir.as_deref(), canvas);
+            }
             // a model saves its colour as the artwork's document
             let known = saved.known(Path::new(dir));
             (st.with_colour(|st| st.save_snapshot(Path::new(dir), &known))?, st.edits())
@@ -455,7 +472,7 @@ impl CanvasSession {
 /// Writes a save into `dir` (made if missing): the layers that changed since the last save there,
 /// the thumbnail and the document.
 fn write_artwork(saved: &mut Saved, dir: &Path, snapshot: SaveSnapshot) -> Result<(), MobileError> {
-    let SaveSnapshot { file, mut layers, reading, files, composite, unshown, model, gpu, reference_picture, .. } =
+    let SaveSnapshot { file, mut layers, reading, files, composite, unshown, model, gpu, reference_picture, history, .. } =
         snapshot;
     // what was still on its way back: those unchanged since the last save there are let go
     for (id, read) in reading {
@@ -542,6 +559,15 @@ fn write_artwork(saved: &mut Saved, dir: &Path, snapshot: SaveSnapshot) -> Resul
             });
             stage(written, picture_path, &mut staged)?;
         }
+        if let Some(history) = history.as_ref() {
+            let bytes = bincode::serialize(history).map_err(|e| file_error("writing undo history", e))?;
+            let to = dir.join(HISTORY_FILE);
+            stage(
+                write_beside(&to, |p| fs::write(p, &bytes).map_err(|e| file_error("writing undo history", e))),
+                to,
+                &mut staged,
+            )?;
+        }
         let json = serde_json::to_string(&file).map_err(|e| file_error("writing the artwork", e))?;
         let doc = dir.join("artwork.json");
         stage(
@@ -608,7 +634,7 @@ impl CanvasSession {
         }
         doc.background_visible = background_visible;
         let name = if name.trim().is_empty() {
-            "Untitled Artwork".to_owned()
+            "Новая работа".to_owned()
         } else {
             name.trim().chars().take(256).collect()
         };
@@ -651,7 +677,7 @@ impl CanvasSession {
         let doc = Document::new(w, h);
         let layer = doc.current();
         let name = if name.trim().is_empty() {
-            "Untitled Artwork".to_owned()
+            "Новая работа".to_owned()
         } else {
             name.trim().chars().take(256).collect()
         };
@@ -664,7 +690,7 @@ impl CanvasSession {
         let dir = PathBuf::from(dir);
         let text = fs::read_to_string(dir.join("artwork.json")).map_err(|e| file_error("reading the artwork", e))?;
         let file: ArtworkFile = serde_json::from_str(&text).map_err(|e| file_error("reading the artwork", e))?;
-        if file.format != FORMAT || file.version > VERSION {
+        if !supported_format(&file.format) || file.version > VERSION {
             return Err(MobileError::File {
                 reason: format!("not an artwork this version can open ({} {})", file.format, file.version),
             });
@@ -684,6 +710,17 @@ impl CanvasSession {
             }
         }
         let scene = file.model.as_ref().map(|m| crate::scene3d::open_saved_model(&dir, m)).transpose()?;
+        let history = fs::metadata(dir.join(HISTORY_FILE))
+            .ok()
+            .filter(|m| m.len() <= HISTORY_FILE_MAX)
+            .and_then(|_| fs::read(dir.join(HISTORY_FILE)).ok())
+            .and_then(|bytes| match bincode::deserialize::<procraft_gpu::CanvasHistory>(&bytes) {
+                Ok(history) => Some(history),
+                Err(e) => {
+                    log::error!("reading undo history: {e}");
+                    None
+                }
+            });
         let session = CanvasSession::with_document(doc, file.name, Vec::new());
         // its files are as the last save left them: one unchanged since isn't written again
         let reference_picture = fs::read(dir.join(crate::reference_window::REFERENCE_PICTURE)).ok();
@@ -695,6 +732,8 @@ impl CanvasSession {
         {
             let mut st = session.shared.lock();
             st.pending_pixels = pngs;
+            st.pending_history = history;
+            st.history_dir = Some(dir.to_string_lossy().into_owned());
             st.info = file.info;
             st.saved_view = file.view;
             st.scene = scene;
@@ -714,6 +753,12 @@ impl CanvasSession {
             let mut guard = self.shared.lock_finished();
             let st = &mut *guard;
             st.finish_stroke();
+            // the spilled history goes in the artwork's folder, whichever it is
+            st.history_dir = Some(dir.clone());
+            let history_dir = st.history_dir.clone();
+            if let Some(canvas) = st.canvas.as_mut() {
+                crate::attach_history_journal(history_dir.as_deref(), canvas);
+            }
             // a model saves its colour as the artwork's document
             let known = saved.known(Path::new(&dir));
             (st.with_colour(|st| st.save_snapshot(Path::new(&dir), &known))?, st.edits())
@@ -997,6 +1042,44 @@ impl CanvasSession {
     }
 }
 
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+
+    #[test]
+    fn document_without_checkerboard_setting_uses_light_variant() {
+        let mut json = serde_json::to_value(Document::new(8, 8)).unwrap();
+        json.as_object_mut().unwrap().remove("background_checkerboard");
+
+        let document: Document = serde_json::from_value(json).unwrap();
+
+        assert!(!document.background_checkerboard);
+    }
+
+    #[test]
+    fn legacy_procraft_artwork_opens() {
+        let dir = std::env::temp_dir().join(format!("linpaintx-legacy-format-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let file = ArtworkFile {
+            format: LEGACY_FORMAT.to_owned(),
+            version: VERSION,
+            name: "Старая работа".to_owned(),
+            document: Document::new(8, 8),
+            info: ArtworkInfo::default(),
+            view: None,
+            model: None,
+            reference: None,
+        };
+        fs::write(dir.join("artwork.json"), serde_json::to_vec(&file).unwrap()).unwrap();
+
+        let opened = CanvasSession::open(dir.to_string_lossy().into_owned()).unwrap();
+
+        assert_eq!(opened.name(), "Старая работа");
+        let _ = fs::remove_dir_all(dir);
+    }
+}
+
 /// The signature kept in the artwork's folder `dir` (about/signature.json): its strokes, each the
 /// x, y of its points across the signature's box (0..1); none if there is none.
 #[uniffi::export]
@@ -1081,7 +1164,7 @@ impl CanvasSession {
             let Some(rgba) = p.layers.get(&l.id) else { continue };
             let base: String =
                 l.name.chars().map(|c| if c.is_alphanumeric() || " _-".contains(c) { c } else { '_' }).collect();
-            let base = if base.trim().is_empty() { "Layer".to_owned() } else { base.trim().to_owned() };
+            let base = if base.trim().is_empty() { "Слой".to_owned() } else { base.trim().to_owned() };
             let mut name = base.clone();
             let mut n = 2;
             while !used.insert(name.clone()) {
@@ -1194,7 +1277,7 @@ fn psd_layers(p: &Pictures) -> Vec<PsdLayer<'_>> {
     }
     if doc.background_visible {
         out.push(PsdLayer {
-            name: "Background",
+            name: "Фон",
             kind: PsdKind::Pixels { rgba: &p.background, mask: None },
             opacity: 1.0,
             visible: true,
@@ -1391,7 +1474,7 @@ impl CanvasSession {
 pub fn export_file_name(name: String, package: bool) -> String {
     let kept: String = name.chars().filter(|c| c.is_alphanumeric() || " _-".contains(*c)).collect();
     let base = match kept.trim() {
-        "" => "Untitled Artwork",
+        "" => "Новая работа",
         k => k,
     };
     if package { base.replace(' ', "_") } else { base.to_owned() }
@@ -1480,7 +1563,7 @@ pub fn import_pages(
         }
         layers.push(Layer {
             id,
-            name: format!("Page {n}"),
+            name: format!("Страница {n}"),
             visible: true,
             opacity: 1.0,
             blend: BlendMode::Normal,
@@ -1502,7 +1585,7 @@ pub fn import_pages(
     }
     doc.animation = Some(procraft_engine::animation::Animation { pages: true, ..Default::default() });
     let name =
-        if name.trim().is_empty() { "Untitled Artwork".to_owned() } else { name.trim().chars().take(256).collect() };
+        if name.trim().is_empty() { "Новая работа".to_owned() } else { name.trim().chars().take(256).collect() };
     // the first page is the gallery's thumbnail until the artwork is opened
     let first = pixels.first().map(|(_, p)| thumbnail(p, w, h, THUMBNAIL_SIDE));
     let session = CanvasSession::with_document(doc, name, pixels);
