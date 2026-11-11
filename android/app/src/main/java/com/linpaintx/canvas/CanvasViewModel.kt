@@ -3212,7 +3212,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (s.pickMoreSubmeshes(index.toUInt())) readMeshes()
 
-        else showNotice("Those meshes aren't in the same texture set", warning = true)
+        else showNotice("Эти меши не из одного набора текстур", warning = true)
 
     }
 
@@ -3372,7 +3372,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             }
 
-            if (s.replaceMaterialMap(l.id, channel.toUInt(), image)) showNotice("Replace Material Map Content")
+            if (s.replaceMaterialMap(l.id, channel.toUInt(), image)) showNotice("Карта материала заменена")
 
             followModelChannel()
 
@@ -5655,7 +5655,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         closePanels()
 
-        if (copied != null) showNotice("Layer copied")
+        if (copied != null) showNotice("Слой скопирован")
 
     }
 
@@ -5677,7 +5677,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             canPaste = clipboard != null
 
-            if (copied != null) showNotice("Canvas copied")
+            if (copied != null) showNotice("Холст скопирован")
 
         }
 
@@ -5705,7 +5705,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         refresh()
 
-        if (cut != null) showNotice("Layer cut")
+        if (cut != null) showNotice("Слой вырезан")
 
         return cut != null
 
@@ -6593,7 +6593,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 refresh()
 
-                showNotice("Frames saved to timeline")
+                showNotice("Кадры сохранены на шкале времени")
 
                 if (done.full) message = noRoom()
 
@@ -6824,7 +6824,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (animation == null || animation?.pages == true) changeAnimationAssist(true) else refresh()
 
-        showNotice("Frames saved to timeline")
+        showNotice("Кадры сохранены на шкале времени")
 
         if (full) message = noRoom()
 
@@ -8831,7 +8831,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         layerChange { it.rasterizeLayer(l.id) }
 
-        showNotice("Text rasterized", warning = true)
+        showNotice("Текст растеризован", warning = true)
 
     }
 
@@ -10874,7 +10874,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         setRgb(before)
 
-        showNotice("Previous colour")
+        showNotice("Прежний цвет")
 
     }
 
@@ -12318,7 +12318,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         session?.adjustmentEnd(commit)
 
-        if (commit) showNotice("Adjustment applied")
+        if (commit) showNotice("Коррекция применена")
 
         adjustModesOpen = false
 
@@ -12764,7 +12764,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         session?.adjustmentApply()
 
-        showNotice("Adjustment applied")
+        showNotice("Коррекция применена")
 
         readAdjust()
 
@@ -13569,7 +13569,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                     said = true
 
-                    showNotice("Finishing the fillтАж")
+                    showNotice("Заливка завершается…")
 
                 }
 
@@ -14123,7 +14123,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         transformPrefs.edit().putBoolean(ADVANCED_MESH, advancedMesh).apply()
 
-        showNotice("Advanced mesh " + if (advancedMesh) "on" else "off")
+        showNotice("Расширенная сетка " + if (advancedMesh) "включена" else "выключена")
 
     }
 
@@ -14131,9 +14131,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     fun changeGuides(g: GuideSettings) {
 
-        if (g.snapping != guides.snapping) showNotice("Snapping " + if (g.snapping) "on" else "off")
+        if (g.snapping != guides.snapping) showNotice("Привязка " + if (g.snapping) "включена" else "выключена")
 
-        else if (g.magnetics != guides.magnetics) showNotice("Magnetics " + if (g.magnetics) "on" else "off")
+        else if (g.magnetics != guides.magnetics) showNotice("Магнитное поле " + if (g.magnetics) "включено" else "выключено")
 
         guides = g
 
@@ -15068,7 +15068,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 clear(it)
 
-                showNotice("Layer cleared")
+                showNotice("Слой очищен")
 
             }
 

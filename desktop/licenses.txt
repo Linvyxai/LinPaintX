@@ -1,4 +1,4 @@
-ProCraft is made with the following third-party software, under the licences given.
+LinPaintX is made with the following third-party software, under the licences given.
 
 The interface font, Inter, is under the SIL Open Font License 1.1 (its text above).
 

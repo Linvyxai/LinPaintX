@@ -1,7 +1,7 @@
 import os
 import SwiftUI
 
-/// ProCraft on the iPad: for now a plain gallery and the canvas the core draws, painted on with the
+/// LinPaintX on the iPad: for now a plain gallery and the canvas the core draws, painted on with the
 /// Pencil and moved with fingers (the interface over it is still to come).
 @main
 struct LinPaintXApp: App {
