@@ -1,4 +1,4 @@
-//! ProCraft's own CMYK profile, made here: a press printing on coated paper, modelled from the
+//! LinPaintX's own CMYK profile, made here: a press printing on coated paper, modelled from the
 //! colours of its inks and their overprints, written as an ICC version 2 output profile with
 //! 16-bit tables (the same tables for every rendering intent).
 //!

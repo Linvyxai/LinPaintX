@@ -1,4 +1,4 @@
-//! ProCraft on the desktop: the engine draws the canvas into the window, and the interface is
+//! LinPaintX on the desktop: the engine draws the canvas into the window, and the interface is
 //! drawn over it with egui, on the same device.
 
 // no console window behind the app on Windows (a debug build keeps it, for the log)
@@ -360,19 +360,19 @@ impl ApplicationHandler for App {
             return;
         }
         let attributes = Window::default_attributes()
-            .with_title("ProCraft")
+            .with_title("LinPaintX")
             .with_window_icon(window_icon())
             .with_inner_size(LogicalSize::new(1440.0, 900.0))
             .with_min_inner_size(LogicalSize::new(640.0, 480.0))
             // opened for a test (PROCRAFT_BACKGROUND set), it leaves the keyboard where it was
             .with_active(std::env::var_os("PROCRAFT_BACKGROUND").is_none());
-        // on Linux the desktop's menus match the window to the app's entry (procraft.desktop)
+        // on Linux the desktop's menus match the window to the app's entry (linpaintx.desktop)
         #[cfg(target_os = "linux")]
         let attributes = {
             use winit::platform::wayland::WindowAttributesExtWayland;
             use winit::platform::x11::WindowAttributesExtX11;
-            let attributes = WindowAttributesExtWayland::with_name(attributes, "procraft", "procraft");
-            WindowAttributesExtX11::with_name(attributes, "procraft", "ProCraft")
+            let attributes = WindowAttributesExtWayland::with_name(attributes, "linpaintx", "linpaintx");
+            WindowAttributesExtX11::with_name(attributes, "linpaintx", "LinPaintX")
         };
         let window = match event_loop.create_window(attributes) {
             Ok(w) => Arc::new(w),
@@ -404,7 +404,7 @@ impl ApplicationHandler for App {
             }
             Err(e) => {
                 log::error!("no GPU for the window:\n{e}");
-                files::tell("ProCraft can't draw", &startup::no_gpu_text(&e));
+                files::tell("LinPaintX can't draw", &startup::no_gpu_text(&e));
                 event_loop.exit();
                 return;
             }
@@ -744,7 +744,7 @@ impl App {
         let edits = session.edits();
         let saved = edits == self.ui.saved_edits || session.edits_saved() == Some(edits);
         let unsaved = if saved { "" } else { " •" };
-        let title = format!("{}{unsaved} — ProCraft", session.name());
+        let title = format!("{}{unsaved} — LinPaintX", session.name());
         if title != self.title {
             screen.window.set_title(&title);
             self.title = title;
@@ -827,9 +827,9 @@ impl App {
         if let Some(soon) = soon {
             self.again = Some(self.again.map_or(soon, |due| due.min(soon)));
         }
-        if self.title != "ProCraft" {
-            screen.window.set_title("ProCraft");
-            self.title = "ProCraft".into();
+        if self.title != "LinPaintX" {
+            screen.window.set_title("LinPaintX");
+            self.title = "LinPaintX".into();
         }
         self.zoom_on();
         // Project canvas is black while the gallery shows
@@ -1197,7 +1197,7 @@ impl App {
                 startup::stopped("the graphics device stopped, and it couldn't start itself again");
             }
         } else {
-            files::tell("The graphics device stopped", "ProCraft starts again, with the artwork as it was last saved.");
+            files::tell("The graphics device stopped", "LinPaintX starts again, with the artwork as it was last saved.");
             startup::start_again(None);
         }
         event_loop.exit();

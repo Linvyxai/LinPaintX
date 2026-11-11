@@ -112,7 +112,7 @@ pub fn write_glb(mesh: &Mesh, parts: &[GlbPart<'_>]) -> Vec<u8> {
         bin.bytes.push(0);
     }
     let document = json!({
-        "asset": { "version": "2.0", "generator": "ProCraft" },
+        "asset": { "version": "2.0", "generator": "LinPaintX" },
         "scene": 0,
         "scenes": [{ "nodes": [0] }],
         "nodes": [{ "mesh": 0, "name": "Model" }],

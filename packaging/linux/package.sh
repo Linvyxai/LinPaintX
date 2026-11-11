@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Packages the desktop app for Linux into $DIST (default dist/), <arch> being this machine's:
 #
-#   procraft-<version>-linux-<arch>.AppImage   any distro with glibc as new as the build host's
-#   procraft-<version>-linux-<arch>.deb        Debian, Ubuntu, Mint, Pop!_OS, ...
-#   procraft-<version>-linux-<arch>.tar.gz     the plain tree (bin/, share/)
+#   linpaintx-<version>-linux-<arch>.AppImage   any distro with glibc as new as the build host's
+#   linpaintx-<version>-linux-<arch>.deb        Debian, Ubuntu, Mint, Pop!_OS, ...
+#   linpaintx-<version>-linux-<arch>.tar.gz     the plain tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb tar"]
 #
@@ -33,9 +33,9 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-BASENAME="procraft-$VERSION-linux-$ARCH"
+BASENAME="linpaintx-$VERSION-linux-$ARCH"
 has() { case " $FORMATS " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
-echo "==> ProCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> LinPaintX $VERSION for Linux $ARCH ($FORMATS)"
 
 if [ "$SKIP_BUILD" = 0 ]; then
   (cd "$ROOT" && cargo build --release --locked -p procraft-desktop)
@@ -45,16 +45,16 @@ fi
 WORK="$TARGET_DIR/linux-package"
 STAGE="$WORK/root"
 rm -rf "$WORK"
-install -Dm755 "$TARGET_DIR/release/procraft" "$STAGE/usr/bin/procraft"
-strip "$STAGE/usr/bin/procraft" 2>/dev/null || true
-install -Dm644 "$HERE/procraft.desktop" "$STAGE/usr/share/applications/procraft.desktop"
+install -Dm755 "$TARGET_DIR/release/linpaintx" "$STAGE/usr/bin/linpaintx"
+strip "$STAGE/usr/bin/linpaintx" 2>/dev/null || true
+install -Dm644 "$HERE/linpaintx.desktop" "$STAGE/usr/share/applications/linpaintx.desktop"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
 for f in LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md; do
-  install -Dm644 "$ROOT/$f" "$STAGE/usr/share/doc/procraft/$f"
+  install -Dm644 "$ROOT/$f" "$STAGE/usr/share/doc/linpaintx/$f"
 done
 if command -v desktop-file-validate >/dev/null; then
-  desktop-file-validate "$STAGE/usr/share/applications/procraft.desktop"
+  desktop-file-validate "$STAGE/usr/share/applications/linpaintx.desktop"
 fi
 
 # ---- .tar.gz -------------------------------------------------------------------------------------
@@ -76,11 +76,11 @@ fi
 
 # ---- AppImage ------------------------------------------------------------------------------------
 if has appimage; then
-  APPDIR="$WORK/ProCraft.AppDir"
+  APPDIR="$WORK/LinPaintX.AppDir"
   cp -R "$STAGE" "$APPDIR"
   rm -rf "$APPDIR/usr/share/doc"
   install -Dm755 "$HERE/AppRun" "$APPDIR/AppRun"
-  cp "$HERE/procraft.desktop" "$APPDIR/procraft.desktop"
+  cp "$HERE/linpaintx.desktop" "$APPDIR/linpaintx.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/linpaintx.png" "$APPDIR/linpaintx.png"
   ln -s linpaintx.png "$APPDIR/.DirIcon"
   TOOL="${APPIMAGETOOL:-$(command -v appimagetool || true)}"

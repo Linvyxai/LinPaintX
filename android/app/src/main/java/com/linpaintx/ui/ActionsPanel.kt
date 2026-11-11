@@ -715,7 +715,7 @@ fun WrongBuildAlert(vm: CanvasViewModel) {
 }
 
 /** Where each release's files are. */
-private const val RELEASES_PAGE = "https://github.com/artcraft-android/procraft/releases/latest"
+private const val RELEASES_PAGE = "https://github.com/Linvyxai/LinPaintX/releases/latest"
 
 /** Choices as rows of a rounded group, the chosen one a full blue row. */
 @Composable

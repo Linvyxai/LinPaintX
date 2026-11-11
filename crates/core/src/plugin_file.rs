@@ -78,17 +78,17 @@ pub(crate) enum Refusal {
 impl Refusal {
     pub(crate) fn text(self) -> &'static str {
         match self {
-            Refusal::NotAPlugin => "This isn't a ProCraft plugin.",
+            Refusal::NotAPlugin => "This isn't a LinPaintX plugin.",
             Refusal::TooBig => "This plugin is too big to import.",
             Refusal::Unsafe => "This plugin file isn't safe to open.",
             Refusal::Mismatch => "This plugin's files don't match its list.",
             Refusal::Damaged => "This plugin file is damaged.",
             Refusal::Described => "This plugin describes itself wrongly.",
-            Refusal::Permissions => "This plugin asks for permissions ProCraft doesn't give.",
-            Refusal::Code => "This plugin's code can't run in ProCraft.",
-            Refusal::FilterCode => "This filter's code can't run in ProCraft.",
-            Refusal::Newer => "This plugin needs a newer ProCraft.",
-            Refusal::OtherApp => "This plugin isn't for ProCraft.",
+            Refusal::Permissions => "This plugin asks for permissions LinPaintX doesn't give.",
+            Refusal::Code => "This plugin's code can't run in LinPaintX.",
+            Refusal::FilterCode => "This filter's code can't run in LinPaintX.",
+            Refusal::Newer => "This plugin needs a newer LinPaintX.",
+            Refusal::OtherApp => "This plugin isn't for LinPaintX.",
             Refusal::NewerInstalled => "A newer version of this plugin is already imported.",
             Refusal::Clash => "Another plugin already holds a setting this one needs.",
             Refusal::NotKept => "This plugin couldn't be saved.",

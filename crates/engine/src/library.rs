@@ -1,4 +1,4 @@
-//! ProCraft's own brushes, grouped in sets. Every preset here is designed for ProCraft on the
+//! LinPaintX's own brushes, grouped in sets. Every preset here is designed for LinPaintX on the
 //! shared brush model (shapes and grains from `textures`).
 
 use crate::brush::{Brush, Grain, GrainMode, Rendering, Shape, Taper, Tilt};

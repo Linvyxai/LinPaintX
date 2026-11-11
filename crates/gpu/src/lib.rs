@@ -1,4 +1,4 @@
-//! ProCraft's GPU renderer (wgpu): layer pixels, stroke rendering, compositing, and drawing the
+//! LinPaintX's GPU renderer (wgpu): layer pixels, stroke rendering, compositing, and drawing the
 //! canvas to a window surface. Layers are premultiplied RGBA8 textures the size of the canvas.
 //!
 //! Every blend here uses fixed-function blending or reads from a different texture than it writes:

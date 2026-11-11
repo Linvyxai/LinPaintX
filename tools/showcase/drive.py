@@ -1,4 +1,4 @@
-"""Drives ProCraft on a tablet (landscape, 2560 x 1600) for the showcase: adb taps for the
+"""Drives LinPaintX on a tablet (landscape, 2560 x 1600) for the showcase: adb taps for the
 interface, and pen strokes with pressure through a virtual HID pen (penhid.py, Android's `hid`).
 The positions are measured on a Lenovo Legion Tab; set ANDROID_SERIAL to pick the device.
 """

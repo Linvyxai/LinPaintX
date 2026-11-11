@@ -19,7 +19,7 @@ pub struct GradientInfo {
     pub stops: Vec<GradientStop>,
 }
 
-/// ProCraft's own gradients.
+/// LinPaintX's own gradients.
 fn ours() -> Vec<GradientInfo> {
     let g = |name: &str, stops: &[(f32, u32)]| GradientInfo {
         name: name.to_owned(),

@@ -4,7 +4,7 @@
   "name": "Touch position offset",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Moves where your strokes land, for a pen whose ink doesn't sit under its tip.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

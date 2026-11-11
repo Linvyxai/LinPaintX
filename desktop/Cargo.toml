@@ -5,10 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "ProCraft on the desktop (Windows, macOS, Linux): the same engine and canvas, with an egui interface"
+description = "LinPaintX on the desktop (Windows, macOS, Linux): the same engine and canvas, with an egui interface"
 
 [[bin]]
-name = "procraft"
+name = "linpaintx"
 path = "src/main.rs"
 
 [lints]

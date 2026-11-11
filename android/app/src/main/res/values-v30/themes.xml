@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.ProCraft" parent="Base.Theme.ProCraft">
+    <style name="Theme.LinPaintX" parent="Base.Theme.LinPaintX">
         <item name="android:windowLayoutInDisplayCutoutMode">always</item>
     </style>
 </resources>

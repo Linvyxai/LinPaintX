@@ -4,7 +4,7 @@
   "name": "ColorDrop fills by all layers",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "ColorDrop fills up to the lines on every layer you see, not only the current one.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

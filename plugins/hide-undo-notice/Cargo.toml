@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "A plugin for ProCraft: undo and redo without their notice"
+description = "A plugin for LinPaintX: undo and redo without their notice"
 
 [lib]
 crate-type = ["cdylib"]

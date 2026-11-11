@@ -562,7 +562,7 @@ pub struct Brush {
     /// Its preview as its file brought it (PNG), shown in place of a drawn one until the brush is
     /// changed.
     pub thumbnail: Option<std::sync::Arc<[u8]>>,
-    /// Who made it, as its file says; none for ProCraft's own.
+    /// Who made it, as its file says; none for LinPaintX's own.
     pub author: Option<Author>,
     /// What resetting the brush puts back: set the first time it is opened in the studio.
     pub reset_point: Option<ResetPoint>,
@@ -683,7 +683,7 @@ impl Notches {
 }
 
 impl Brush {
-    /// A plain round inking pen: ProCraft's own starting brush until the library exists.
+    /// A plain round inking pen: LinPaintX's own starting brush until the library exists.
     pub fn round_pen() -> Brush {
         Brush {
             name: "Round Pen".to_owned(),

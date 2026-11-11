@@ -87,7 +87,7 @@ final class CanvasView: UIView {
         let pointer = UInt64(UInt(bitPattern: Unmanaged.passRetained(metal).toOpaque()))
         let id = acquireLayer(layer: pointer)
         guard id != 0 else {
-            NSLog("ProCraft: the canvas's layer wasn't taken")
+            NSLog("LinPaintX: the canvas's layer wasn't taken")
             return
         }
         do {
@@ -95,7 +95,7 @@ final class CanvasView: UIView {
             attached = true
         } catch {
             releaseLayer(id: id)
-            NSLog("ProCraft: attaching the canvas: %@", "\(error)")
+            NSLog("LinPaintX: attaching the canvas: %@", "\(error)")
         }
     }
 

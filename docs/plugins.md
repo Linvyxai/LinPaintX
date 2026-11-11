@@ -542,7 +542,7 @@ sense. Whatever it was handed goes on as it came.
 
 ## Building it
 
-1. Get a copy of this repository: `git clone https://github.com/artcraft-android/procraft`, or
+1. Get a copy of this repository: `git clone https://github.com/Linvyxai/LinPaintX`, or
    Code > Download ZIP on its GitHub page. It stays on your computer; nothing you do in it comes
    back here.
 2. For code, install Rust (from rustup.rs). Python 3 runs the packer.
@@ -595,4 +595,4 @@ written here, and the app keeps every interface's template, so a plugin goes on 
 written.
 
 Something that needs more uses a newer interface number, and an older app says it needs a newer
-ProCraft. So does an app that doesn't have a hook a plugin lists, or something `holds` names.
+LinPaintX. So does an app that doesn't have a hook a plugin lists, or something `holds` names.

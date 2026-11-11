@@ -1,4 +1,4 @@
-//! ProCraft's painting engine: the document model, brushes and stroke geometry, and the canvas
+//! LinPaintX's painting engine: the document model, brushes and stroke geometry, and the canvas
 //! view. No GPU and no platform code: `procraft-gpu` draws what this crate describes, and the app
 //! feeds it input.
 

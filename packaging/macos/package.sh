@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Packages the desktop app for macOS into $DIST (default dist/):
 #
-#   procraft-<version>-macos-universal.dmg   ProCraft.app for Apple silicon and Intel Macs (macOS 11+),
+#   linpaintx-<version>-macos-universal.dmg   LinPaintX.app for Apple silicon and Intel Macs (macOS 11+),
 #                                            beside a link to Applications to drag it onto
 #
 # Usage: packaging/macos/package.sh [--skip-build]
@@ -35,8 +35,8 @@ SHORT="${VERSION%%-*}"
 DIST="$(mkdir -p "${DIST:-$ROOT/dist}" && cd "${DIST:-$ROOT/dist}" && pwd)"
 TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
 TARGETS="aarch64-apple-darwin x86_64-apple-darwin"
-DMG="$DIST/procraft-$VERSION-macos-universal.dmg"
-echo "==> ProCraft $VERSION ($SHORT, build $BUILD) for macOS, universal"
+DMG="$DIST/linpaintx-$VERSION-macos-universal.dmg"
+echo "==> LinPaintX $VERSION ($SHORT, build $BUILD) for macOS, universal"
 
 # the oldest macOS the app runs on, as Info.plist says
 export MACOSX_DEPLOYMENT_TARGET=11.0
@@ -46,17 +46,17 @@ if [ "$SKIP_BUILD" = 0 ]; then
   done
 fi
 
-# ---- ProCraft.app --------------------------------------------------------------------------------
+# ---- LinPaintX.app --------------------------------------------------------------------------------
 WORK="$TARGET_DIR/macos-package"
-APP="$WORK/ProCraft.app"
+APP="$WORK/LinPaintX.app"
 rm -rf "$WORK"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 slices=()
-for target in $TARGETS; do slices+=("$TARGET_DIR/$target/release/procraft"); done
+for target in $TARGETS; do slices+=("$TARGET_DIR/$target/release/linpaintx"); done
 # one binary for both kinds of Mac
-lipo -create -output "$APP/Contents/MacOS/procraft" "${slices[@]}"
-strip -x "$APP/Contents/MacOS/procraft"
-lipo -info "$APP/Contents/MacOS/procraft"
+lipo -create -output "$APP/Contents/MacOS/linpaintx" "${slices[@]}"
+strip -x "$APP/Contents/MacOS/linpaintx"
+lipo -info "$APP/Contents/MacOS/linpaintx"
 sed -e "s|@VERSION@|$SHORT|g" -e "s|@BUILD@|$BUILD|g" "$HERE/Info.plist" >"$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"
@@ -78,12 +78,12 @@ codesign --verify --strict --verbose=2 "$APP"
 # ---- .dmg ----------------------------------------------------------------------------------------
 STAGE="$WORK/dmg"
 mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/ProCraft.app"
+ditto "$APP" "$STAGE/LinPaintX.app"
 ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG"
 # hdiutil now and then finds its disk busy: tried again
 for try in 1 2 3; do
-  if hdiutil create -volname ProCraft -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then break; fi
+  if hdiutil create -volname LinPaintX -srcfolder "$STAGE" -ov -format UDZO "$DMG"; then break; fi
   [ "$try" = 3 ] && { echo "error: hdiutil failed" >&2; exit 1; }
   sleep 5
 done

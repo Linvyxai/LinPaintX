@@ -4,7 +4,7 @@
   "name": "Radial symmetry segments",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Radial symmetry makes as many parts as you choose, not only eight.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

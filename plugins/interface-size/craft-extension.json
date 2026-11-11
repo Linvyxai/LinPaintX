@@ -4,7 +4,7 @@
   "name": "Interface size",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Makes the bars, panels and text bigger or smaller to suit your screen.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

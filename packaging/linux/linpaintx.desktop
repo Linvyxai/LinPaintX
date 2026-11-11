@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=ProCraft
+Name=LinPaintX
 GenericName=Painting
 Comment=Paint, draw and sketch
-Exec=procraft %F
+Exec=linpaintx %F
 Icon=linpaintx
 Terminal=false
 Categories=Graphics;2DGraphics;RasterGraphics;
 Keywords=paint;draw;sketch;brush;art;
-StartupWMClass=ProCraft
+StartupWMClass=LinPaintX

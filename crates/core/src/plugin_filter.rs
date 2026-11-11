@@ -512,7 +512,7 @@ mod tests {
             "@group(0) @binding(0) var t: texture_2d<f32>;\nfn pixel(colour: vec4<f32>, at: vec2<f32>) -> vec4<f32> { return colour; }",
             "@fragment fn main() -> @location(0) vec4<f32> { return vec4<f32>(1.0); }",
         ] {
-            assert_eq!(refused(code).as_deref(), Some("This filter's code can't run in ProCraft."), "{code}");
+            assert_eq!(refused(code).as_deref(), Some("This filter's code can't run in LinPaintX."), "{code}");
         }
         // the text is held to its size at the door too
         let huge = format!(

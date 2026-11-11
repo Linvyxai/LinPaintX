@@ -1,4 +1,4 @@
-//! Colour profiles by name: the built-in RGB ones, ProCraft's own CMYK profile and those the user
+//! Colour profiles by name: the built-in RGB ones, LinPaintX's own CMYK profile and those the user
 //! imported (kept as .icc files in a folder the app names), and colours moved between them for
 //! the colour panel.
 
@@ -23,7 +23,7 @@ fn imported() -> Vec<Arc<IccProfile>> {
     IMPORTED.lock().map(|i| i.profiles.clone()).unwrap_or_default()
 }
 
-/// ProCraft's own CMYK profile, read once.
+/// LinPaintX's own CMYK profile, read once.
 fn generic_cmyk() -> Option<Arc<IccProfile>> {
     static READ: std::sync::OnceLock<Option<Arc<IccProfile>>> = std::sync::OnceLock::new();
     READ.get_or_init(|| IccProfile::parse(&procraft_engine::cmyk::profile()).map(Arc::new)).clone()

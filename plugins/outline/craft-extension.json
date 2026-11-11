@@ -4,7 +4,7 @@
   "name": "Outline",
   "version": "1.0.0",
   "holds": ["filter"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Draws a line round what is on the layer, in place of it.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

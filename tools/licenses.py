@@ -194,7 +194,7 @@ def write(out, lines, shared):
 
 
 def main():
-    head = ['ProCraft is made with the following third-party software, under the licences given.', '',
+    head = ['LinPaintX is made with the following third-party software, under the licences given.', '',
             'The interface font, Inter, is under the SIL Open Font License 1.1 (its text above).', '',
             'The app keeps Lucide icons (lucide.dev), under the ISC License (its text above).', '']
 

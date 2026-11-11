@@ -27,8 +27,8 @@ fn main() {
         let mut resource = winresource::WindowsResource::new();
         resource
             .set_icon("../assets/app-icon/linpaintx.ico")
-            .set("ProductName", "ProCraft")
-            .set("FileDescription", "ProCraft")
+            .set("ProductName", "LinPaintX")
+            .set("FileDescription", "LinPaintX")
             .set("ProductVersion", &version)
             .set("FileVersion", &version)
             .set_version_info(winresource::VersionInfo::PRODUCTVERSION, packed)

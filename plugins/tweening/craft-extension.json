@@ -4,7 +4,7 @@
   "name": "Tweening",
   "version": "1.1.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Animation Assist's frame options get In-between: a frame drawn between a frame and the next, the drawings slid and faded between them. Tap again for more.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

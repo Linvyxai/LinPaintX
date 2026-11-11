@@ -122,7 +122,7 @@ fun fittedInterfaceSize(plugins: Plugins, changes: Any? = null): Float {
     val screen = LocalConfiguration.current
     return remember(plugins, changes, screen.screenWidthDp, screen.screenHeightDp) {
         val chosen = plugins.interfaceScale(screen.screenWidthDp.toFloat(), screen.screenHeightDp.toFloat())
-        // ProCraft's measured interface targets tablets. Keep it comfortably compact on phones;
+        // LinPaintX's measured interface targets tablets. Keep it comfortably compact on phones;
         // the larger virtual dp area also prevents menus and editors from being squeezed.
         if (screen.smallestScreenWidthDp < 600) minOf(chosen, 0.82f) else chosen
     }

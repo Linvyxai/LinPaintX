@@ -4,7 +4,7 @@ import SwiftUI
 /// ProCraft on the iPad: for now a plain gallery and the canvas the core draws, painted on with the
 /// Pencil and moved with fingers (the interface over it is still to come).
 @main
-struct ProCraftApp: App {
+struct LinPaintXApp: App {
     init() {
         // the layers' textures may take a quarter of what the app may use (an iPad app is ended
         // well short of the device's memory); none said (the simulator), all of them

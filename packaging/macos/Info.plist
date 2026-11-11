@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  ProCraft.app's Info.plist, its two versions filled in by package.sh: the release's as numbers
+  LinPaintX.app's Info.plist, its two versions filled in by package.sh: the release's as numbers
   alone (a beta's suffix left out, as the MSI's) and the build, procraft.versionCode.
-  The files the Finder may open with it: ProCraft's own artworks (its type, declared here), and
+  The files the Finder may open with it: LinPaintX's own artworks (its type, declared here), and
   the pictures, PSDs, PDFs, brushes and palettes the gallery's Import takes, as another app's.
 -->
 <plist version="1.0">
@@ -11,17 +11,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>ProCraft</string>
+	<string>LinPaintX</string>
 	<key>CFBundleExecutable</key>
-	<string>procraft</string>
+	<string>linpaintx</string>
 	<key>CFBundleIconFile</key>
 	<string>linpaintx</string>
 	<key>CFBundleIdentifier</key>
-	<string>io.github.artcraftandroid.procraft</string>
+	<string>io.github.linvyxai.linpaintx</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ProCraft</string>
+	<string>LinPaintX</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -38,7 +38,7 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>ProCraft Artwork</string>
+			<string>LinPaintX Artwork</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -47,7 +47,7 @@
 			<string>linpaintx</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>io.github.artcraftandroid.procraft.artwork</string>
+				<string>io.github.linvyxai.linpaintx.artwork</string>
 			</array>
 		</dict>
 		<dict>
@@ -96,9 +96,9 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>io.github.artcraftandroid.procraft.artwork</string>
+			<string>io.github.linvyxai.linpaintx.artwork</string>
 			<key>UTTypeDescription</key>
-			<string>ProCraft Artwork</string>
+			<string>LinPaintX Artwork</string>
 			<key>UTTypeIconFile</key>
 			<string>linpaintx</string>
 			<key>UTTypeConformsTo</key>

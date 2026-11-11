@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "A plugin for ProCraft: panels stay open while you paint"
+description = "A plugin for LinPaintX: panels stay open while you paint"
 
 [lib]
 crate-type = ["cdylib"]

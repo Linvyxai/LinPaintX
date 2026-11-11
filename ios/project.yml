@@ -1,14 +1,14 @@
 # The iPad app's Xcode project, made by XcodeGen (https://github.com/yonaskolb/XcodeGen):
 #
-#   ios/build-rust.sh && (cd ios && xcodegen generate) && open ios/ProCraft.xcodeproj
+#   ios/build-rust.sh && (cd ios && xcodegen generate) && open ios/LinPaintX.xcodeproj
 #
 # iPad only (phones get an app of their own). The core is linked as a static library and called
 # through its UniFFI Swift bindings, both made by build-rust.sh before each build into Generated/
 # (not kept in git, nor is the project). To run it on an iPad, pick a team under Signing &
 # Capabilities; build-ipa.sh makes an unsigned .ipa instead.
-name: ProCraft
+name: LinPaintX
 options:
-  bundleIdPrefix: io.github.artcraftandroid
+  bundleIdPrefix: io.github.linvyxai
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -18,11 +18,11 @@ settings:
     MARKETING_VERSION: "0.0.3"
     CURRENT_PROJECT_VERSION: "301"
 targets:
-  ProCraft:
+  LinPaintX:
     type: application
     platform: iOS
     sources:
-      - path: ProCraft
+      - path: LinPaintX
       - path: Generated/ProCraftCore.swift
         optional: true
       - path: Generated/Assets.xcassets
@@ -34,7 +34,7 @@ targets:
     info:
       path: Generated/Info.plist
       properties:
-        CFBundleDisplayName: ProCraft
+        CFBundleDisplayName: LinPaintX
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
@@ -52,8 +52,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.artcraftandroid.procraft
-        PRODUCT_NAME: ProCraft
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.linvyxai.linpaintx
+        PRODUCT_NAME: LinPaintX
         TARGETED_DEVICE_FAMILY: "2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO

@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "A plugin for ProCraft: a Randomise button in the brush studio"
+description = "A plugin for LinPaintX: a Randomise button in the brush studio"
 
 [lib]
 crate-type = ["cdylib"]

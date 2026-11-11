@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "ProCraft's GPU renderer (wgpu): layer pixels, stroke rendering, compositing and presenting the canvas"
+description = "LinPaintX's GPU renderer (wgpu): layer pixels, stroke rendering, compositing and presenting the canvas"
 
 [lints]
 workspace = true

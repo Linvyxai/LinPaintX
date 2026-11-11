@@ -1809,7 +1809,7 @@ impl Studio {
             Some(t) => circle_image(ui, t.id(), face, 48.0),
             None => look.icon(ui, &icons::BRUSH, face, 56.0, argb(DIM)),
         }
-        let name = format!("Made by {}", if about.author.trim().is_empty() { "ProCraft" } else { about.author.trim() });
+        let name = format!("Made by {}", if about.author.trim().is_empty() { "LinPaintX" } else { about.author.trim() });
         let at = pos2(card.center().x, face.y + 48.0 + 21.0 + 12.0);
         text(ui.painter(), at, Align2::CENTER_CENTER, &name, 20.0, Weight::Regular, argb(ABOUT_NAME));
         // the signature in grey, whatever its own colour

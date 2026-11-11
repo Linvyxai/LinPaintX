@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// The Rust half of the app: the `procraft-core` crate (crates/core) in the ProCraft cargo
+// The Rust half of the app: the `procraft-core` crate (crates/core) in the LinPaintX cargo
 // workspace, one folder up.
 val cargoWorkspaceDir: File = rootDir.parentFile
 val rustAbis: List<String> =

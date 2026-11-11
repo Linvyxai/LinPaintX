@@ -4,7 +4,7 @@
   "name": "Interface colour",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "The blue of what's chosen and switched on, in a colour of your own.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

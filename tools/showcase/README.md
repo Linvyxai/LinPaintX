@@ -1,7 +1,7 @@
 # The showcase
 
 The README's demo (`docs/images/demo.webp`, `demo.mp4`) and screenshots were made with these scripts
-on a Lenovo Legion Tab (2560 x 1600, held sideways), with ProCraft open on an empty gallery.
+on a Lenovo Legion Tab (2560 x 1600, held sideways), with LinPaintX open on an empty gallery.
 
 - `penhid.py`: a virtual pen digitizer (tip, in range, X, Y and 12-bit pressure) for Android's `hid`
   shell command, and scripts of pen strokes with real timing.

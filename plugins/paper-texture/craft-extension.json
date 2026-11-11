@@ -4,7 +4,7 @@
   "name": "Paper texture",
   "version": "1.0.0",
   "holds": ["filter"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Puts paper behind the layer's paint: a warm white with a grain of fibres. On an empty layer at the bottom, it's paper under your drawing.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

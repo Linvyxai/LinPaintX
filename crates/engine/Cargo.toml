@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "ProCraft's painting engine: document model, brushes, stroke geometry and the canvas view (no GPU, no platform code)"
+description = "LinPaintX's painting engine: document model, brushes, stroke geometry and the canvas view (no GPU, no platform code)"
 
 [lints]
 workspace = true

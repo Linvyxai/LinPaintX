@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
-description = "The session the ProCraft apps drive: a canvas painted with the engine and drawn by the renderer, with the Android app's Kotlin bindings and the iPad app's Swift ones (UniFFI)"
+description = "The session the LinPaintX apps drive: a canvas painted with the engine and drawn by the renderer, with the Android app's Kotlin bindings and the iPad app's Swift ones (UniFFI)"
 
 [lib]
 name = "procraft_core"

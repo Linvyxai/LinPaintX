@@ -9,7 +9,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-KOTLIN = os.path.join(ROOT, "android/app/src/main/java/io/github/artcraftandroid/procraft/ui/Icons.kt")
+KOTLIN = os.path.join(ROOT, "android/app/src/main/java/com/linpaintx/ui/Icons.kt")
 RUST = os.path.join(ROOT, "desktop/src/icons.rs")
 
 NUM = r"(-?[0-9.]+)f?"

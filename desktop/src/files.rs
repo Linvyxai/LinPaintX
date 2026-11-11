@@ -1,4 +1,4 @@
-//! Artworks on disk: new, open (ProCraft packages, PSDs and PNGs), save as .procraft, export,
+//! Artworks on disk: new, open (LinPaintX packages, PSDs and PNGs), save as .procraft, export,
 //! and asking before unsaved changes are lost.
 
 use std::path::{Path, PathBuf};
@@ -42,7 +42,7 @@ pub enum Format {
 impl Format {
     pub fn name(self) -> &'static str {
         match self {
-            Format::Procraft | Format::ModelArtwork => "ProCraft",
+            Format::Procraft | Format::ModelArtwork => "LinPaintX",
             Format::Package => "Procreate",
             Format::Psd => "PSD",
             Format::Pdf | Format::LayersPdf => "PDF",
@@ -83,20 +83,20 @@ impl Format {
 pub fn app_dir() -> PathBuf {
     let home = || std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     if cfg!(windows) {
-        std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(home).join("ProCraft")
+        std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(home).join("LinPaintX")
     } else if cfg!(target_os = "macos") {
-        home().join("Library/Application Support/ProCraft")
+        home().join("Library/Application Support/LinPaintX")
     } else {
         std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|| home().join(".local/share"))
-            .join("procraft")
+            .join("linpaintx")
     }
 }
 
 /// Shows a passing message with an OK button.
 pub fn say(text: &str) {
-    MessageDialog::new().set_level(MessageLevel::Info).set_title("ProCraft").set_description(text).show();
+    MessageDialog::new().set_level(MessageLevel::Info).set_title("LinPaintX").set_description(text).show();
 }
 
 /// Whether the file at `path` holds brushes, by its name (a zip by what it holds): ours (a brush
@@ -244,7 +244,7 @@ pub fn keep_brushes(session: &procraft_core::CanvasSession) {
         tell_later(
             "Can't keep the brushes",
             "The brush library couldn't be kept. The disk may be full: brushes brought in or changed \
-             since are lost when ProCraft closes, unless some room is made.",
+             since are lost when LinPaintX closes, unless some room is made.",
         );
     }
 }
@@ -435,7 +435,7 @@ pub fn is_plugin_file(path: &Path) -> bool {
 pub fn pick_plugin() -> Option<PathBuf> {
     FileDialog::new()
         .set_title("Import")
-        .add_filter("ProCraft plugins", &["procraft-plugin", "procraftplugin"])
+        .add_filter("LinPaintX plugins", &["procraft-plugin", "procraftplugin"])
         .pick_file()
 }
 
@@ -678,7 +678,7 @@ pub fn read_png(path: &Path) -> Result<ThumbnailImage, String> {
 pub fn about() {
     MessageDialog::new()
         .set_level(MessageLevel::Info)
-        .set_title("ProCraft")
+        .set_title("LinPaintX")
         .set_description(format!("Version {}", env!("PROCRAFT_VERSION")))
         .show();
 }
@@ -692,7 +692,7 @@ pub fn save(session: &Arc<CanvasSession>, ui: &mut Interface, ask: bool) {
         None => {
             let Some(p) = FileDialog::new()
                 .set_title("Save")
-                .add_filter("ProCraft artwork", &["procraft"])
+                .add_filter("LinPaintX artwork", &["procraft"])
                 .set_file_name(format!("{}.procraft", session.name()))
                 .save_file()
             else {
@@ -932,7 +932,7 @@ pub const DRAG_FORMATS: [Format; 5] = [Format::Procraft, Format::Psd, Format::Jp
 /// the system's temporary folder for dragging; its path.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub fn drag_file(a: &procraft_core::GalleryArtwork, format: Format) -> Result<PathBuf, String> {
-    let dir = std::env::temp_dir().join("ProCraft drags");
+    let dir = std::env::temp_dir().join("LinPaintX drags");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let name = export_file_name(a.name.clone(), false);
     let path = dir.join(format!("{name}.{}", format.extension()));

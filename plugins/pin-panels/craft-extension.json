@@ -4,7 +4,7 @@
   "name": "Panels stay open",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Painting with a panel open leaves it open. Its button on the top bar closes it.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

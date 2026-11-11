@@ -1,4 +1,4 @@
-//! The session both ProCraft apps drive: a [`CanvasSession`] takes input from the interface, builds
+//! The session both LinPaintX apps drive: a [`CanvasSession`] takes input from the interface, builds
 //! strokes with the engine and draws them with the GPU renderer. The Android app reaches it through
 //! UniFFI's Kotlin bindings, and it draws on its own render thread straight into the app's
 //! `SurfaceView`; the desktop app calls it directly and draws each frame into its window

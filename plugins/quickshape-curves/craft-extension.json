@@ -4,7 +4,7 @@
   "name": "QuickShape curves",
   "version": "1.1.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "A stroke that bends more than once snaps to a curve you can reshape: drag its points, tap one to make it a corner.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

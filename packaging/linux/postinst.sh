@@ -1,5 +1,5 @@
 #!/bin/sh
-# After the .deb is installed or removed: the menus and icon themes pick up (or drop) ProCraft's
+# After the .deb is installed or removed: the menus and icon themes pick up (or drop) LinPaintX's
 # entry and icons at once, rather than at the next login.
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database -q /usr/share/applications || true

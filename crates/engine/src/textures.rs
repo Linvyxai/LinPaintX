@@ -1,4 +1,4 @@
-//! Brush shape and grain images, generated here (ProCraft's own, made procedurally at start-up):
+//! Brush shape and grain images, generated here (LinPaintX's own, made procedurally at start-up):
 //! 8-bit greyscale, white = paint. Grains tile seamlessly.
 
 use std::f32::consts::{FRAC_PI_2, PI, TAU};

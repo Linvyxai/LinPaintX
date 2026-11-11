@@ -1,4 +1,4 @@
-"""Paints "Dusk" in ProCraft on the tablet at a person's pace, for the README's demo: menus held
+"""Paints "Dusk" in LinPaintX on the tablet at a person's pace, for the README's demo: menus held
 open long enough to read, colours picked on the Classic square, strokes that ease in and out
 with a wobble and real pressure, pauses between moves. Each span of time is logged as
 "menu", "draw" or (between them) idle, so the video can play menus at full speed, drawing

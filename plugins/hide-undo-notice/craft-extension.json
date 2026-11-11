@@ -4,7 +4,7 @@
   "name": "Hide undo notices",
   "version": "1.0.0",
   "holds": ["hooks"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Undo and redo go by without the notice at the top that names what they took back.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

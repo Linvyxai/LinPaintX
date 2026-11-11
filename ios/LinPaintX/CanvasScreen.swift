@@ -103,7 +103,7 @@ final class CanvasViewController: UIViewController, UIPencilInteractionDelegate 
         do {
             try session.save(dir: artwork.dir)
         } catch {
-            NSLog("ProCraft: keeping the artwork: %@", "\(error)")
+            NSLog("LinPaintX: keeping the artwork: %@", "\(error)")
         }
         canvas.detach()
         observers.forEach { NotificationCenter.default.removeObserver($0) }
@@ -118,7 +118,7 @@ final class CanvasViewController: UIViewController, UIPencilInteractionDelegate 
         do {
             try artwork.session.save(dir: artwork.dir)
         } catch {
-            NSLog("ProCraft: keeping the artwork: %@", "\(error)")
+            NSLog("LinPaintX: keeping the artwork: %@", "\(error)")
         }
         if task != .invalid {
             app.endBackgroundTask(task)

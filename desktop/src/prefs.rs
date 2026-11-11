@@ -24,7 +24,7 @@ pub enum CursorStyle {
 }
 
 /// What an artwork dragged out of the gallery becomes, and a picture's format when one is wanted.
-pub const DRAG_FORMATS: [&str; 5] = ["ProCraft", "PSD", "JPEG", "PNG", "TIFF"];
+pub const DRAG_FORMATS: [&str; 5] = ["LinPaintX", "PSD", "JPEG", "PNG", "TIFF"];
 pub const DRAG_IMAGE_FORMATS: [&str; 3] = ["JPEG", "PNG", "TIFF"];
 
 /// The undo history kept on disk beyond the canvas's last steps, by index; the first keeps it all.

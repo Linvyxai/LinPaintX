@@ -3,8 +3,8 @@
   Packages the desktop app for Windows x64, or Windows on ARM.
 .DESCRIPTION
   Writes, into $env:DIST (default: dist\), for $env:ARCH (x64, the default, or arm64):
-    procraft-<version>-windows-<arch>.msi            the installer (WiX v5), for every user
-    procraft-<version>-windows-<arch>-portable.zip   ProCraft.exe and the licences, to run anywhere
+    linpaintx-<version>-windows-<arch>.msi            the installer (WiX v5), for every user
+    linpaintx-<version>-windows-<arch>-portable.zip   LinPaintX.exe and the licences, to run anywhere
   An arm64 build can be made on an x64 PC with Visual Studio's ARM64 build tools.
   The C runtime is linked in (+crt-static), so nothing else needs installing. The version is
   $env:VERSION, else procraft.version in android\gradle.properties (the one a release is tagged
@@ -52,37 +52,37 @@ $TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Pa
 # WIX_EXE, not WIX: Windows runners set WIX to an old WiX 3's folder
 $Wix = if ($env:WIX_EXE) { $env:WIX_EXE } else { 'wix' }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
-Write-Output "ProCraft $Version for Windows $Arch"
+Write-Output "LinPaintX $Version for Windows $Arch"
 
 if (-not $SkipBuild) {
   # the C runtime linked in; only for this target, so build scripts and proc-macros are as ever
   Set-Item -Path ('env:CARGO_TARGET_' + ($Target.ToUpper() -replace '-', '_') + '_RUSTFLAGS') -Value '-C target-feature=+crt-static'
   Invoke-Native 'cargo build' { cargo build --release --locked -p procraft-desktop --target $Target }
 }
-$Exe = Join-Path $TargetDir "$Target\release\procraft.exe"
+$Exe = Join-Path $TargetDir "$Target\release\linpaintx.exe"
 
 # the .exe: for this machine, a windowed program (no console), and needing no Visual C++ runtime
 $bytes = [System.IO.File]::ReadAllBytes($Exe)
 $pe = [BitConverter]::ToInt32($bytes, 0x3C)
 $machine = [BitConverter]::ToUInt16($bytes, $pe + 4)
 $subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5C)
-if ($machine -ne $Machine) { throw ('procraft.exe is for machine 0x{0:X}, not {1}' -f $machine, $Arch) }
-if ($subsystem -ne 2) { throw "procraft.exe has PE subsystem $subsystem, not 2 (a window)" }
+if ($machine -ne $Machine) { throw ('linpaintx.exe is for machine 0x{0:X}, not {1}' -f $machine, $Arch) }
+if ($subsystem -ne 2) { throw "linpaintx.exe has PE subsystem $subsystem, not 2 (a window)" }
 if ([System.Text.Encoding]::ASCII.GetString($bytes).Contains('VCRUNTIME140.dll')) {
-  throw 'procraft.exe needs VCRUNTIME140.dll: the C runtime should be linked in (+crt-static)'
+  throw 'linpaintx.exe needs VCRUNTIME140.dll: the C runtime should be linked in (+crt-static)'
 }
-Write-Output "ok procraft.exe: $Arch, a window, no Visual C++ runtime needed"
+Write-Output "ok linpaintx.exe: $Arch, a window, no Visual C++ runtime needed"
 
 $Stage = Join-Path $TargetDir 'windows-package\stage'
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item $Exe (Join-Path $Stage 'ProCraft.exe')
+Copy-Item $Exe (Join-Path $Stage 'LinPaintX.exe')
 foreach ($f in 'LICENSE-MIT', 'LICENSE-APACHE', 'NOTICE', 'ATTRIBUTION.md') { Copy-Item (Join-Path $Root $f) $Stage }
 
 # ---- MSI ----------------------------------------------------------------------------------------
-$Msi = Join-Path $Dist "procraft-$Version-windows-$Arch.msi"
+$Msi = Join-Path $Dist "linpaintx-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
-  & $Wix build (Join-Path $PSScriptRoot 'procraft.wxs') -arch $Arch `
+  & $Wix build (Join-Path $PSScriptRoot 'linpaintx.wxs') -arch $Arch `
     -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -culture en-US `
     -d "Version=$MsiVersion" -d "DisplayVersion=$Version" -d "BinDir=$Stage" `
     -d "IconPath=$(Join-Path $Root 'assets\app-icon\linpaintx.ico')" -o $Msi
@@ -94,7 +94,7 @@ Invoke-Native 'wix msi validate' {
 Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
 
 # ---- portable zip -------------------------------------------------------------------------------
-$Name = "procraft-$Version-windows-$Arch-portable"
+$Name = "linpaintx-$Version-windows-$Arch-portable"
 $Portable = Join-Path $TargetDir "windows-package\$Name"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 Copy-Item -Recurse $Stage $Portable

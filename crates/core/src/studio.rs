@@ -881,7 +881,7 @@ impl State {
     }
 }
 
-/// The studio's About page: who made the brush ("" for ProCraft's own) with their picture and
+/// The studio's About page: who made the brush ("" for LinPaintX's own) with their picture and
 /// signature (PNG) if it has them, and when its reset point was made (seconds since 1970).
 #[derive(uniffi::Record)]
 pub struct StudioAbout {

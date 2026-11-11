@@ -4,7 +4,7 @@
   "name": "Posterise",
   "version": "1.0.0",
   "holds": ["filter"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Holds each colour to a few flat steps.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

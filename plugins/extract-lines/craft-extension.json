@@ -4,7 +4,7 @@
   "name": "Extract lines",
   "version": "1.0.0",
   "holds": ["filter"],
-  "publisher": { "name": "ProCraft" },
+  "publisher": { "name": "LinPaintX" },
   "description": "Keeps the dark lines of a scanned drawing and clears the paper, so you can colour under them.",
   "compat": { "procraft": { "interface": 1 } },
   "permissions": [],

@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "A plugin for ProCraft: the interface's accent in a colour of one's own"
+description = "A plugin for LinPaintX: the interface's accent in a colour of one's own"
 
 [lib]
 crate-type = ["cdylib"]

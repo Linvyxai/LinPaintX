@@ -58,7 +58,7 @@ impl Made {
     }
 }
 
-/// Who made `brush`, as its file is to say ("" for ProCraft's own).
+/// Who made `brush`, as its file is to say ("" for LinPaintX's own).
 fn author_name(brush: &Brush) -> &str {
     brush.author.as_ref().map_or("", |a| a.name.as_str())
 }

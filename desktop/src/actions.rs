@@ -194,7 +194,7 @@ fn model_groups(tab: usize, showing: &Showing) -> Vec<Vec<Row>> {
                 Heading("Share Model"),
                 // ours comes back whole in another copy of the app; the other package holds no
                 // model yet
-                Button("ProCraft", None, Some(Act::Share(Format::ModelArtwork))),
+                Button("LinPaintX", None, Some(Act::Share(Format::ModelArtwork))),
                 Button("Procreate", None, None),
                 Button("USDZ", None, Some(Act::Share(Format::ModelUsdz))),
                 Button("OBJ", None, Some(Act::Share(Format::ModelObj))),
@@ -340,7 +340,7 @@ fn groups(tab: usize, showing: &Showing, prefs: &Prefs) -> Vec<Vec<Row>> {
         2 => vec![
             vec![
                 Heading("Share Image"),
-                Button("ProCraft", None, Some(Act::Share(Format::Procraft))),
+                Button("LinPaintX", None, Some(Act::Share(Format::Procraft))),
                 Button("Procreate", None, Some(Act::Share(Format::Package))),
                 Button("PSD", None, Some(Act::Share(Format::Psd))),
                 Button("PDF", None, Some(Act::Share(Format::Pdf))),
@@ -406,7 +406,7 @@ fn groups(tab: usize, showing: &Showing, prefs: &Prefs) -> Vec<Vec<Row>> {
             ]
         }
         _ => vec![
-            vec![Button("About ProCraft", None, Some(Act::About)), Button("Licences", None, Some(Act::Licences))],
+            vec![Button("About LinPaintX", None, Some(Act::About)), Button("Licences", None, Some(Act::Licences))],
             vec![
                 Button("Keyboard shortcuts", None, Some(Act::Shortcuts)),
                 Button("Advanced settings", None, Some(Act::AdvancedSettings)),

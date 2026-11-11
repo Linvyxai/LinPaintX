@@ -34,8 +34,8 @@ use procraft_gpu::{Gpu, wgpu};
 use crate::files;
 
 /// The log, and the one from the run before.
-const LOG: &str = "procraft.log";
-const PREVIOUS_LOG: &str = "procraft-previous.log";
+const LOG: &str = "linpaintx.log";
+const PREVIOUS_LOG: &str = "linpaintx-previous.log";
 /// The backend being tried, or the one the last run used, how far it got and whether a canvas
 /// has drawn on it.
 const GPU_START: &str = "gpu-start.txt";
@@ -93,7 +93,7 @@ pub fn init() {
         before(info);
     }));
     let again = if tried > 0 { format!(", started again with {tried} graphics backends tried") } else { String::new() };
-    log::info!("ProCraft {} on {} {}{again}", env!("PROCRAFT_VERSION"), std::env::consts::OS, std::env::consts::ARCH);
+    log::info!("LinPaintX {} on {} {}{again}", env!("PROCRAFT_VERSION"), std::env::consts::OS, std::env::consts::ARCH);
     #[cfg(windows)]
     native::watch();
 }
@@ -756,7 +756,7 @@ pub fn stopped(what: &str) {
         stop => stop,
     };
     let text = stopped_text(what, stop);
-    apart("procraft-stopped", move || files::tell("ProCraft stopped", &text));
+    apart("procraft-stopped", move || files::tell("LinPaintX stopped", &text));
 }
 
 /// This run's part in the record as it is now, if another thread lets go of it soon: a crash may
@@ -798,13 +798,13 @@ fn stopped_text(what: &str, stop: Stop) -> String {
         Stop::SayAllTried => "\n\nEach graphics backend has been tried. Updating the graphics driver may help.",
         Stop::Say => "",
     };
-    format!("ProCraft stopped: {what}.{after}\n\nIts log is {}", files::app_dir().join(LOG).display())
+    format!("LinPaintX stopped: {what}.{after}\n\nIts log is {}", files::app_dir().join(LOG).display())
 }
 
 /// What the app says when no backend could draw the window, `why` each failed.
 pub fn no_gpu_text(why: &str) -> String {
     format!(
-        "No graphics backend could draw the window.\n\n{why}\n\nUpdating the graphics driver may help. ProCraft's log is {}",
+        "No graphics backend could draw the window.\n\n{why}\n\nUpdating the graphics driver may help. LinPaintX's log is {}",
         files::app_dir().join(LOG).display()
     )
 }
@@ -1252,11 +1252,11 @@ mod tests {
     #[test]
     fn a_stop_says_what_happened_and_where_the_log_is() {
         let text = super::stopped_text("wgpu error: Validation Error.\n", Stop::Say);
-        assert!(text.starts_with("ProCraft stopped: wgpu error: Validation Error."), "{text}");
-        assert!(text.contains("procraft.log"), "{text}");
+        assert!(text.starts_with("LinPaintX stopped: wgpu error: Validation Error."), "{text}");
+        assert!(text.contains("linpaintx.log"), "{text}");
         assert!(!text.contains("graphics"), "{text}");
         let text = super::stopped_text("", Stop::Say);
-        assert!(text.starts_with("ProCraft stopped: something went wrong."), "{text}");
+        assert!(text.starts_with("LinPaintX stopped: something went wrong."), "{text}");
         let text = super::stopped_text("it crashed in igvk64.dll (exception 0xC0000005)", Stop::SayAnother);
         assert!(text.contains("Start it again to try another graphics backend."), "{text}");
         let text = super::stopped_text("it crashed in a driver (exception 0xC0000005)", Stop::SayAllTried);

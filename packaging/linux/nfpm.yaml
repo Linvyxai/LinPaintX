@@ -1,7 +1,7 @@
 # The .deb (nfpm: https://nfpm.goreleaser.com). Run by package.sh, which stages the file tree,
 # puts its path for ${STAGE} (nfpm doesn't expand variables in `src`) and exports VERSION and
 # NFPM_ARCH.
-name: procraft
+name: linpaintx
 arch: ${NFPM_ARCH}
 platform: linux
 version: ${VERSION}
@@ -10,13 +10,13 @@ version_schema: semver
 release: 1
 section: graphics
 priority: optional
-maintainer: ArtCraft Team <bearincrypto@gmail.com>
-vendor: ArtCraft Team
-homepage: https://github.com/artcraft-android/procraft
+maintainer: Linvyxai <Linvyxai@yandex.com>
+vendor: Linvyxai
+homepage: https://github.com/Linvyxai/LinPaintX
 license: MIT OR Apache-2.0
 description: |-
   Paint, draw and sketch
-  ProCraft is a painting app with brushes, layers, adjustments, text and animation: the same
+  LinPaintX is a painting app with brushes, layers, adjustments, text and animation: the same
   engine and interface as on Android tablets.
 
 # The binary links only glibc and libgcc_s itself. The windowing (X11 or Wayland, xkbcommon) and
@@ -45,8 +45,8 @@ recommends:
   - pipewire-bin | pulseaudio-utils | alsa-utils
 
 contents:
-  - src: ${STAGE}/usr/bin/procraft
-    dst: /usr/bin/procraft
+  - src: ${STAGE}/usr/bin/linpaintx
+    dst: /usr/bin/linpaintx
     file_info: { mode: 0755 }
   - src: ${STAGE}/usr/share/
     dst: /usr/share/

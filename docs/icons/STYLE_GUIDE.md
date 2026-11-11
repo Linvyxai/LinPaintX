@@ -1,6 +1,6 @@
-# ProCraft icon style guide
+# LinPaintX icon style guide
 
-The rules for ProCraft's interface icons, every one of them our own drawing. `LucideIcons` keeps the
+The rules for LinPaintX's interface icons, every one of them our own drawing. `LucideIcons` keeps the
 Lucide set beside them.
 
 ## Where an icon comes from

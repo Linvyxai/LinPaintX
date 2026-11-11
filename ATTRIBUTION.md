@@ -1,6 +1,6 @@
 # Attribution
 
-Every non-code asset in ProCraft, with its author, source and licence. ProCraft's own code and
+Every non-code asset in LinPaintX, with its author, source and licence. LinPaintX's own code and
 original assets are MIT OR Apache-2.0 (see [`LICENSE-MIT`](LICENSE-MIT),
 [`LICENSE-APACHE`](LICENSE-APACHE) and [`NOTICE`](NOTICE)). When you add an asset, add a row here
 in the same change; third-party assets must be openly licensed and keep their licence file next to
@@ -11,13 +11,13 @@ them.
 | Path | Title | Author | Source | Licence |
 |---|---|---|---|---|
 | `android/app/src/main/assets/fonts/Inter-{Regular,Medium,SemiBold,Bold}.ttf` | Inter 4.1 (interface font) | The Inter Project Authors | <https://github.com/rsms/inter/releases/tag/v4.1> (`Inter-4.1.zip`, `extras/ttf/`; `SOURCE.md` beside them) | SIL OFL 1.1, `Inter-OFL.txt` |
-| `android/app/src/main/java/io/github/artcraftandroid/procraft/ui/LucideIcons.kt` (the interface icons as Lucide draws them, kept beside ours) | Lucide icons, lucide-static 1.63.0 | Lucide Icons and Contributors (those derived from Feather: Cole Bemis) | <https://github.com/lucide-icons/lucide>; each icon's paths moved and scaled into the frame it is shown in, at the size shown | ISC (Feather-derived also MIT), [`LICENSE-lucide.txt`](android/app/src/main/assets/icons/LICENSE-lucide.txt) |
-| `assets/icons/procraft/*.svg`, and every icon in `android/app/src/main/java/io/github/artcraftandroid/procraft/ui/Icons.kt` (`PcIcons`: the bar, toolbars, panels and menus, the blend mode glyphs and the 48 brush set icons) | ProCraft's own interface icons | ProCraft contributors | Original work, drawn from the idea to [`docs/icons/STYLE_GUIDE.md`](docs/icons/STYLE_GUIDE.md) by `tools/icons/draw_icons.py`; placed by the measured slots in `assets/icons/slots.tsv` | MIT OR Apache-2.0 |
+| `android/app/src/main/java/com/linpaintx/ui/LucideIcons.kt` (the interface icons as Lucide draws them, kept beside ours) | Lucide icons, lucide-static 1.63.0 | Lucide Icons and Contributors (those derived from Feather: Cole Bemis) | <https://github.com/lucide-icons/lucide>; each icon's paths moved and scaled into the frame it is shown in, at the size shown | ISC (Feather-derived also MIT), [`LICENSE-lucide.txt`](android/app/src/main/assets/icons/LICENSE-lucide.txt) |
+| `assets/icons/procraft/*.svg`, and every icon in `android/app/src/main/java/com/linpaintx/ui/Icons.kt` (`PcIcons`: the bar, toolbars, panels and menus, the blend mode glyphs and the 48 brush set icons) | LinPaintX's own interface icons | LinPaintX contributors | Original work, drawn from the idea to [`docs/icons/STYLE_GUIDE.md`](docs/icons/STYLE_GUIDE.md) by `tools/icons/draw_icons.py`; placed by the measured slots in `assets/icons/slots.tsv` | MIT OR Apache-2.0 |
 | `android/app/src/main/assets/environments/*.hdr` | 3D view light panoramas (11), halved to 512 x 256 and scaled by `tools/env/make_env.py` | Sergej Majboroda, Greg Zaal, Andreas Mischok, Rico Cilliers (per file in the folder's `README.md`) | <https://polyhaven.com> | CC0 1.0 |
 | `assets/app-icon/linpaintx-{1024,512}.png`, `android/app/src/main/res/drawable-*dpi/ic_launcher_{foreground,monochrome}.png`, `android/app/src/main/res/drawable-nodpi/linpaintx_mark.png`, `android/app/src/main/res/mipmap-anydpi/ic_launcher.xml` | App icon: a paintbrush with an "X" accent in a warm-to-cool blend on black | LinPaintX contributors | Original work, drawn in code by `tools/app-icon/make_icon.py`; see [`assets/app-icon/README.md`](assets/app-icon/README.md) | MIT OR Apache-2.0 |
-| `android/app/src/main/res/drawable/widget_back.xml`, `android/app/src/main/res/drawable-v31/widget_back.xml` | Recent-artwork widget background | ProCraft contributors | Original work | MIT OR Apache-2.0 |
-| `docs/images/{canvas,layers,brushes,studio,colour,actions,adjust,transform}.jpg`, `docs/images/demo.webp`, `docs/images/demo.mp4` | The README's screenshots and demo: ProCraft on a tablet, painting *Dusk* | ProCraft contributors | Original work: the painting made in the app by `tools/showcase/paint_dusk2.py`, captured from the screen | MIT OR Apache-2.0 |
-| Brushes, brush shapes and grains | Made in code at run time (`crates/engine`) | ProCraft contributors | Original work | MIT OR Apache-2.0 |
+| `android/app/src/main/res/drawable/widget_back.xml`, `android/app/src/main/res/drawable-v31/widget_back.xml` | Recent-artwork widget background | LinPaintX contributors | Original work | MIT OR Apache-2.0 |
+| `docs/images/{canvas,layers,brushes,studio,colour,actions,adjust,transform}.jpg`, `docs/images/demo.webp`, `docs/images/demo.mp4` | The README's screenshots and demo: LinPaintX on a tablet, painting *Dusk* | LinPaintX contributors | Original work: the painting made in the app by `tools/showcase/paint_dusk2.py`, captured from the screen | MIT OR Apache-2.0 |
+| Brushes, brush shapes and grains | Made in code at run time (`crates/engine`) | LinPaintX contributors | Original work | MIT OR Apache-2.0 |
 
 ### Lucide icons in `LucideIcons.kt`
 
@@ -264,7 +264,7 @@ Our own among the rest: `ShapeArc`, and the outlines and shapes not listed above
 
 | Path | Title | Author | Source | Licence |
 |---|---|---|---|---|
-| `crates/engine/tests/models/*.usd{a,c,z}` | Test cube, moved cube and grid | ProCraft contributors (made by `tools/usd/make_usd.py`) | Original work, see the folder's `README.md` | MIT OR Apache-2.0 |
+| `crates/engine/tests/models/*.usd{a,c,z}` | Test cube, moved cube and grid | LinPaintX contributors (made by `tools/usd/make_usd.py`) | Original work, see the folder's `README.md` | MIT OR Apache-2.0 |
 
 ## Libraries
 

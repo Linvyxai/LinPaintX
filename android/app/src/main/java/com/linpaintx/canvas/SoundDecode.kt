@@ -79,7 +79,7 @@ fun decodedSound(context: Context, uri: Uri): ByteArray? {
         if (count == 0 || channels <= 0) return null
         wavOf(samples, minOf(count, MOST_SECONDS * rate), rate)
     } catch (e: Exception) {
-        Log.w("ProCraft", "a sound couldn't be read", e)
+        Log.w("LinPaintX", "a sound couldn't be read", e)
         null
     } finally {
         runCatching { codec?.stop() }
