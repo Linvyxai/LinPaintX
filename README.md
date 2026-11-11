@@ -12,11 +12,11 @@
 <p align="center">
   <a href="https://github.com/Linvyxai/LinPaintX/releases"><img src="https://raw.githubusercontent.com/Kunzisoft/Github-badge/main/get-it-on-github.png" alt="Скачать на GitHub" height="60"></a>
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Linvyxai/LinPaintX"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Скачать через Obtainium" height="60"></a>
-  <a href="https://discord.gg/gypGes3Uca"><img src="docs/images/discord-badge.svg" alt="Присоединяйтесь к нам в Discord" height="60"></a>
+  <a href="https://t.me/+nZFfv72736czZmFi"><img src="https://img.shields.io/badge/Telegram-присоединиться-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Присоединяйтесь к нам в Telegram" height="60"></a>
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/gypGes3Uca"><img alt="Discord: присоединиться к сообществу" src="https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white"></a>
+  <a href="https://t.me/+nZFfv72736czZmFi"><img alt="Telegram: присоединиться к сообществу" src="https://img.shields.io/badge/Telegram-join%20the%20community-26A5E4?style=flat&logo=telegram&logoColor=white"></a>
   <img alt="Движок: Rust" src="https://img.shields.io/badge/engine-Rust-lightblue?style=flat&logo=rust&logoColor=white">
   <img alt="GPU-рендерер: wgpu" src="https://img.shields.io/badge/renderer-wgpu-lightblue?style=flat">
   <img alt="Kotlin и Jetpack Compose" src="https://img.shields.io/badge/UI-Kotlin%20%C2%B7%20Jetpack%20Compose-blue?style=flat">
