@@ -640,14 +640,14 @@ mod tests {
         fs::write(Path::new(&torn).join("artwork.4.tmp"), "{\"name\": \"Tor").unwrap();
         let mut before = shown(&store, None);
         before.sort();
-        assert_eq!(before, ["Shown", "Stack[Outer]"]);
+        assert_eq!(before, ["Shown", "Стопка[Outer]"]);
         assert_eq!(store.recover_lost_artworks(), 4);
         let after = shown(&store, None);
         assert_eq!(after.len(), 3);
         // the stack first, holding them all
         assert!(after[0].starts_with("Восстановленные работы["), "{after:?}");
         let mut found: Vec<&str> =
-            after[0].trim_start_matches("Recovered Artworks[").trim_end_matches(']').split(',').collect();
+            after[0].trim_start_matches("Восстановленные работы[").trim_end_matches(']').split(',').collect();
         found.sort_unstable();
         assert_eq!(found, ["A", "B", "Cut", "Deep"]);
         assert!(Path::new(&torn).join("artwork.4.tmp").exists());
@@ -838,7 +838,7 @@ mod tests {
             GalleryEntry::Stack { dir, .. } => dir.clone(),
             other => panic!("{other:?}"),
         };
-        assert_eq!(shown(&store, None), names(&["A", "A", "Stack[C,B]"]));
+        assert_eq!(shown(&store, None), names(&["A", "A", "Стопка[C,B]"]));
         store.rename_stack(stack.clone(), "Mine".into());
         store.rename(a.clone(), "  First ".into());
         assert_eq!(shown(&store, None), names(&["First", "A", "Mine[C,B]"]));
@@ -855,7 +855,7 @@ mod tests {
         let list = store.list(None);
         let dir = |i: usize| list[i].dir().to_owned();
         store.stack(vec![dir(3), dir(1)]);
-        assert_eq!(shown(&store, None), names(&["C", "Stack[First,B]", "A"]));
+        assert_eq!(shown(&store, None), names(&["C", "Стопка[First,B]", "A"]));
         assert!(store.most_recent().is_some());
         let _ = fs::remove_dir_all(&root);
     }

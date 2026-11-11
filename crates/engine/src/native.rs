@@ -1575,7 +1575,7 @@ mod tests {
         assert_eq!((d.width(), d.height()), (w, h));
         assert!((d.background[2] - 0.6).abs() < 1e-6);
         let kinds: Vec<(LayerKind, &str)> = d.layers().iter().map(|l| (l.kind, l.name.as_str())).collect();
-        assert_eq!(kinds, [(LayerKind::Paint, "Sketch"), (LayerKind::Mask, "Layer Mask"), (LayerKind::Paint, "Ink")]);
+        assert_eq!(kinds, [(LayerKind::Paint, "Sketch"), (LayerKind::Mask, "Маска слоя"), (LayerKind::Paint, "Ink")]);
         let sk = d.layers().first().unwrap();
         assert_eq!((sk.blend, sk.opacity), (BlendMode::Multiply, 0.75));
         assert!(d.layers().get(2).unwrap().clipped && d.layers().get(2).unwrap().private);

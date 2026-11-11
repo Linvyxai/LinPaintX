@@ -1066,7 +1066,7 @@ mod tests {
             [
                 ("Bläu", LayerKind::Paint),
                 ("Red", LayerKind::Paint),
-                ("Mask", LayerKind::Mask),
+                ("Маска", LayerKind::Mask),
                 ("Group", LayerKind::Group)
             ]
         );
@@ -1343,8 +1343,8 @@ mod tests {
             names,
             [
                 ("Base", LayerKind::Paint),
-                ("Layer 4", LayerKind::Paint),
-                ("Mask", LayerKind::Mask),
+                ("Слой 4", LayerKind::Paint),
+                ("Маска", LayerKind::Mask),
                 ("Feathered", LayerKind::Paint),
                 ("Folder", LayerKind::Group)
             ]

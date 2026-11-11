@@ -1932,6 +1932,7 @@ mod tests {
         let (ctx, mut look) = (egui::Context::default(), Look::default());
         crate::look::install_fonts(&ctx);
         let session = CanvasSession::new(64, 64);
+        session.set_background_visible(true);
         let (mut row, mut asked) = (Rect::NOTHING, false);
         let press = |pos, pressed| Event::PointerButton {
             pos,

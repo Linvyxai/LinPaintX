@@ -766,14 +766,12 @@ impl Plugins {
         plugin_file::note_told(store, &told);
         if rest.is_empty() {
             let name = last.name;
-            return Some(format!(
-                "{name} now comes as a plugin. Your setting is kept: import the plugin and it picks it up."
-            ));
+            return Some(format!("Функция «{name}» теперь доступна как плагин. Настройка сохранена: импортируйте плагин, и он применит её."));
         }
         let names = rest.iter().map(|moved| moved.name).collect::<Vec<_>>().join(", ");
         let name = last.name;
         Some(format!(
-            "{names} and {name} now come as plugins. Your settings are kept: import each plugin and it picks them up."
+            "Функции «{names}» и «{name}» теперь доступны как плагины. Настройки сохранены: импортируйте плагины, и они применят их."
         ))
     }
 
@@ -1359,7 +1357,7 @@ mod tests {
         let plugins = at(&dir);
         plugins.read_kept("eyedropper_layer".to_owned(), "true".to_owned());
         let said = plugins.take_moved_notice().unwrap();
-        assert!(said.starts_with("Eyedropper picks from layer now comes as a plugin."), "{said}");
+        assert!(said.starts_with("Функция «Пипетка берёт цвет со слоя» теперь доступна как плагин."), "{said}");
         // once, in this run and the next
         assert_eq!(plugins.take_moved_notice(), None);
         let next = at(&dir);

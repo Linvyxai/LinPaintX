@@ -81,7 +81,7 @@ pub enum QuickAction {
 /// Each action: the name it is kept under (so a button keeps its action when the label changes),
 /// its label, and whether it is one of the adjustments.
 const ACTIONS: [(QuickAction, &str, &str, bool); 71] = [
-    (QuickAction::None, "NONE", "No Action", false),
+    (QuickAction::None, "NONE", "Без действия", false),
     (QuickAction::Guide2d, "GUIDE_2D", "Видимость 2D-направляющей", false),
     (QuickAction::ActualSize, "ACTUAL_SIZE", "Фактический размер", false),
     (QuickAction::AddText, "ADD_TEXT", "Добавить текст", false),
@@ -180,12 +180,12 @@ pub fn quick_action_adjusts(action: QuickAction) -> bool {
     entry(action).3
 }
 
-/// The picker's rows: the actions by name (as written, capitals first), `None` for Adjustments.
+/// The picker's rows: the actions by name (as written, capitals first), `None` for Corrections.
 #[uniffi::export]
 pub fn quick_actions_listed() -> Vec<Option<QuickAction>> {
     let mut rows: Vec<(&str, Option<QuickAction>)> =
         ACTIONS.iter().filter(|e| !e.3).map(|e| (e.2, Some(e.0))).collect();
-    rows.push(("Adjustments", None));
+    rows.push(("Коррекции", None));
     rows.sort_by(|a, b| a.0.cmp(b.0));
     rows.into_iter().map(|r| r.1).collect()
 }
@@ -320,14 +320,14 @@ mod tests {
     #[test]
     fn the_picker_lists_by_name_with_adjustments_among_them() {
         let rows = quick_actions_listed();
-        let labels: Vec<String> = rows.iter().map(|r| r.map_or("Adjustments".into(), quick_action_label)).collect();
+        let labels: Vec<String> = rows.iter().map(|r| r.map_or("Коррекции".into(), quick_action_label)).collect();
         let mut sorted = labels.clone();
         sorted.sort();
         assert_eq!(labels, sorted);
-        assert_eq!(labels.first().map(String::as_str), Some("2D Guide visibility"));
+        assert_eq!(labels.first().map(String::as_str), Some("Без действия"));
         assert!(rows.contains(&None));
         assert!(!rows.contains(&Some(QuickAction::Bloom)));
-        assert_eq!(quick_adjustments_listed().first(), Some(&QuickAction::Bloom));
+        assert_eq!(quick_adjustments_listed().first(), Some(&QuickAction::Glitch));
         assert_eq!(quick_adjustments_listed().len(), 13);
     }
 

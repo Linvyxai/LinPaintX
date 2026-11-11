@@ -449,7 +449,7 @@ fn undo_with_an_adjustment_open_takes_back_its_changes_then_steps_and_it_stays_o
     assert_ne!(pixel(&s, 32, 32), red);
     assert!(s.info().can_undo);
     // the change taken back, HSB still open
-    assert_eq!(s.undo().as_deref(), Some("Hue, Saturation, Brightness"));
+    assert_eq!(s.undo().as_deref(), Some("Оттенок, насыщенность, яркость"));
     assert_eq!(open(&s), Some(Adjustment::Hsb));
     assert_eq!(pixel(&s, 32, 32), red);
     // nothing changed now: the stroke goes, and HSB opens again on what is left
@@ -1373,6 +1373,7 @@ fn undo_and_redo_survive_saving_and_reopening() {
     let s = CanvasSession::new(32, 32);
     {
         let mut st = s.shared.lock();
+        st.doc.background_visible = false;
         st.window_size = (32, 32);
         st.view = Some(View::fit((32, 32), (32, 32)));
         st.gpu = Some(gpu);
@@ -3140,17 +3141,17 @@ fn a_group_s_lock_shows_on_its_layers_and_their_unlock_takes_it_off() {
     assert!(s.set_layer_locked(group, false));
     assert!(!locked(lower) && locked(upper));
     assert_eq!(s.why_blocked(), None);
-    // locked by its group alone, a layer's Unlock unlocks the group: one undo step, called so
+    // locked by its group alone, a layer's Unlock unlocks the group as one named undo step
     assert!(s.set_layer_locked(group, true));
-    assert_eq!(s.lock_said(lower, false), "Unlock Layer Group");
-    assert_eq!(s.lock_said(upper, false), "Unlock layer");
+    assert_eq!(s.lock_said(lower, false), "Разблокировать группу слоёв");
+    assert_eq!(s.lock_said(upper, false), "Разблокировать слой");
     assert!(s.set_layer_locked(lower, false));
     assert!(!locked(group) && !locked(lower) && locked(upper));
-    assert_eq!(s.undo().as_deref(), Some("unlock Layer Group"));
+    assert_eq!(s.undo().as_deref(), Some("разблокировать группу слоёв"));
     assert!(locked(group) && locked(lower));
-    // a group's step is named as measured ("Undo unlock Layer Group")
+    // the group action uses the same localized undo-step name
     assert!(s.set_layer_locked(group, false));
-    assert_eq!(s.undo().as_deref(), Some("unlock Layer Group"));
+    assert_eq!(s.undo().as_deref(), Some("разблокировать группу слоёв"));
 }
 
 #[test]
@@ -3519,7 +3520,7 @@ fn exports_psd_tiff_pdf_and_layer_pngs() {
     let psd = std::fs::read(dir.join("a.psd")).unwrap();
     assert_eq!(&psd[..4], b"8BPS");
     // a group's end marker, the background, and the mask (channel -2) are there
-    assert!(psd.windows(14).any(|w| w == b"</Layer group>") && psd.windows(10).any(|w| w == b"Background"));
+    assert!(psd.windows(14).any(|w| w == b"</Layer group>") && psd.windows(6).any(|w| w == [4, 36, 4, 62, 4, 61]));
     assert!(psd.windows(2).any(|w| w == [0xFF, 0xFE]));
     s.export_tiff(path("a.tif")).unwrap();
     assert_eq!(&std::fs::read(dir.join("a.tif")).unwrap()[..4], b"II*\0");

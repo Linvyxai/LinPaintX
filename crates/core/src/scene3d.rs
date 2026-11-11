@@ -5089,7 +5089,7 @@ mod tests {
     #[test]
     fn a_packaged_models_textures_come_in_as_its_base_layers() {
         let s = CanvasSession::open_model(CUBE.into(), "cube.obj".into(), Vec::new(), "Cube".into(), 64).unwrap();
-        assert_eq!(s.layers().first().map(|l| l.name.clone()).as_deref(), Some("Base Layer"));
+        assert_eq!(s.layers().first().map(|l| l.name.clone()).as_deref(), Some("Базовый слой"));
         assert!(s.model_texture_files().is_empty());
         if !shown(&s) {
             return;

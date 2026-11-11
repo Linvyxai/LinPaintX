@@ -512,7 +512,7 @@ impl Document {
             width: width.clamp(1, MAX_CANVAS_EDGE),
             height: height.clamp(1, MAX_CANVAS_EDGE),
             background: [1.0, 1.0, 1.0],
-            background_visible: false,
+            background_visible: true,
             background_checkerboard: false,
             layers: Vec::new(),
             current: LayerId(0),
