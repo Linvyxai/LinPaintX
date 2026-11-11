@@ -163,6 +163,9 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
     var swiped by remember { mutableStateOf<ULong?>(null) }
     var titleMenu by remember { mutableStateOf(false) }
     var selectionMode by remember { mutableStateOf(false) }
+    // rows show their place in the choice whenever there is one: the choice opened from the header's
+    // button, or made one swipe right at a time, should look the same and act the same
+    val picking = selectionMode || vm.anyPicked
     var deletingChosen by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -184,7 +187,7 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
         PanelHeader(
             // only what was actually picked is counted: the current layer alone would read "1"
             // before the user has tapped anything, which says nothing to do next
-            if (!selectionMode) "Слои" else if (vm.anyPicked) "Выбрано ${vm.layers.count { it.current || it.picked }}" else "Тапните слои",
+            if (!picking) "Слои" else if (vm.anyPicked) "Выбрано ${vm.layers.count { it.current || it.picked }}" else "Тапните слои",
             chevronOn = vm.anyPicked,
             onTitle = { titleMenu = !titleMenu },
             menu = {
@@ -361,7 +364,7 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                     }
                     SwipeRow(vm, l, open = swiped == l.id, enabled = dragId == null, onOpen = { swiped = if (it) l.id else null }, onPick = { vm.pickLayer(l) }) {
                         if (l.kind == LayerType.GROUP) {
-                            GroupRow(vm, l, shape, name, onTap, indent, onToggle = { vm.toggleCollapsed(l) }, picking = selectionMode)
+                            GroupRow(vm, l, shape, name, onTap, indent, onToggle = { vm.toggleCollapsed(l) }, picking = picking)
                         } else LayerRow(
                             vm,
                             l,
@@ -382,7 +385,7 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
                             onCube = if (vm.modelOpen && l.kind != LayerType.MASK) ({ vm.toggleChannelTray(l.id) }) else null,
                             cubeLit = vm.modelOpen && l.current && vm.channelTileChosen,
                             selected = l.current && !(vm.modelOpen && vm.channelTileChosen),
-                            picking = selectionMode,
+                            picking = picking,
                         )
                     }
                     if (vm.modelOpen && vm.channelTrayFor == l.id) ChannelTray(vm, l)
@@ -452,8 +455,9 @@ fun LayersPanel(vm: CanvasViewModel, arrowX: Dp, modifier: Modifier = Modifier) 
             }
         }
         // what to do with the picked layers sits under the list rather than above it: the thumb
-        // reaches it without scrolling back up, and it stays there as the list scrolls
-        if (selectionMode) {
+        // reaches it without scrolling back up, and it stays there as the list scrolls. A row swiped
+        // right picks without the mode being opened, so the actions show for that choice too
+        if (picking) {
             Row(
                 Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 12.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
