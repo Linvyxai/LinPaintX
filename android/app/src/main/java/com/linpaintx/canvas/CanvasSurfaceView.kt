@@ -49,6 +49,9 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
     /** The palm test has already said which touch it dropped: not again every touch. */
     private var palmTold = false
 
+    /** A surface that would not attach has already been complained about: once, not every touch. */
+    private var attachTold = false
+
     /** The pen's side buttons last seen held. */
     private var penButtons = 0
 
@@ -68,6 +71,9 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         val s = vm.session ?: return
         val rotation = display?.rotation ?: Surface.ROTATION_0
+        // kept even when attaching fails: a later touch tries again with the surface's own size
+        surfaceWidth = width
+        surfaceHeight = height
         if (attached && session === s) {
             if (rotation != windowRotation) followTurn(s, windowRotation, rotation)
             s.resizeWindow(width.toUInt(), height.toUInt())
@@ -75,12 +81,27 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
             remember(width, height, rotation)
             return
         }
+        attach(s, width, height)
+    }
+
+    /** The surface's size, remembered for a retry after a failed attach. */
+    private var surfaceWidth = 0
+    private var surfaceHeight = 0
+
+    /**
+     * Hands this surface to [s]: the native window, the session's, then the view's own state. False
+     * when the surface gave no window or the session refused it — until then every touch ends at a
+     * null session, and a canvas that shows its last picture but answers nothing looks exactly like
+     * a broken one.
+     */
+    private fun attach(s: CanvasSession, width: Int, height: Int): Boolean {
         val id = NativeWindows.acquire(holder.surface)
         if (id == 0L) {
             Log.e(TAG, "no native window for the surface")
-            return
+            return false
         }
-        try {
+        val rotation = display?.rotation ?: Surface.ROTATION_0
+        return try {
             s.attachWindow(id.toULong(), width.toUInt(), height.toUInt())
             s.setDisplayScale(resources.displayMetrics.density)
             // the display turned while there was no window (the app away, the upright lock screen):
@@ -90,9 +111,12 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
             attached = true
             vm.refreshView()
             remember(width, height, rotation)
+            attachTold = false
+            true
         } catch (e: MobileException) {
             NativeWindows.release(id)
             Log.e(TAG, "attaching the window", e)
+            false
         }
     }
 
@@ -300,7 +324,19 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(e: MotionEvent): Boolean {
-        val s = session ?: return true
+        val s = session ?: run {
+            // the picture on the glass is the last one drawn, but this view never got its window:
+            // a touch says the surface is alive, so it is the moment to try once more — and to name
+            // the failure when it fails again, instead of the canvas answering nothing in silence
+            val live = vm.session
+            if (live == null || surfaceWidth <= 0) return true
+            if (attach(live, surfaceWidth, surfaceHeight)) return true
+            if (!attachTold) {
+                attachTold = true
+                vm.showNotice("Холст не получил экран — касания до него не доходят. Закрой работу и открой снова", warning = true)
+            }
+            return true
+        }
         if (penButton(e)) return true
         predictor.record(e)
         if (e.actionMasked == MotionEvent.ACTION_DOWN) {
