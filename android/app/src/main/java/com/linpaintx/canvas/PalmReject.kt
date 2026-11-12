@@ -64,12 +64,21 @@ fun fingerSilenceReason(
  * What the screen says about its dots, in words, for the settings row that can switch the palm test
  * off: on a tablet that paints nothing the first question is whether this figure is the liar, and
  * the answer should be on the screen, not in a log the user cannot read.
+ *
+ * [running] is whether the row's switch has the test on: said without it, the line promised "the palm
+ * test works by it" under a switch that is off by default now, which reads as a lie in the UI.
  */
-fun palmDiagnostics(xdpi: Float, densityDpi: Int): String = when {
-    xdpi >= SANE_DPI_LOW && xdpi <= SANE_DPI_HIGH ->
-        "Экран сообщает ${xdpi.roundToInt()} dpi — значение достоверно, тест ладони работает по нему."
-    densityDpi >= SANE_DPI_LOW ->
-        "Экран сообщает ${xdpi.roundToInt()} dpi — недостоверно; тест считает по плотности интерфейса (${densityDpi} dpi)."
-    else ->
-        "Плотность точек неизвестна — тест ладони не действует, пальцем рисуется всегда"
+fun palmDiagnostics(xdpi: Float, densityDpi: Int, running: Boolean): String {
+    val honest = xdpi >= SANE_DPI_LOW && xdpi <= SANE_DPI_HIGH
+    val figure = when {
+        honest -> "Экран сообщает ${xdpi.roundToInt()} dpi — значение достоверно"
+        densityDpi >= SANE_DPI_LOW ->
+            "Экран сообщает ${xdpi.roundToInt()} dpi — недостоверно; тест считает по плотности интерфейса (${densityDpi} dpi)"
+        else -> "Плотность точек неизвестна"
+    }
+    return when {
+        !running -> "$figure, но тест выключен — пальцем рисуется всегда"
+        !honest && densityDpi < SANE_DPI_LOW -> "$figure — тест ладони не действует, пальцем рисуется всегда"
+        else -> "$figure, тест ладони работает по нему"
+    }
 }

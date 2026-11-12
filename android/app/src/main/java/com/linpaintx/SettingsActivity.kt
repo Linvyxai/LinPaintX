@@ -136,7 +136,7 @@ private val Groups: List<Pair<String, List<Setting>>> = listOf(
         ),
         Toggle(
             CanvasViewModel.PALM_REJECTION, "Отказ ладони",
-            "Касание шире 25 мм считается ладонью и не рисует. Выключите, если пальцем рисовать не выходит: часть планшетов сообщает неверную плотность точек, и тогда любой палец кажется ладонью.", true,
+            "Касание шире 25 мм считается ладонью и не рисует. По умолчанию выключено — приложение рассчитано на рисование пальцем, а экраны часто врут о размере касания, из-за чего любой палец кажется ладонью. Включите, если пишете пером и кладёте руку на экран; рука под уже опущенным пером убирается и без этого.", false,
         ),
         Toggle(
             CanvasViewModel.HOVER_MUTE, "Заглушать палец рядом с пером",
@@ -200,7 +200,7 @@ private fun ToggleRow(prefs: android.content.SharedPreferences, s: Toggle) {
             // tell from a broken one: what the device claims, and what the app makes of it, on screen
             if (s.key == CanvasViewModel.PALM_REJECTION) {
                 val m = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics
-                Text(palmDiagnostics(m.xdpi, m.densityDpi), color = Dim, fontSize = 13.sp)
+                Text(palmDiagnostics(m.xdpi, m.densityDpi, on), color = Dim, fontSize = 13.sp)
             }
         }
         Switch(on, enabled = true)

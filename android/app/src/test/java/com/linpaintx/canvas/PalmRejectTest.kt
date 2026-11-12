@@ -38,12 +38,24 @@ class PalmRejectTest {
     @Test
     fun theSettingsRowSaysWhichFigureTheTestTrusts() {
         // the honest screen: its own figure is used
-        assert(palmDiagnostics(262f, 262).contains("достоверно"))
+        assert(palmDiagnostics(262f, 262, running = true).contains("достоверно"))
         // the liar: the app's density answers, and the row says so
-        assert(palmDiagnostics(72f, 262).contains("недостоверно"))
-        assert(palmDiagnostics(72f, 262).contains("262"))
+        assert(palmDiagnostics(72f, 262, running = true).contains("недостоверно"))
+        assert(palmDiagnostics(72f, 262, running = true).contains("262"))
         // nothing to go by: the test stands down
-        assert(palmDiagnostics(0f, 0).contains("не действует"))
+        assert(palmDiagnostics(0f, 0, running = true).contains("не действует"))
+    }
+
+    @Test
+    fun theDiagnosticsLineDoesNotClaimATestThatIsSwitchedOff() {
+        // the switch is off by default now, so the old sentence "the palm test works by it" sat under
+        // an off switch — the row has to say which of the two the person is looking at
+        val off = palmDiagnostics(420f, 420, running = false)
+        assert(off.contains("выключен"))
+        assert(!off.contains("работает по нему"))
+        assert(off.contains("420"))
+        // the same screen with the test on does say it works
+        assert(palmDiagnostics(420f, 420, running = true).contains("работает по нему"))
     }
 
     @Test

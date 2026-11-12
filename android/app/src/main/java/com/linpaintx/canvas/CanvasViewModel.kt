@@ -2675,10 +2675,12 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         private set
 
-    /** Touch: a fingertip wider than [PALM_MM] across is taken for a palm and paints nothing. A
-     * screen whose dot pitch is reported wrong makes every fingertip look like a palm, so the whole
-     * test can be switched off. */
-    var palmRejection by mutableStateOf(interfacePrefs.getBoolean(PALM_REJECTION, true))
+    /** Touch: a fingertip wider than [PALM_MM] across is taken for a palm and paints nothing. The
+     * measurement is a guess at best — a screen that lies about its dots, or reports contact sizes in
+     * units that are not pixels at all, makes every fingertip a palm — so the app does not run the test
+     * until the person asks for it. A hand resting while the pen is *down* is still set aside by the
+     * shared touches themselves; this test only adds the hovering pen's case. */
+    var palmRejection by mutableStateOf(interfacePrefs.getBoolean(PALM_REJECTION, false))
 
         private set
 
@@ -2733,7 +2735,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         tapAssistance = interfacePrefs.getBoolean(TAP_ASSISTANCE, false)
 
-        palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, true)
+        palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, false)
 
         hoverMutesFingers = interfacePrefs.getBoolean(HOVER_MUTE, false)
 
