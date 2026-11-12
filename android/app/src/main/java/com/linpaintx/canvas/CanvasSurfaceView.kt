@@ -351,8 +351,11 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
             skipping = false
             // a finger that cannot paint says why, and which switch to look at: on a phone that is the
             // whole difference between a settings puzzle and a broken app. One notice an episode: a
-            // hovering pen, a lying dot pitch and the gesture controls all say the same "no" many times
-            if (!hoverTold && e.getToolType(e.actionIndex) == MotionEvent.TOOL_TYPE_FINGER) {
+            // hovering pen, a lying dot pitch and the gesture controls all say the same "no" many times.
+            // Classified as the engine classifies it (kindOf), not by MotionEvent.TOOL_TYPE_FINGER:
+            // cheap digitizers report TOOL_TYPE_UNKNOWN for a finger, and those phones are exactly the
+            // ones that would otherwise keep meeting a silent canvas
+            if (!hoverTold && kindOf(e, e.actionIndex) == PointerKind.FINGER) {
                 val st = vm.touchSettings()
                 val why = fingerSilenceReason(
                     paints = st.fingerPaint,
@@ -534,12 +537,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
         postDelayed(predictionOver, PREDICTION_LASTS_MS)
     }
 
-    private fun kindOf(e: MotionEvent, index: Int): PointerKind = when (e.getToolType(index)) {
-        MotionEvent.TOOL_TYPE_STYLUS -> PointerKind.STYLUS
-        MotionEvent.TOOL_TYPE_ERASER -> PointerKind.STYLUS_ERASER
-        MotionEvent.TOOL_TYPE_MOUSE -> PointerKind.MOUSE
-        else -> PointerKind.FINGER
-    }
+    private fun kindOf(e: MotionEvent, index: Int): PointerKind = kindOfToolType(e.getToolType(index))
 
     /** The pointer's samples in this event: the batched ones since the last event, then the latest. */
     private fun samples(e: MotionEvent, i: Int): List<PenSample> {
@@ -569,4 +567,18 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
         /** A finger's contact this far across (mm) or more is a palm: a fingertip is 8 to 15, a flat thumb under 20. */
         const val PALM_MM = 25f
     }
+}
+
+/**
+ * What a pointer of this `MotionEvent` tool type is to the shared touches. Everything the engine
+ * cannot name is a finger, on purpose: cheap digitizers report TOOL_TYPE_UNKNOWN for an actual finger,
+ * and taking those for nothing would leave the screen answering nothing to the one tool the app is
+ * drawn with. The canvas's own notices use this same mapping, so a touch never gets an explanation
+ * that disagrees with how it was treated.
+ */
+fun kindOfToolType(toolType: Int): PointerKind = when (toolType) {
+    MotionEvent.TOOL_TYPE_STYLUS -> PointerKind.STYLUS
+    MotionEvent.TOOL_TYPE_ERASER -> PointerKind.STYLUS_ERASER
+    MotionEvent.TOOL_TYPE_MOUSE -> PointerKind.MOUSE
+    else -> PointerKind.FINGER
 }
