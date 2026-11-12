@@ -45,4 +45,44 @@ class PalmRejectTest {
         // nothing to go by: the test stands down
         assert(palmDiagnostics(0f, 0).contains("не действует"))
     }
+
+    @Test
+    fun aFingerThatPaintsIsNotComplainedAbout() {
+        assertNull(fingerSilenceReason(paints = true, moves = false, penHovering = true, hoverMutes = true, palmRejects = true))
+    }
+
+    @Test
+    fun aFingerCarryingTheCanvasIsSeenAndSoNotExplained() {
+        // one-finger pan: the canvas moves, which answers the touch in its own way
+        assertNull(fingerSilenceReason(paints = false, moves = true, penHovering = false, hoverMutes = true, palmRejects = false))
+    }
+
+    @Test
+    fun theHoveringPenIsNamedFirstBecauseItSwallowsTheTouchOutright() {
+        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, palmRejects = true))
+        assert(why.contains("Заглушать палец рядом с пером"))
+    }
+
+    @Test
+    fun aWideFingerIsBlamedOnThePalmTestRatherThanOnTheGestures() {
+        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = true))
+        assert(why.contains("Отказ ладони"))
+    }
+
+    @Test
+    fun theGestureSwitchIsNamedWhenNothingElseSaysNo() {
+        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = false))
+        assert(why.contains("Рисование пальцем"))
+    }
+
+    @Test
+    fun EveryReasonNamesTheSwitchThatEndsIt() {
+        // the person is on a phone with a stylus-less driver: a reason to read is useless without the
+        // way out, and the way out must be one they can reach from Settings, not only the gesture page
+        for (why in listOf(
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, palmRejects = false)),
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = true)),
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = false)),
+        )) assert(why.contains("Настройки ›"))
+    }
 }

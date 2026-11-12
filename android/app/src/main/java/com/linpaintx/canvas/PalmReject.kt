@@ -25,6 +25,29 @@ private const val SANE_DPI_LOW = 100f
 private const val SANE_DPI_HIGH = 600f
 
 /**
+ * Why a finger's touch does not paint, in the user's words, or null when the finger does paint (or
+ * moves the canvas, which the person sees and so is not a mystery). Phones are the reason this is
+ * asked: their stylus drivers hover forever and their panels report a nonsense dot pitch, so a phone
+ * can lose every finger touch without losing a menu.
+ */
+fun fingerSilenceReason(
+    paints: Boolean,
+    moves: Boolean,
+    penHovering: Boolean,
+    hoverMutes: Boolean,
+    palmRejects: Boolean,
+): String? = when {
+    paints -> null
+    moves -> null
+    penHovering && hoverMutes ->
+        "Перо наводится над холстом — палец не рисует. Разрешить: Настройки › «Заглушать палец рядом с пером»"
+    palmRejects ->
+        "Касание широким пальцем считается ладонью и не рисует. Разрешить: Настройки › «Рисовать пальцем в обход жестов», либо «Отказ ладони»"
+    else ->
+        "Палец не рисует: Действия › Управление жестами › «Общие» › «Рисование пальцем» выключено. Разрешить: Настройки › «Рисовать пальцем в обход жестов»"
+}
+
+/**
  * What the screen says about its dots, in words, for the settings row that can switch the palm test
  * off: on a tablet that paints nothing the first question is whether this figure is the liar, and
  * the answer should be on the screen, not in a log the user cannot read.

@@ -2690,6 +2690,14 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         private set
 
+    /** Accessibility, for phones above all: a finger paints whatever the gesture controls and the
+     * pen's driver say. Its digitizers are the ones that report a stylus hovering forever and a dot
+     * pitch no one recognises, and either of those is a silent no to every touch; this switch is the
+     * answer that does not depend on which of them the phone is lying about. */
+    var fingerPaintsAnyway by mutableStateOf(interfacePrefs.getBoolean(FINGER_PAINTS, false))
+
+        private set
+
 
 
     /** The companion's one-finger mode: a finger dragged on the canvas zooms it, or moves it. */
@@ -2727,6 +2735,8 @@ fun applyStabilizer(mode: Int, level: Int) {
         palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, true)
 
         hoverMutesFingers = interfacePrefs.getBoolean(HOVER_MUTE, true)
+
+        fingerPaintsAnyway = interfacePrefs.getBoolean(FINGER_PAINTS, false)
 
         if (!singleTouchCompanion) companionMode = CompanionMode.NONE
 
@@ -5050,7 +5060,12 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** The gesture settings as the canvas's touches (in the shared core) take them. */
 
-    fun touchSettings(): com.linpaintx.core.TouchSettings = gestures.touchSettings(rapidUndoDelay * 1000.0)
+    fun touchSettings(): com.linpaintx.core.TouchSettings {
+        val s = gestures.touchSettings(rapidUndoDelay * 1000.0)
+        // the accessibility switch wins over the gesture controls in both directions: the finger
+        // paints, and nothing is asked of it besides painting
+        return if (fingerPaintsAnyway) s.copy(fingerPaint = true, oneFingerPan = false) else s
+    }
 
 
 
@@ -15553,6 +15568,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         /** Whether a hovering pen stands in for a hand; see [CanvasViewModel.hoverMutesFingers]. */
         const val HOVER_MUTE = "hover_mute"
+
+        /** Whether a finger paints whatever the gestures say; see [CanvasViewModel.fingerPaintsAnyway]. */
+        const val FINGER_PAINTS = "finger_paints"
 
 
 

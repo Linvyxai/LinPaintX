@@ -43,7 +43,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
     /** The pen is hovering over the canvas. */
     private var penHovering = false
 
-    /** A hovering pen has already explained itself to a finger this episode: not again every touch. */
+    /** Why a finger does not paint has already been explained this episode: not again every touch. */
     private var hoverTold = false
 
     /** The palm test has already said which touch it dropped: not again every touch. */
@@ -187,7 +187,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
 
     /** Whether pointer [i] of [e] is a finger's contact [PALM_MM] or more across. */
     private fun palmSized(e: MotionEvent, i: Int): Boolean {
-        if (!vm.palmRejection || e.getToolType(i) != MotionEvent.TOOL_TYPE_FINGER) return false
+        if (!vm.palmRejection || vm.fingerPaintsAnyway || e.getToolType(i) != MotionEvent.TOOL_TYPE_FINGER) return false
         val m = resources.displayMetrics
         // null when the screen cannot say how wide its dots are: then nothing is a palm
         val mm = touchMillimetres(e.getTouchMajor(i), m.xdpi, m.densityDpi) ?: return false
@@ -209,7 +209,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                     // like a broken one: tell once, and name the switch that brings painting back
                     if (!palmTold) {
                         palmTold = true
-                        vm.showNotice("Касание слишком широкое — принято за ладонь. Разрешить: Настройки › «Отказ ладони»", warning = true)
+                        vm.showNotice("Касание слишком широкое — принято за ладонь. Разрешить: Настройки › «Рисовать пальцем в обход жестов» либо «Отказ ладони»", warning = true)
                     }
                     emptyList()
                 } else {
@@ -346,13 +346,22 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                 return true
             }
             skipping = false
-            // a hovering pen takes a finger for the hand resting beside it; on a tablet whose
-            // digitizer never stops hovering that is a canvas answering nothing, with no clue why —
-            // so the touch that got swallowed says who swallowed it, and where to switch it off
-            if (penHovering && vm.hoverMutesFingers && !hoverTold &&
-                e.getToolType(e.actionIndex) == MotionEvent.TOOL_TYPE_FINGER) {
-                hoverTold = true
-                vm.showNotice("Перо наводится над холстом — палец не рисует. Разрешить: Настройки › «Заглушать палец рядом с пером»", warning = true)
+            // a finger that cannot paint says why, and which switch to look at: on a phone that is the
+            // whole difference between a settings puzzle and a broken app. One notice an episode: a
+            // hovering pen, a lying dot pitch and the gesture controls all say the same "no" many times
+            if (!hoverTold && e.getToolType(e.actionIndex) == MotionEvent.TOOL_TYPE_FINGER) {
+                val st = vm.touchSettings()
+                val why = fingerSilenceReason(
+                    paints = st.fingerPaint,
+                    moves = st.oneFingerPan,
+                    penHovering = penHovering && !vm.fingerPaintsAnyway,
+                    hoverMutes = vm.hoverMutesFingers,
+                    palmRejects = vm.palmRejection,
+                )
+                if (why != null) {
+                    hoverTold = true
+                    vm.showNotice(why, warning = true)
+                }
             }
             // a touch on the canvas closes an adjustment's menu, its Layer / Pencil choice and liquify's popups
             closedAdjustMenu = vm.adjustMenuAt != null
@@ -455,7 +464,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
             MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
                 // (told each time: a session opened meanwhile knows it too); a hand already down is set aside
                 // — unless the canvas is set to let a finger work anyway, when the hover stays local color
-                if (vm.hoverMutesFingers) session?.setTouchPenHovering(true)?.let(::obey)
+                if (vm.hoverMutesFingers && !vm.fingerPaintsAnyway) session?.setTouchPenHovering(true)?.let(::obey)
                 // a spray can's sound (a plugin's) rattles shaken above the canvas
                 session?.soundHover(e.x, e.y)
                 penHovering = true
