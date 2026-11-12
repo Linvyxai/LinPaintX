@@ -43,6 +43,9 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
     /** The pen is hovering over the canvas. */
     private var penHovering = false
 
+    /** A hovering pen has already explained itself to a finger this episode: not again every touch. */
+    private var hoverTold = false
+
     /** The pen's side buttons last seen held. */
     private var penButtons = 0
 
@@ -298,6 +301,14 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                 return true
             }
             skipping = false
+            // a hovering pen takes a finger for the hand resting beside it; on a tablet whose
+            // digitizer never stops hovering that is a canvas answering nothing, with no clue why —
+            // so the touch that got swallowed says who swallowed it, and where to switch it off
+            if (penHovering && vm.hoverMutesFingers && !hoverTold &&
+                e.getToolType(e.actionIndex) == MotionEvent.TOOL_TYPE_FINGER) {
+                hoverTold = true
+                vm.showNotice("Перо наводится над холстом — палец не рисует. Разрешить: Настройки › «Заглушать палец рядом с пером»", warning = true)
+            }
             // a touch on the canvas closes an adjustment's menu, its Layer / Pencil choice and liquify's popups
             closedAdjustMenu = vm.adjustMenuAt != null
             if (vm.adjustment != null) {
@@ -398,7 +409,8 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
         when (e.actionMasked) {
             MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
                 // (told each time: a session opened meanwhile knows it too); a hand already down is set aside
-                session?.setTouchPenHovering(true)?.let(::obey)
+                // — unless the canvas is set to let a finger work anyway, when the hover stays local color
+                if (vm.hoverMutesFingers) session?.setTouchPenHovering(true)?.let(::obey)
                 // a spray can's sound (a plugin's) rattles shaken above the canvas
                 session?.soundHover(e.x, e.y)
                 penHovering = true
@@ -409,6 +421,8 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
             MotionEvent.ACTION_HOVER_EXIT -> {
                 session?.setTouchPenHovering(false)?.let(::obey)
                 penHovering = false
+                // a later episode of a hovering pen is worth telling about again
+                hoverTold = false
                 vm.showCursor(null)
                 vm.showLiquifyRing(null)
             }

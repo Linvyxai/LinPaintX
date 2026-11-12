@@ -227,8 +227,8 @@ pub fn gesture_options(purpose: GesturePurpose) -> Vec<GestureOption> {
         ],
         GesturePurpose::Hover => vec![own(
             "HOVER_TOUCH",
-            "Touch",
-            "While the pen hovers, drag a finger for opacity and pinch for size",
+            "Палец при наведении пера",
+            "Пока перо наводится, тяга пальцем меняет непрозрачность, щипок — размер, а не глохнет: на планшетах, где перо наводится всегда, это единственное, что оставляет палец полезным.",
             false,
             false,
         )],

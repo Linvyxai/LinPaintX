@@ -2682,6 +2682,14 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         private set
 
+    /** Touch: while the pen merely hovers over the canvas, fingers are the hand resting by it and do
+     * nothing. Some digitizers say the pen is hovering forever — a pen in its slot, a driver that
+     * never reports the exit — and then the canvas answers nothing at all, so this too can be
+     * switched off. */
+    var hoverMutesFingers by mutableStateOf(interfacePrefs.getBoolean(HOVER_MUTE, true))
+
+        private set
+
 
 
     /** The companion's one-finger mode: a finger dragged on the canvas zooms it, or moves it. */
@@ -2717,6 +2725,8 @@ fun applyStabilizer(mode: Int, level: Int) {
         tapAssistance = interfacePrefs.getBoolean(TAP_ASSISTANCE, false)
 
         palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, true)
+
+        hoverMutesFingers = interfacePrefs.getBoolean(HOVER_MUTE, true)
 
         if (!singleTouchCompanion) companionMode = CompanionMode.NONE
 
@@ -15540,6 +15550,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         /** Whether the palm test runs at all; see [com.linpaintx.canvas.touchMillimetres]. */
         const val PALM_REJECTION = "palm_rejection"
+
+        /** Whether a hovering pen stands in for a hand; see [CanvasViewModel.hoverMutesFingers]. */
+        const val HOVER_MUTE = "hover_mute"
 
 
 
