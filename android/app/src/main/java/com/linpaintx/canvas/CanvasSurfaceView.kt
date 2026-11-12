@@ -46,6 +46,9 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
     /** A hovering pen has already explained itself to a finger this episode: not again every touch. */
     private var hoverTold = false
 
+    /** The palm test has already said which touch it dropped: not again every touch. */
+    private var palmTold = false
+
     /** The pen's side buttons last seen held. */
     private var penButtons = 0
 
@@ -178,6 +181,12 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                 }
                 if (palmSized(e, i)) {
                     palms += e.getPointerId(i)
+                    // a canvas that drops every touch and never says who dropped it looks exactly
+                    // like a broken one: tell once, and name the switch that brings painting back
+                    if (!palmTold) {
+                        palmTold = true
+                        vm.showNotice("Касание слишком широкое — принято за ладонь. Разрешить: Настройки › «Отказ ладони»", warning = true)
+                    }
                     emptyList()
                 } else {
                     s.touchDown(e.getPointerId(i).toULong(), kindOf(e, i), samples(e, i))
