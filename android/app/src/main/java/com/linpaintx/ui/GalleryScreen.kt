@@ -235,6 +235,7 @@ fun GalleryScreen(vm: CanvasViewModel) {
                 )
             } else {
                 GalleryHeader(
+                    wide = screenWidth >= 600.dp,
                     stack = vm.openStack?.name,
                     backLit = backLit,
                     onBackPlaced = { dropPlaces.back = it },
@@ -703,6 +704,7 @@ fun GalleryScreen(vm: CanvasViewModel) {
 /** The title row: the app's name, the select/import/photo capsule and the new-canvas button. */
 @Composable
 private fun GalleryHeader(
+    wide: Boolean,
     stack: String?,
     backLit: Boolean,
     onBackPlaced: (androidx.compose.ui.geometry.Rect) -> Unit,
@@ -713,55 +715,12 @@ private fun GalleryHeader(
     onImport: () -> Unit,
     onPhoto: () -> Unit,
 ) {
-    Box(Modifier.fillMaxWidth().height(55.dp)) {
-        // into a stack the title changes at once; back out, the stack's name fades out as the
-        // gallery's fades in
-        androidx.compose.animation.AnimatedContent(
-            stack,
-            transitionSpec = {
-                if (targetState == null) {
-                    androidx.compose.animation.ContentTransform(
-                        androidx.compose.animation.fadeIn(Motion.titleIn()),
-                        androidx.compose.animation.fadeOut(Motion.titleOut()),
-                        sizeTransform = null,
-                    )
-                } else {
-                    androidx.compose.animation.ContentTransform(
-                        androidx.compose.animation.EnterTransition.None,
-                        androidx.compose.animation.ExitTransition.None,
-                        sizeTransform = null,
-                    )
-                }
-            },
-            label = "title",
-        ) { name ->
-            if (name != null) {
-                // in a stack: back to the gallery (blue while touched, or while an artwork dragged
-                // rests on it to go back), and the stack's name
-                val touch = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                val ink = if (heldOf(touch) || backLit) Pc.Accent else Pc.GalleryTitle
-                Row(
-                    Modifier.padding(start = 20.dp, top = 12.dp).height(41.dp).onGloballyPositioned { onBackPlaced(it.boundsInRoot()) }
-                        .clickable(touch, indication = null, onClick = onBack),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) {
-                        Icon(PcIcons.ChevronLeft, contentDescription = "Назад", tint = ink, modifier = Modifier.size(28.dp))
-                    }
-                    Text(name, color = ink, fontSize = 36.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                }
-            } else {
-                Text(
-                    "LinPaintX",
-                    color = Pc.GalleryTitle,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 32.dp, top = 11.dp)
-                        .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onAbout),
-                )
-            }
-        }
-        Row(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+    // The name is 36.sp and the capsule with its round button is 206 + 12 + 44 dp: on a phone's 360 to
+    // 411 dp they do not share a line — the capsule was drawn over the name, which read as a broken
+    // title ("LinPaint"). Wide screens keep the single line; narrow ones put the actions under the
+    // name, which only pushes the grid down, and the same row serves the stack's back title.
+    val actions = @Composable {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier.height(45.dp).clip(CircleShape).background(Pc.Capsule).border(1.dp, Pc.CapsuleEdge, CircleShape),
                 verticalAlignment = Alignment.CenterVertically,
@@ -780,6 +739,66 @@ private fun GalleryHeader(
             Box(Modifier.padding(start = 12.dp).size(44.dp, 45.dp).clickable(onClick = onNew), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(42.dp).clip(CircleShape).background(Pc.Capsule).border(1.dp, Pc.CapsuleEdge, CircleShape))
                 Icon(PcIcons.Add, contentDescription = "Новый холст", tint = Pc.GalleryText, modifier = Modifier.requiredSize(40.dp))
+            }
+        }
+    }
+    Box(Modifier.fillMaxWidth().height(if (wide) 55.dp else 104.dp)) {
+        Column(Modifier.fillMaxWidth()) {
+            // into a stack the title changes at once; back out, the stack's name fades out as the
+            // gallery's fades in
+            androidx.compose.animation.AnimatedContent(
+                stack,
+                transitionSpec = {
+                    if (targetState == null) {
+                        androidx.compose.animation.ContentTransform(
+                            androidx.compose.animation.fadeIn(Motion.titleIn()),
+                            androidx.compose.animation.fadeOut(Motion.titleOut()),
+                            sizeTransform = null,
+                        )
+                    } else {
+                        androidx.compose.animation.ContentTransform(
+                            androidx.compose.animation.EnterTransition.None,
+                            androidx.compose.animation.ExitTransition.None,
+                            sizeTransform = null,
+                        )
+                    }
+                },
+                label = "title",
+            ) { name ->
+                if (name != null) {
+                    // in a stack: back to the gallery (blue while touched, or while an artwork dragged
+                    // rests on it to go back), and the stack's name
+                    val touch = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val ink = if (heldOf(touch) || backLit) Pc.Accent else Pc.GalleryTitle
+                    Row(
+                        Modifier.padding(start = 20.dp, top = 12.dp).height(41.dp).onGloballyPositioned { onBackPlaced(it.boundsInRoot()) }
+                            .clickable(touch, indication = null, onClick = onBack),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.width(40.dp), contentAlignment = Alignment.Center) {
+                            Icon(PcIcons.ChevronLeft, contentDescription = "Назад", tint = ink, modifier = Modifier.size(28.dp))
+                        }
+                        Text(name, color = ink, fontSize = 36.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                } else {
+                    Text(
+                        "LinPaintX",
+                        color = Pc.GalleryTitle,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 32.dp, top = 11.dp)
+                            .clickable(remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onAbout),
+                    )
+                }
+            }
+            if (!wide) {
+                Box(Modifier.padding(start = 20.dp, top = 6.dp)) { actions() }
+            }
+        }
+        if (wide) {
+            Row(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                actions()
             }
         }
     }
