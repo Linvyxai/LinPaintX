@@ -48,31 +48,44 @@ class PalmRejectTest {
 
     @Test
     fun aFingerThatPaintsIsNotComplainedAbout() {
-        assertNull(fingerSilenceReason(paints = true, moves = false, penHovering = true, hoverMutes = true, palmRejects = true))
+        assertNull(
+            fingerSilenceReason(
+                paints = true, moves = false, penHovering = true, hoverMutes = true, droppedAsPalm = true,
+            )
+        )
     }
 
     @Test
     fun aFingerCarryingTheCanvasIsSeenAndSoNotExplained() {
         // one-finger pan: the canvas moves, which answers the touch in its own way
-        assertNull(fingerSilenceReason(paints = false, moves = true, penHovering = false, hoverMutes = true, palmRejects = false))
+        assertNull(
+            fingerSilenceReason(
+                paints = false, moves = true, penHovering = false, hoverMutes = true, droppedAsPalm = false,
+            )
+        )
     }
 
     @Test
     fun theHoveringPenIsNamedFirstBecauseItSwallowsTheTouchOutright() {
-        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, palmRejects = true))
+        val why = requireNotNull(
+            fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, droppedAsPalm = false)
+        )
         assert(why.contains("Заглушать палец рядом с пером"))
     }
 
     @Test
-    fun aWideFingerIsBlamedOnThePalmTestRatherThanOnTheGestures() {
-        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = true))
-        assert(why.contains("Отказ ладони"))
-    }
-
-    @Test
-    fun theGestureSwitchIsNamedWhenNothingElseSaysNo() {
-        val why = requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = false))
-        assert(why.contains("Рисование пальцем"))
+    fun onlyATouchThePalmTestActuallyDroppedIsBlamedOnIt() {
+        val dropped = requireNotNull(
+            fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, droppedAsPalm = true)
+        )
+        assert(dropped.contains("Отказ ладони"))
+        // the API 35 emulator, and every phone whose screen reports its dots honestly: the test is
+        // switched on but this touch passed it, so the gesture switch is the one to name
+        val passed = requireNotNull(
+            fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, droppedAsPalm = false)
+        )
+        assert(!passed.contains("Отказ ладони"))
+        assert(passed.contains("Рисование пальцем"))
     }
 
     @Test
@@ -80,9 +93,9 @@ class PalmRejectTest {
         // the person is on a phone with a stylus-less driver: a reason to read is useless without the
         // way out, and the way out must be one they can reach from Settings, not only the gesture page
         for (why in listOf(
-            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, palmRejects = false)),
-            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = true)),
-            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, palmRejects = false)),
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = true, hoverMutes = true, droppedAsPalm = false)),
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, droppedAsPalm = true)),
+            requireNotNull(fingerSilenceReason(paints = false, moves = false, penHovering = false, hoverMutes = true, droppedAsPalm = false)),
         )) assert(why.contains("Настройки ›"))
     }
 }

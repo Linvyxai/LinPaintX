@@ -29,19 +29,25 @@ private const val SANE_DPI_HIGH = 600f
  * moves the canvas, which the person sees and so is not a mystery). Phones are the reason this is
  * asked: their stylus drivers hover forever and their panels report a nonsense dot pitch, so a phone
  * can lose every finger touch without losing a menu.
+ *
+ * [droppedAsPalm] is whether the palm test dropped this very touch, not whether the test is switched
+ * on: a phone whose screen reports honest dots passes every fingertip through, and blaming the palm
+ * test there would send the person to a switch that was never the reason. Checked on the API 35
+ * emulator, where the reason was the gesture switch and the palm test was on: the first wording
+ * pointed at the wrong one.
  */
 fun fingerSilenceReason(
     paints: Boolean,
     moves: Boolean,
     penHovering: Boolean,
     hoverMutes: Boolean,
-    palmRejects: Boolean,
+    droppedAsPalm: Boolean,
 ): String? = when {
     paints -> null
     moves -> null
     penHovering && hoverMutes ->
         "Перо наводится над холстом — палец не рисует. Разрешить: Настройки › «Заглушать палец рядом с пером»"
-    palmRejects ->
+    droppedAsPalm ->
         "Касание широким пальцем считается ладонью и не рисует. Разрешить: Настройки › «Рисовать пальцем в обход жестов», либо «Отказ ладони»"
     else ->
         "Палец не рисует: Действия › Управление жестами › «Общие» › «Рисование пальцем» выключено. Разрешить: Настройки › «Рисовать пальцем в обход жестов»"

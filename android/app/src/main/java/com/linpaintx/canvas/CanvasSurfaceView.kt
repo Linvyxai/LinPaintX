@@ -359,7 +359,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                     moves = st.oneFingerPan,
                     penHovering = penHovering && !vm.fingerPaintsAnyway,
                     hoverMutes = vm.hoverMutesFingers,
-                    palmRejects = vm.palmRejection,
+                    droppedAsPalm = palmSized(e, e.actionIndex),
                 )
                 if (why != null) {
                     hoverTold = true
