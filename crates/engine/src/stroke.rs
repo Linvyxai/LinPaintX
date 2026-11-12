@@ -317,8 +317,17 @@ fn by_speed(amount: f32, speed: f32) -> f32 {
 
 /// Stabilisation averages each point with those either side of it: at full strength this many
 /// samples' worth each way (at the rate above), fewer as the strength to this power falls.
-const MOST_AVERAGED: f32 = 120.0;
-const STABILIZATION_POWER: f32 = 2.2;
+///
+/// Both were measured, not chosen: the average is what a stroke keeps its shape *against*, so the
+/// window is bounded by what it can eat. At 120 samples each way (half a second of a pen) a quick
+/// 150 ms curve kept 9% of its bow and a 400 ms one 18% — which is the report of "any movement
+/// comes out a straight line" — and on the quick curve the shake came out *bigger* than the input
+/// (1.6 times), with the drawn end 509 px behind the pen. At 12 with the strength to the 1.2 power
+/// the same strokes keep 83 to 99% of the curve, leave a quarter to a twentieth of the shake, and
+/// trail the pen by 59 px at the most; and suppression now rises with the strength at every length
+/// instead of ringing back up at the top of it.
+const MOST_AVERAGED: f32 = 12.0;
+const STABILIZATION_POWER: f32 = 1.2;
 /// Motion filtering lets through what moves slower than its cut and takes out what shakes faster:
 /// at full strength the cut is this, in hertz. Below that it rises to the input's own rate with
 /// the strength to this power, so a little is strong already.
@@ -4005,13 +4014,58 @@ mod tests {
             let near = b.iter().map(|q| q.center.distance(p.center)).fold(f32::MAX, f32::min);
             assert!(near < 2.5, "{near} px off at {:?}", p.center);
         }
-        // and with the average the width of the whole stroke, it leaves the curve for the chord
+        // and what it averages is the hand's shake, not the stroke: a quick curve drawn at the full
+        // strength keeps most of its bow (measured 68% of it at 150 ms, 94% at 400 ms), where the
+        // window this map used to reach half a second wide left 9% and 18% — "any movement comes out
+        // a straight line". The shake of the same strokes comes down to a quarter to a twentieth.
         let input = slash(150.0);
         let (from, to) = (input[0].pos, input[input.len() - 1].pos);
         let along = (to - from).normalized_or(Vec2::new(1.0, 0.0));
         let across = |p: Vec2| ((p - from).x * along.y - (p - from).y * along.x).abs();
         let bow = |s: &[Stamp]| s.iter().map(|s| across(s.center)).fold(0.0, f32::max);
-        assert!(bow(&stabilised(1.0, &input)) < bow(&stabilised(0.2, &input)) * 0.5);
+        assert!(bow(&stabilised(1.0, &input)) > bow(&stabilised(0.0, &input)) * 0.6);
+        assert!(bow(&stabilised(1.0, &slash(400.0))) > bow(&stabilised(0.0, &slash(400.0))) * 0.9);
+    }
+
+    #[test]
+    fn full_stabilisation_keeps_the_curve_and_still_takes_the_shake_out() {
+        // the report this answers: values above about 4 of 10 turned almost any movement into a
+        // straight line. What the strength may spend is the hand's shake, not the shape of the stroke
+        let input = slash(150.0);
+        let (from, to) = (input[0].pos, input[input.len() - 1].pos);
+        let along = (to - from).normalized_or(Vec2::new(1.0, 0.0));
+        let bow = |s: &[Stamp]| {
+            s.iter()
+                .map(|t| ((t.center - from).x * along.y - (t.center - from).y * along.x).abs())
+                .fold(0.0, f32::max)
+        };
+        for (ms, least) in [(150.0, 0.6), (400.0, 0.9), (900.0, 0.95)] {
+            let drawn = slash(ms);
+            let (a, b) = (bow(&stabilised(0.0, &drawn)), bow(&stabilised(1.0, &drawn)));
+            assert!(b / a >= least, "at {ms} ms full strength keeps {:.2} of the curve", b / a);
+        }
+        // and it still does its job: the same 2 px shake, measured as the root mean square off the
+        // line through the middle of the stroke, is a third of itself at the bottom of the slider
+        // and no more than a quarter at the top, instead of the 1.6 the old window rang it up to
+        let shaky = |ms: f64| -> Vec<Sample> {
+            let n = (ms * 0.12) as usize;
+            (0..=n)
+                .map(|i| {
+                    let u = i as f32 / n as f32;
+                    let y = if i % 2 == 0 { 2.0 } else { -2.0 };
+                    Sample::at(Vec2::new(180.0 + 420.0 * u, 400.0 + y), 0.7, f64::from(i as u32) * 25.0 / 3.0)
+                })
+                .collect()
+        };
+        let rms = |s: &[Stamp]| -> f32 {
+            let (lo, hi) = (s.len() / 5, s.len().saturating_sub(s.len() / 5));
+            let held: Vec<f32> = s[lo..hi].iter().map(|t| (t.center.y - 400.0).abs()).collect();
+            (held.iter().map(|v| v * v).sum::<f32>() / held.len() as f32).sqrt()
+        };
+        for (amount, most) in [(0.2, 0.35), (0.6, 0.1), (1.0, 0.3)] {
+            let share = rms(&stabilised(amount, &shaky(150.0))) / rms(&stabilised(0.0, &shaky(150.0)));
+            assert!(share <= most, "at {amount} the shake is left at {share:.2}");
+        }
     }
 
     #[test]
@@ -4075,7 +4129,10 @@ mod tests {
             (800.0 - last.center.x, last.radius)
         };
         let close = |a: f32, b: f32, share: f32| (a - b).abs() <= share * a.abs().max(b.abs());
-        for (setting, amount, behind) in [("stabilization", 1.0, 200.0), ("motion_filtering", 0.25, 15.0)] {
+        // (the stabilization bound is what its window leaves the pen ahead by at full strength, 59 px
+        // at either rate: it used to be 200 or more, which is the same lag the straight-line complaint
+        // came with; what this test is about is that the two rates agree)
+        for (setting, amount, behind) in [("stabilization", 1.0, 40.0), ("motion_filtering", 0.25, 15.0)] {
             let mut b = plain();
             b.set_setting(setting, amount);
             let (slow, fast) = (end(&b, PEN_RATE).0, end(&b, PEN_RATE * 3.0).0);
