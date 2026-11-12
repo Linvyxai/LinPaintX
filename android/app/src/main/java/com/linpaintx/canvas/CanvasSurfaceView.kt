@@ -359,6 +359,7 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                     moves = st.oneFingerPan,
                     penHovering = penHovering && !vm.fingerPaintsAnyway,
                     hoverMutes = vm.hoverMutesFingers,
+                    hoverTouch = st.hoverTouch,
                     droppedAsPalm = palmSized(e, e.actionIndex),
                 )
                 if (why != null) {
@@ -489,8 +490,12 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
         when (e.actionMasked) {
             MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
                 // (told each time: a session opened meanwhile knows it too); a hand already down is set aside
-                // — unless the canvas is set to let a finger work anyway, when the hover stays local color
-                if (vm.hoverMutesFingers && !vm.fingerPaintsAnyway) session?.setTouchPenHovering(true)?.let(::obey)
+                // — unless the finger is the tool this app is drawn with by default, when the hover stays
+                // local color. Hover's own touch gestures need the engine to hear the hover, so it is
+                // reported for them too: switching the mute off must not switch the pen's features off
+                if ((vm.hoverMutesFingers || vm.touchSettings().hoverTouch) && !vm.fingerPaintsAnyway) {
+                    session?.setTouchPenHovering(true)?.let(::obey)
+                }
                 // a spray can's sound (a plugin's) rattles shaken above the canvas
                 session?.soundHover(e.x, e.y)
                 penHovering = true

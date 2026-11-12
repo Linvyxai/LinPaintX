@@ -35,18 +35,25 @@ private const val SANE_DPI_HIGH = 600f
  * test there would send the person to a switch that was never the reason. Checked on the API 35
  * emulator, where the reason was the gesture switch and the palm test was on: the first wording
  * pointed at the wrong one.
+ *
+ * A hovering pen takes the finger only while it is both reported to the engine (Gesture settings'
+ * mute) and not wanted by Hover's own touch: with `hover_touch` on, the same finger drags the brush's
+ * opacity instead, which is an answer the person sees (`crates/core/src/touch.rs`, `pen_near`).
  */
 fun fingerSilenceReason(
     paints: Boolean,
     moves: Boolean,
     penHovering: Boolean,
     hoverMutes: Boolean,
+    hoverTouch: Boolean,
     droppedAsPalm: Boolean,
 ): String? = when {
     paints -> null
     moves -> null
+    // the finger is not idle under a hovering pen, it is busy with the brush: nothing to explain
+    penHovering && hoverTouch -> null
     penHovering && hoverMutes ->
-        "Перо наводится над холстом — палец не рисует. Разрешить: Настройки › «Заглушать палец рядом с пером»"
+        "Перо наводится над холстом — палец не рисует. Отключить: Настройки › «Заглушать палец рядом с пером»"
     droppedAsPalm ->
         "Касание широким пальцем считается ладонью и не рисует. Разрешить: Настройки › «Рисовать пальцем в обход жестов», либо «Отказ ладони»"
     else ->

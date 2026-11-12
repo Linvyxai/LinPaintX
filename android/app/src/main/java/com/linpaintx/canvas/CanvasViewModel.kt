@@ -2683,10 +2683,11 @@ fun applyStabilizer(mode: Int, level: Int) {
         private set
 
     /** Touch: while the pen merely hovers over the canvas, fingers are the hand resting by it and do
-     * nothing. Some digitizers say the pen is hovering forever — a pen in its slot, a driver that
-     * never reports the exit — and then the canvas answers nothing at all, so this too can be
-     * switched off. */
-    var hoverMutesFingers by mutableStateOf(interfacePrefs.getBoolean(HOVER_MUTE, true))
+     * nothing. The app is drawn with a finger by default, so this is switched off unless the person
+     * works with a pen and rests their hand on the screen; a driver that reports the pen hovering
+     * forever used to make the canvas answer nothing to any finger, with no way for the person to
+     * tell that from a broken app. */
+    var hoverMutesFingers by mutableStateOf(interfacePrefs.getBoolean(HOVER_MUTE, false))
 
         private set
 
@@ -2734,7 +2735,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, true)
 
-        hoverMutesFingers = interfacePrefs.getBoolean(HOVER_MUTE, true)
+        hoverMutesFingers = interfacePrefs.getBoolean(HOVER_MUTE, false)
 
         fingerPaintsAnyway = interfacePrefs.getBoolean(FINGER_PAINTS, false)
 
