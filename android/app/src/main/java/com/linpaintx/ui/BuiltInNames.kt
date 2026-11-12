@@ -135,3 +135,14 @@ private val StudioNames = mapOf(
 )
 
 fun localizedStudioName(name: String): String = StudioNames[name] ?: localizedBuiltInName(name)
+
+/**
+ * The name an artwork carries when nobody gave it one. The core and the view model store these
+ * English names (they live inside the project folder and in files already saved), so what shows
+ * them translates them here — the gallery's titles and alerts, and a share or an export's name.
+ */
+fun localizedArtworkName(name: String): String = when (name) {
+    "Untitled Artwork" -> "Новая работа"
+    "Untitled Canvas" -> "Новый холст"
+    else -> name
+}

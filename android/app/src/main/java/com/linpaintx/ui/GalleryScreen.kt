@@ -1743,12 +1743,6 @@ private fun translatedPresetName(name: String): String = when (name) {
     else -> name
 }
 
-private fun localizedArtworkName(name: String): String = when (name) {
-    "Untitled Artwork" -> "Новая работа"
-    "Untitled Canvas" -> "Новый холст"
-    else -> name
-}
-
 @Composable
 private fun SwipeButton(label: String, fill: Color, ink: Color, onClick: () -> Unit) {
     Box(Modifier.size(69.dp, 33.dp).clip(RoundedCornerShape(7.dp)).background(fill).clickable(onClick = onClick), contentAlignment = Alignment.Center) {

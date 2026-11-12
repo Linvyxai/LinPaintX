@@ -47,6 +47,7 @@ import com.linpaintx.core.BackgroundInfo
 import com.linpaintx.core.BlendModeInfo
 
 import com.linpaintx.ui.GradientPreset
+import com.linpaintx.ui.localizedArtworkName
 
 import com.linpaintx.core.BrushInfo
 
@@ -2570,7 +2571,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         val (w, h) = canvasSize()
 
-        return "This canvas holds at most ${layersFor(w, h)} layers."
+        return "Этот холст держит не больше ${layersFor(w, h)} слоёв."
 
     }
 
@@ -2780,7 +2781,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** [newFromPicture], the artwork called [title] (an imported file's name). */
 
-    private suspend fun pictureArtwork(uri: android.net.Uri, title: String = "Untitled Artwork") {
+    private suspend fun pictureArtwork(uri: android.net.Uri, title: String = "Работа без названия") {
 
         // in Display P3 if the picture is, else in sRGB
 
@@ -3180,7 +3181,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         readMeshes()
 
-        showNotice(if (hide) "Hide Submesh" else "Show Submesh")
+        showNotice(if (hide) "Скрыть меш" else "Показать меш")
 
     }
 
@@ -3198,7 +3199,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         readMeshes()
 
-        showNotice(if (lock) "Lock mesh" else "Unlock mesh")
+        showNotice(if (lock) "Заблокировать меш" else "Разблокировать меш")
 
     }
 
@@ -3606,7 +3607,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (s == null) {
 
-            message = why?.takeIf { it.isNotEmpty() }?.let { "This model can't be opened: $it." } ?: "This model can't be opened."
+            message = why?.takeIf { it.isNotEmpty() }?.let { "Эту модель нельзя открыть: $it." } ?: "Эту модель нельзя открыть."
 
             return
 
@@ -4324,7 +4325,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** The open artwork as a LinPaintX project or layered package in the cache. */
 
-    suspend fun exportPackageFile(extension: String = OWN_EXTENSION): File? = withExportCard("The artwork couldn't be exported.") { s ->
+    suspend fun exportPackageFile(extension: String = OWN_EXTENSION): File? = withExportCard("Работу не удалось экспортировать.") { s ->
 
         withContext(Dispatchers.IO) {
 
@@ -4552,7 +4553,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         galleryShared = 0f
 
-        return withCard("The artwork couldn't be exported.", { galleryShared }) {
+        return withCard("Работу не удалось экспортировать.", { galleryShared }) {
 
             shareableFiles(list, format, pdfQuality) { written -> galleryShared = written / list.size.coerceAtLeast(1).toFloat() }
 
@@ -5146,9 +5147,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 when {
 
-                    !photoKept -> "The photo couldn't be kept."
+                    !photoKept -> "Фото не удалось сохранить."
 
-                    !signed -> "The signature couldn't be kept."
+                    !signed -> "Подпись не удалось сохранить."
 
                     else -> null
 
@@ -6585,7 +6586,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 if (done.added == 0u) {
 
-                    message = if (done.full) noRoom() else "This picture can't be opened."
+                    message = if (done.full) noRoom() else "Эту картинку нельзя открыть."
 
                     return false
 
@@ -6816,7 +6817,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (added == 0) {
 
-            message = if (full) noRoom() else "This video can't be opened."
+            message = if (full) noRoom() else "Это видео нельзя открыть."
 
             return false
 
@@ -6926,27 +6927,27 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** What a stroke snapped to, for the band under the top bar. */
 
-    private fun snappedTo(kind: QuickShapeKind): String = "Snapped to " + when (kind) {
+    private fun snappedTo(kind: QuickShapeKind): String = "Прилипание: " + when (kind) {
 
-        QuickShapeKind.LINE -> "a line"
+        QuickShapeKind.LINE -> "линия"
 
-        QuickShapeKind.POLYLINE -> "a polyline"
+        QuickShapeKind.POLYLINE -> "ломаная"
 
-        QuickShapeKind.ARC -> "an arc"
-        QuickShapeKind.CURVE -> "a curve"
-        QuickShapeKind.ELLIPSE -> "an ellipse"
+        QuickShapeKind.ARC -> "дуга"
+        QuickShapeKind.CURVE -> "кривая"
+        QuickShapeKind.ELLIPSE -> "эллипс"
 
-        QuickShapeKind.CIRCLE -> "a circle"
+        QuickShapeKind.CIRCLE -> "круг"
 
-        QuickShapeKind.TRIANGLE -> "a triangle"
+        QuickShapeKind.TRIANGLE -> "треугольник"
 
-        QuickShapeKind.EQUILATERAL_TRIANGLE -> "an equilateral triangle"
+        QuickShapeKind.EQUILATERAL_TRIANGLE -> "равносторонний треугольник"
 
-        QuickShapeKind.QUADRILATERAL -> "a quadrilateral"
+        QuickShapeKind.QUADRILATERAL -> "четырёхугольник"
 
-        QuickShapeKind.RECTANGLE -> "a rectangle"
+        QuickShapeKind.RECTANGLE -> "прямоугольник"
 
-        QuickShapeKind.SQUARE -> "a square"
+        QuickShapeKind.SQUARE -> "квадрат"
 
     }
 
@@ -7403,7 +7404,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
                 val readable = withContext(Dispatchers.IO) { t.frame(0)?.also { it.recycle() } != null }
 
-                showNotice(if (readable) "The time-lapse video couldn't be made." else "The time-lapse can't be read on this device.", warning = true)
+                showNotice(if (readable) "Видео таймлапса не удалось создать." else "Таймлапс нельзя прочитать на этом устройстве.", warning = true)
 
                 return null
 
@@ -8379,7 +8380,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             changeText { it.copy(font = family) }
 
-            showNotice(if (families.size > 1) "Fonts imported" else "Font imported")
+            showNotice(if (families.size > 1) "Шрифты импортированы" else "Шрифт импортирован")
 
         }
 
@@ -9157,7 +9158,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         }
 
-        if (file == null) showNotice(if (b != null) "This brush couldn't be shared." else "This brush set couldn't be shared.", warning = true)
+        if (file == null) showNotice(if (b != null) "Кисть не удалось отправить." else "Набор кистей не удалось отправить.", warning = true)
 
         return file
 
@@ -9197,7 +9198,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         if (bytes == null) {
 
-            message = if (read.exceptionOrNull() is OutOfMemoryError) "This file is too large to import." else "This file could not be read."
+            message = if (read.exceptionOrNull() is OutOfMemoryError) "Файл слишком большой для импорта." else "Файл не удалось прочитать."
 
             return
 
@@ -10964,7 +10965,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     suspend fun export(kind: Export, pdfQuality: Int = 100): List<File> =
 
-        withExportCard("The artwork couldn't be exported.") { s -> exportFiles(s, kind, pdfQuality).takeIf { it.isNotEmpty() } }.orEmpty()
+        withExportCard("Работу не удалось экспортировать.") { s -> exportFiles(s, kind, pdfQuality).takeIf { it.isNotEmpty() } }.orEmpty()
 
 
 
@@ -11170,7 +11171,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         videoDone = 0f
 
-        return withCard("The animation could not be exported.", { if (format.video) videoDone else s.exportProgress() }) {
+        return withCard("Анимацию не удалось экспортировать.", { if (format.video) videoDone else s.exportProgress() }) {
 
             exportModelAnimation(format) { exportCancelled }
 
@@ -11342,7 +11343,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** The artwork's name, or the name an unnamed one shows. */
 
-    fun artworkTitle(): String = session?.name()?.trim()?.takeIf { it.isNotEmpty() } ?: "Untitled Artwork"
+    fun artworkTitle(): String = localizedArtworkName(session?.name()?.trim()?.takeIf { it.isNotEmpty() } ?: "Untitled Artwork")
 
 
 
@@ -11476,7 +11477,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         videoDone = 0f
 
-        return withCard("The animation could not be exported.", { if (format.video) videoDone else s.exportProgress() }) {
+        return withCard("Анимацию не удалось экспортировать.", { if (format.video) videoDone else s.exportProgress() }) {
 
             exportAnimation(format, webReady, dither, perFramePalette, transparent, fps) { exportCancelled }
 
@@ -11488,7 +11489,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     /** The flattened picture as a JPEG or PNG in the cache, to share, with the export card. */
 
-    suspend fun exportImage(jpeg: Boolean): File? = withExportCard("The picture couldn't be exported.") { s ->
+    suspend fun exportImage(jpeg: Boolean): File? = withExportCard("Картинку не удалось экспортировать.") { s ->
 
         withContext(Dispatchers.IO) {
 

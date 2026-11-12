@@ -139,7 +139,7 @@ private fun SavedSelections(vm: CanvasViewModel) {
                     vm.savedThumbnails[i]?.let { Image(it, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()) }
                 }
                 Spacer(Modifier.width(14.dp))
-                MenuLabel("Selection ${i + 1}", modifier = Modifier.weight(1f))
+                MenuLabel("Выделение ${i + 1}", modifier = Modifier.weight(1f))
             }
         }
     }
