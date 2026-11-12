@@ -34,4 +34,15 @@ class PalmRejectTest {
     fun noUsefulFigureMeansNoPalmTest() {
         assertNull(touchMillimetres(fingertip, xdpi = 0f, densityDpi = 0))
     }
+
+    @Test
+    fun theSettingsRowSaysWhichFigureTheTestTrusts() {
+        // the honest screen: its own figure is used
+        assert(palmDiagnostics(262f, 262).contains("достоверно"))
+        // the liar: the app's density answers, and the row says so
+        assert(palmDiagnostics(72f, 262).contains("недостоверно"))
+        assert(palmDiagnostics(72f, 262).contains("262"))
+        // nothing to go by: the test stands down
+        assert(palmDiagnostics(0f, 0).contains("не действует"))
+    }
 }

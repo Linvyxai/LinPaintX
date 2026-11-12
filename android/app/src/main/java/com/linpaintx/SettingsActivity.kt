@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.linpaintx.canvas.CanvasViewModel
 import com.linpaintx.canvas.keptPlugins
+import com.linpaintx.canvas.palmDiagnostics
 import com.linpaintx.ui.Pc
 import com.linpaintx.ui.Switch
 import com.linpaintx.ui.fittedInterfaceSize
@@ -187,6 +188,12 @@ private fun ToggleRow(prefs: android.content.SharedPreferences, s: Toggle) {
         Column(Modifier.weight(1f)) {
             Text(s.label, color = Ink, fontSize = 17.sp)
             Text(s.detail, color = Dim, fontSize = 13.sp)
+            // the palm test dies on a screen that lies about its dots, and a dead canvas is hard to
+            // tell from a broken one: what the device claims, and what the app makes of it, on screen
+            if (s.key == CanvasViewModel.PALM_REJECTION) {
+                val m = androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics
+                Text(palmDiagnostics(m.xdpi, m.densityDpi), color = Dim, fontSize = 13.sp)
+            }
         }
         Switch(on, enabled = true)
     }
