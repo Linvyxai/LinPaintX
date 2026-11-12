@@ -1124,8 +1124,13 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
 
     /** Whether [uri] is a plugin file, by its name. */
-
-    fun isPluginFile(uri: android.net.Uri) = fileName(uri)?.let { it.endsWith(".procraft-plugin", ignoreCase = true) || it.endsWith(".procraftplugin", ignoreCase = true) } == true
+    fun isPluginFile(uri: android.net.Uri) = fileName(uri)?.let {
+        // the old names stay read: a plugin imported before the rename still opens, as do the app's
+        // own files packed under them
+        it.endsWith(".linx-plug-in", ignoreCase = true)
+            || it.endsWith(".procraft-plugin", ignoreCase = true)
+            || it.endsWith(".procraftplugin", ignoreCase = true)
+    } == true
 
 
 

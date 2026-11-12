@@ -2,7 +2,7 @@
 //! sound its kind takes, louder the faster and harder you go. The app tells this how the stroke
 //! moves, what the brush is called and what is picked in its rows, and plays what this hands back;
 //! everything about the sound itself is here ([`voice`]). It's a plugin, not part of the app:
-//! `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The interface is written down at the top of `crates/core/src/plugin_run.rs`.
 

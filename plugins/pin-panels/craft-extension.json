@@ -1,12 +1,22 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.pin-panels",
-  "name": "Panels stay open",
+  "name": "Панели остаются открытыми",
   "version": "1.0.0",
-  "holds": ["hooks"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "Painting with a panel open leaves it open. Its button on the top bar closes it.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "hooks"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "Рисование с открытой панелью не закрывает её. Закрывает её кнопка на верхней панели.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
-  "hooks": ["pin_panels"]
+  "hooks": [
+    "pin_panels"
+  ]
 }

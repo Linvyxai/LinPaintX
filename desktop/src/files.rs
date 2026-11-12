@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use procraft_core::{
-    CanvasPreset, CanvasSession, KeptGestures, ModelFile, PagesOutcome, PsdOutcome, ThumbnailImage, export_file_name,
-    import_pages, import_psd, preset_height, preset_width,
+    export_file_name, import_pages, import_psd, preset_height, preset_width, CanvasPreset, CanvasSession, KeptGestures,
+    ModelFile, PagesOutcome, PsdOutcome, ThumbnailImage,
 };
 use rfd::{FileDialog, MessageDialog, MessageLevel};
 
@@ -426,16 +426,20 @@ pub fn import_profile() -> Option<String> {
 
 /// Whether the file at `path` is a plugin, by its name.
 pub fn is_plugin_file(path: &Path) -> bool {
-    // (the old name too, from before the hyphen)
-    path.extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("procraft-plugin") || e.eq_ignore_ascii_case("procraftplugin"))
+    // the old names too, from before the hyphen and before the rename: a plugin imported back then
+    // still opens, and the app's own bundled files were packed under them
+    path.extension().is_some_and(|e| {
+        e.eq_ignore_ascii_case("linx-plug-in")
+            || e.eq_ignore_ascii_case("procraft-plugin")
+            || e.eq_ignore_ascii_case("procraftplugin")
+    })
 }
 
 /// A plugin file the user picks.
 pub fn pick_plugin() -> Option<PathBuf> {
     FileDialog::new()
         .set_title("Import")
-        .add_filter("LinPaintX plugins", &["procraft-plugin", "procraftplugin"])
+        .add_filter("LinPaintX plugins", &["linx-plug-in", "procraft-plugin", "procraftplugin"])
         .pick_file()
 }
 
@@ -573,7 +577,11 @@ fn open_pdf(path: &Path, name: &str) -> Result<Arc<CanvasSession>, String> {
     let opened = crate::pdf::draw_pages(path, &pages)
         .map_err(|e| {
             log::error!("drawing a PDF's pages: {e}");
-            if e.to_string() == crate::pdf::NO_POPPLER { crate::pdf::NO_POPPLER.to_owned() } else { unreadable() }
+            if e.to_string() == crate::pdf::NO_POPPLER {
+                crate::pdf::NO_POPPLER.to_owned()
+            } else {
+                unreadable()
+            }
         })
         .and_then(|(count, w, h)| {
             let dir = artwork.to_string_lossy().into_owned();

@@ -1,12 +1,22 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.randomise-brush",
-  "name": "Brush randomiser",
+  "name": "Случайная кисть",
   "version": "1.0.0",
-  "holds": ["hooks"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "A Randomise button in the brush studio sets the brush's settings at random. Cancel takes it back.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "hooks"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "Кнопка «Случайно» в студии кисти ставит её настройки наугад. Отмена возвращает прежние.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
-  "hooks": ["randomise_brush"]
+  "hooks": [
+    "randomise_brush"
+  ]
 }

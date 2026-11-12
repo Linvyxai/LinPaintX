@@ -1,12 +1,22 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.colour-triangle",
-  "name": "Colour triangle",
+  "name": "Треугольник цвета",
   "version": "1.0.0",
-  "holds": ["hooks"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "The colour panel's Classic tab picks saturation and brightness in a triangle instead of a square.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "hooks"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "На вкладке «Классика» панели цвета насыщенность и яркость выбираются в треугольнике, а не в квадрате.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
-  "hooks": ["colour_triangle"]
+  "hooks": [
+    "colour_triangle"
+  ]
 }

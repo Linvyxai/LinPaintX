@@ -1,6 +1,6 @@
 //! Colour triangle: the colour panel's Classic tab picks saturation and brightness in a triangle,
 //! between the pure hue, white and black, instead of a square. It's a plugin, not part of the app:
-//! `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The app asks one question and gives it nothing else. Drawing the picker stays the app's: this
 //! only says which shape. The interface is written down at the top of

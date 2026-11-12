@@ -1,15 +1,31 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.paste-into-masks",
-  "name": "Paste into masks",
+  "name": "Вставка в маски",
   "version": "1.0.0",
-  "holds": ["hooks"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "With a mask selected, Paste puts the picture's brightness into the mask.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "hooks"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "Если выбрана маска, «Вставить» кладёт яркость картинки в маску.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
-  "hooks": ["paste_mask"],
+  "hooks": [
+    "paste_mask"
+  ],
   "controls": [
-    { "key": "into", "type": "switch", "label": "Paste into the mask", "starts": false, "keeps": "paste_into_mask" }
+    {
+      "key": "into",
+      "type": "switch",
+      "label": "Вставлять в маску",
+      "starts": false,
+      "keeps": "paste_into_mask"
+    }
   ]
 }

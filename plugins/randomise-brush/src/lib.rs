@@ -1,6 +1,6 @@
 //! Brush randomiser: a Randomise button in the brush studio sets the brush's settings at random,
 //! within bounds that keep it something that still paints. It's a plugin, not part of the app:
-//! `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The app asks about each setting by its number (the list is in the plugin guide) with a seed
 //! for the press, and sets what comes back. The interface is written down at the top of

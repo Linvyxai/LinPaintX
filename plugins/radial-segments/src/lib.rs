@@ -1,6 +1,6 @@
 //! Radial symmetry segments: the Drawing Guide's radial symmetry makes as many parts as its slider
 //! says (2 to 32; an odd count mirrored is made even), not only eight. It's a plugin, not part of the
-//! app: `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! app: `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The app asks one question and gives it nothing else. Drawing the copies stays the app's: this
 //! only says how many. The interface is written down at the top of `crates/core/src/plugin_run.rs`.

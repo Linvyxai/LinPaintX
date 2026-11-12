@@ -50,6 +50,9 @@
                 <data android:pathSuffix=".procraft" />
                 <data android:pathPattern=".*\\.procraft" />
                 <data android:pathPattern=".*\\..*\\.procraft" />
+                <data android:pathSuffix=".linx-plug-in" />
+                <data android:pathPattern=".*\\.linx-plug-in" />
+                <data android:pathPattern=".*\\..*\\.linx-plug-in" />
                 <data android:pathSuffix=".procraft-plugin" />
                 <data android:pathPattern=".*\\.procraft-plugin" />
                 <data android:pathPattern=".*\\..*\\.procraft-plugin" />
@@ -110,6 +113,9 @@
                 <data android:pathSuffix=".procraft" />
                 <data android:pathPattern=".*\\.procraft" />
                 <data android:pathPattern=".*\\..*\\.procraft" />
+                <data android:pathSuffix=".linx-plug-in" />
+                <data android:pathPattern=".*\\.linx-plug-in" />
+                <data android:pathPattern=".*\\..*\\.linx-plug-in" />
                 <data android:pathSuffix=".procraft-plugin" />
                 <data android:pathPattern=".*\\.procraft-plugin" />
                 <data android:pathPattern=".*\\..*\\.procraft-plugin" />

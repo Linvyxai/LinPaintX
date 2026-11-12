@@ -1,6 +1,6 @@
 # Writing a plugin
 
-A plugin is a `.procraft-plugin` file. Someone imports it on the Plugins page, and it has a card there
+A plugin is a `.linx-plug-in` file. Someone imports it on the Plugins page, and it has a card there
 with Turn on, Turn off and Remove. With none on, the app is as it always was.
 
 Making one doesn't change the app or its code here, and needs no access to this repository: you
@@ -553,7 +553,7 @@ rustup target add wasm32-unknown-unknown
 python tools/pack_plugin.py nudge --out somewhere
 ```
 
-That writes `nudge.procraft-plugin`. Only code needs the `rustup` line. To try it, import it through
+That writes `nudge.linx-plug-in`. Only code needs the `rustup` line. To try it, import it through
 the Plugins page, and tap Turn on if it starts off. A file packed again from the same folder comes out
 the same, byte for byte.
 

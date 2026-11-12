@@ -2,7 +2,7 @@
 //! part either is drawn in), a row of pixels at a time, and takes back the frame between them, a
 //! row at a time. Here each drawing slides and grows from its own place toward the other's, as far
 //! as the in-between falls, and the two fade from one to the other. It's a plugin, not part of the
-//! app: `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! app: `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The interface is written down at the top of `crates/core/src/plugin_run.rs`.
 

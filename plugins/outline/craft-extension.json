@@ -1,14 +1,32 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.outline",
-  "name": "Outline",
+  "name": "Контур",
   "version": "1.0.0",
-  "holds": ["filter"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "Draws a line round what is on the layer, in place of it.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "filter"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "Рисует линию вокруг того, что на слое, вместо самого слоя.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
   "controls": [
-    { "key": "reach", "type": "slider", "label": "Width", "least": 1, "most": 12, "step": 1, "starts": 3, "unit": " px", "live": true }
+    {
+      "key": "reach",
+      "type": "slider",
+      "label": "Ширина",
+      "least": 1,
+      "most": 12,
+      "step": 1,
+      "starts": 3,
+      "unit": " px",
+      "live": true
+    }
   ]
 }

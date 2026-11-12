@@ -1,6 +1,6 @@
 //! Interface colour: the interface's accent, the blue of what is chosen and switched on, in a hue
 //! and saturation of one's own, as bright as the usual blue. It's a plugin, not part of the app:
-//! `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The app asks for a colour by its role and gives it nothing else. Drawing stays the app's: this
 //! only says which colour. The interface is written down at the top of

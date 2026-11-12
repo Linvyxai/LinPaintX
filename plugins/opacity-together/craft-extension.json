@@ -1,12 +1,22 @@
 {
   "schema": 1,
   "id": "io.github.artcraftandroid.opacity-together",
-  "name": "Opacity of picked layers",
+  "name": "Непрозрачность выбранных слоёв",
   "version": "1.0.0",
-  "holds": ["hooks"],
-  "publisher": { "name": "LinPaintX" },
-  "description": "Changing the opacity of one of several picked layers changes them all to match.",
-  "compat": { "procraft": { "interface": 1 } },
+  "holds": [
+    "hooks"
+  ],
+  "publisher": {
+    "name": "LinPaintX"
+  },
+  "description": "Изменение непрозрачности одного из нескольких выбранных слоёв меняет их все.",
+  "compat": {
+    "procraft": {
+      "interface": 1
+    }
+  },
   "permissions": [],
-  "hooks": ["opacity_together"]
+  "hooks": [
+    "opacity_together"
+  ]
 }

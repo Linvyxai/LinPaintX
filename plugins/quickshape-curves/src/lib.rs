@@ -3,7 +3,7 @@
 //! and what QuickShape found first; this finds the bends and lays a chain of cubics through them,
 //! each anchor's controls leaning the way the stroke came and went so the joins are smooth. The app
 //! draws the curve and lets it be reshaped. It's a plugin, not part of the app:
-//! `tools/pack_plugin.py` makes a `.procraft-plugin` file of it.
+//! `tools/pack_plugin.py` makes a `.linx-plug-in` file of it.
 //!
 //! The interface is written down at the top of `crates/core/src/plugin_run.rs`.
 

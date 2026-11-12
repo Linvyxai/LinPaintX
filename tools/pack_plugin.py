@@ -1,4 +1,4 @@
-"""Builds the plugins under plugins/ and packs each as a .procraft-plugin file, which the app imports:
+"""Builds the plugins under plugins/ and packs each as a .linx-plug-in file, which the app imports:
 
     python tools/pack_plugin.py [touch-offset | extract-lines] [--out DIR]
     python tools/pack_plugin.py --bundle
@@ -23,25 +23,28 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLUGINS = os.path.join(ROOT, 'plugins')
-TARGET = 'wasm32-unknown-unknown'
-MODULE = 'plugin.wasm'
-FILTER = 'filter.wgsl'
-MANIFEST = 'craft-extension.json'
-TARGET_DIR = os.path.join(ROOT, 'target', 'plugins')
-BUNDLED = os.path.join(ROOT, 'crates', 'core', 'bundled-plugins')
-SOURCES = 'sources.txt'
-EXTENSION = '.procraft-plugin'
+PLUGINS = os.path.join(ROOT, "plugins")
+TARGET = "wasm32-unknown-unknown"
+MODULE = "plugin.wasm"
+FILTER = "filter.wgsl"
+MANIFEST = "craft-extension.json"
+TARGET_DIR = os.path.join(ROOT, "target", "plugins")
+BUNDLED = os.path.join(ROOT, "crates", "core", "bundled-plugins")
+SOURCES = "sources.txt"
+EXTENSION = ".linx-plug-in"
 
 
 def built(name, folder):
     """The module of the crate in `folder`."""
     subprocess.run(
-        ['cargo', 'build', '--release', '--target', TARGET, '--target-dir', TARGET_DIR],
+        ["cargo", "build", "--release", "--target", TARGET, "--target-dir", TARGET_DIR],
         cwd=folder,
         check=True,
     )
-    with open(os.path.join(TARGET_DIR, TARGET, 'release', f"{name.replace('-', '_')}.wasm"), 'rb') as f:
+    with open(
+        os.path.join(TARGET_DIR, TARGET, "release", f"{name.replace('-', '_')}.wasm"),
+        "rb",
+    ) as f:
         return f.read()
 
 
@@ -59,15 +62,19 @@ def digest(folder):
     `target` and names starting with a dot left out. The core's tests work it out the same way."""
     paths = []
     for here, dirs, names in os.walk(folder):
-        dirs[:] = [d for d in dirs if d != 'target' and not d.startswith('.')]
+        dirs[:] = [d for d in dirs if d != "target" and not d.startswith(".")]
         for name in names:
-            if not name.startswith('.'):
-                paths.append(os.path.relpath(os.path.join(here, name), folder).replace(os.sep, '/'))
+            if not name.startswith("."):
+                paths.append(
+                    os.path.relpath(os.path.join(here, name), folder).replace(
+                        os.sep, "/"
+                    )
+                )
     sha = hashlib.sha256()
     for path in sorted(paths):
-        with open(os.path.join(folder, path), 'rb') as f:
+        with open(os.path.join(folder, path), "rb") as f:
             data = f.read()
-        sha.update(f'{path}\n{len(data)}\n'.encode())
+        sha.update(f"{path}\n{len(data)}\n".encode())
         sha.update(data)
     return sha.hexdigest()
 
@@ -75,56 +82,77 @@ def digest(folder):
 def pack(name, out):
     """The file `name`, of what its folder's manifest says it holds."""
     folder = os.path.join(PLUGINS, name)
-    with open(os.path.join(folder, MANIFEST), encoding='utf-8') as f:
+    with open(os.path.join(folder, MANIFEST), encoding="utf-8") as f:
         manifest = json.load(f)
     files = {}
-    if 'hooks' in manifest['holds']:
+    if "hooks" in manifest["holds"]:
         files[MODULE] = built(name, folder)
-    if 'filter' in manifest['holds']:
-        with open(os.path.join(folder, FILTER), 'rb') as f:
+    if "filter" in manifest["holds"]:
+        with open(os.path.join(folder, FILTER), "rb") as f:
             files[FILTER] = f.read()
-    manifest['files'] = [
-        {'path': path, 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)} for path, data in files.items()
+    manifest["files"] = [
+        {"path": path, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+        for path, data in files.items()
     ]
     place = os.path.abspath(out) if out else TARGET_DIR
     os.makedirs(place, exist_ok=True)
-    path = os.path.join(place, f'{name}{EXTENSION}')
-    with zipfile.ZipFile(path, 'w') as file:
+    path = os.path.join(place, f"{name}{EXTENSION}")
+    with zipfile.ZipFile(path, "w") as file:
         file.writestr(entry(MANIFEST), json.dumps(manifest, indent=2))
         for inside, data in files.items():
             file.writestr(entry(inside), data)
-    print(f"{path}: {', '.join(f'{len(data)} bytes of {inside}' for inside, data in files.items())}")
+    print(
+        f"{path}: {', '.join(f'{len(data)} bytes of {inside}' for inside, data in files.items())}"
+    )
 
 
 def bundle(names):
     """Every plugin packed into the core's folder, what was there before gone, and their digests."""
     os.makedirs(BUNDLED, exist_ok=True)
     for old in os.listdir(BUNDLED):
-        if old.endswith(EXTENSION) or old == SOURCES:
+        # the legacy names go too: the folder holds only what the app actually bundles
+        if (
+            old.endswith((EXTENSION, ".procraft-plugin", ".procraftplugin"))
+            or old == SOURCES
+        ):
             os.remove(os.path.join(BUNDLED, old))
     for name in names:
         pack(name, BUNDLED)
-    with open(os.path.join(BUNDLED, SOURCES), 'w', encoding='utf-8', newline='') as f:
-        f.writelines(f'{name} {digest(os.path.join(PLUGINS, name))}\n' for name in names)
+    with open(os.path.join(BUNDLED, SOURCES), "w", encoding="utf-8", newline="") as f:
+        f.writelines(
+            f"{name} {digest(os.path.join(PLUGINS, name))}\n" for name in names
+        )
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('name', nargs='?', help='its folder under plugins/; all of them if left out')
-    parser.add_argument('--out', help='the folder the files go in')
-    parser.add_argument('--bundle', action='store_true', help='all of them, into the core, to come inside the app')
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "name", nargs="?", help="its folder under plugins/; all of them if left out"
+    )
+    parser.add_argument("--out", help="the folder the files go in")
+    parser.add_argument(
+        "--bundle",
+        action="store_true",
+        help="all of them, into the core, to come inside the app",
+    )
     args = parser.parse_args()
-    names = sorted(n for n in os.listdir(PLUGINS) if os.path.isfile(os.path.join(PLUGINS, n, MANIFEST)))
+    names = sorted(
+        n
+        for n in os.listdir(PLUGINS)
+        if os.path.isfile(os.path.join(PLUGINS, n, MANIFEST))
+    )
     if args.bundle:
         if args.name or args.out:
-            parser.error('--bundle packs them all, into crates/core/bundled-plugins')
+            parser.error("--bundle packs them all, into crates/core/bundled-plugins")
         bundle(names)
         return
     if args.name and args.name not in names:
-        parser.error(f'no plugins/{args.name}')
+        parser.error(f"no plugins/{args.name}")
     for name in [args.name] if args.name else names:
         pack(name, args.out)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
