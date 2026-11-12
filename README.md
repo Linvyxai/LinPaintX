@@ -5,7 +5,7 @@
 <h1 align="center">LinPaintX</h1>
 
 <p align="center">
-  <b>Приложение для рисования с открытым исходным кодом для Android-планшетов, Windows и Linux, с собственным движком на Rust и GPU-рендерером: интерфейс на Kotlin/Jetpack Compose на Android и тот же интерфейс на egui на десктопе.</b><br>
+  <b>Приложение для рисования с открытым исходным кодом для Android-телефонов и планшетов, Windows и Linux, с собственным движком на Rust и GPU-рендерером: интерфейс на Kotlin/Jetpack Compose на Android и тот же интерфейс на egui на десктопе.</b><br>
   Кисти с учётом нажима, слои с режимами наложения, коррекции, выделение и трансформация, анимация и 3D-рисование — всё написано с нуля.
 </p>
 
@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub>Из <a href="https://github.com/Linvyxai/LinPaintX/releases">Releases</a>: планшетам Android нужен <code>arm64.apk</code> (<code>legacy-arm32.apk</code> — только для старых 32-битных планшетов) или Obtainium для обновлений; Windows — установщик <code>.msi</code> или портативный <code>.zip</code>; Linux — <code>.AppImage</code>, <code>.deb</code> или <code>.tar.gz</code> (видео и PDF там используют системные <code>ffmpeg</code> и <code>poppler-utils</code>).</sub>
+  <sub>Из <a href="https://github.com/Linvyxai/LinPaintX/releases">Releases</a>: устройствам Android нужен <code>arm64.apk</code> (<code>legacy-arm32.apk</code> — только для старых 32-битных устройств) или Obtainium для обновлений; Windows — установщик <code>.msi</code> или портативный <code>.zip</code>; Linux — <code>.AppImage</code>, <code>.deb</code> или <code>.tar.gz</code> (видео и PDF там используют системные <code>ffmpeg</code> и <code>poppler-utils</code>).</sub>
 </p>
 
 <p align="center">
@@ -103,7 +103,7 @@
 
 ## Планы
 
-LinPaintX находится в бете — на Android-планшетах и на десктопе (Windows и Linux).
+LinPaintX находится в бете — на Android (телефоны и планшеты) и на десктопе (Windows и Linux).
 
 | Область | Статус |
 |---|---|
@@ -120,7 +120,7 @@ LinPaintX находится в бете — на Android-планшетах и 
 | Десктоп: Windows и Linux, тот же интерфейс с мышью, графическим планшетом и горячими клавишами; установщик, AppImage и .deb | 🚧 бета |
 | Плагины: файлы `.procraft-plugin`, которые вы импортируете в Настройки › Плагины; каждый выключен, пока вы его не включите, и исчезает без следа при выключении. Фильтры (несколько строк WGSL, в разделе Коррекции) и изолированный WebAssembly, меняющий поведение приложения, например Размер интерфейса, Смещение касания и Замыкание промежутков ColorDrop. Как написать: [docs/plugins.md](docs/plugins.md) | 🚧 экспериментально |
 | Больше для плагинов: собственные панели и инструменты, и плагины, способные использовать команды приложения | ⬜ |
-| Телефоны: собственное приложение, LinPaintX Pocket (это для планшетов) | 🚧 модуль собирается, интерфейс с нуля |
+| Телефоны: собственное приложение, LinPaintX Pocket (это для планшетов). Обычный LinPaintX ставится и на экран телефона: пальцем рисует с первого запуска (проверено на экране 1080×2400) | 🚧 модуль собирается, интерфейс с нуля |
 
 <sub>✅ работает сегодня · 🚧 в работе · ⬜ не начато · 🚫 не планируется</sub>
 
