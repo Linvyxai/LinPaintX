@@ -157,9 +157,11 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
 
     /** Whether pointer [i] of [e] is a finger's contact [PALM_MM] or more across. */
     private fun palmSized(e: MotionEvent, i: Int): Boolean {
-        if (e.getToolType(i) != MotionEvent.TOOL_TYPE_FINGER) return false
-        val dpi = resources.displayMetrics.xdpi.takeIf { it > 0f } ?: return false
-        return e.getTouchMajor(i) / dpi * 25.4f >= PALM_MM
+        if (!vm.palmRejection || e.getToolType(i) != MotionEvent.TOOL_TYPE_FINGER) return false
+        val m = resources.displayMetrics
+        // null when the screen cannot say how wide its dots are: then nothing is a palm
+        val mm = touchMillimetres(e.getTouchMajor(i), m.xdpi, m.densityDpi) ?: return false
+        return mm >= PALM_MM
     }
 
     /** Hands [e] to the shared touches and does what they ask. */

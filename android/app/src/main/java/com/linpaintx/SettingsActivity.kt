@@ -125,13 +125,17 @@ private val Groups: List<Pair<String, List<Setting>>> = listOf(
         Choice(CanvasViewModel.DRAG_FORMAT, "Предпочтительный формат файла", CanvasViewModel.DRAG_FORMATS, 0),
         Choice(CanvasViewModel.DRAG_IMAGE_FORMAT, "Предпочтительный формат изображения", CanvasViewModel.DRAG_IMAGE_FORMATS, 0),
     ),
-    "Accessibility" to listOf(
+    "Специальные возможности" to listOf(
         Toggle(CanvasViewModel.SINGLE_TOUCH_COMPANION, "Панель жестов одним пальцем", "Плавающая панель отмены, возврата, масштаба, перемещения и вписывания.", false),
         Toggle(CanvasViewModel.COLOR_NAMES, "Названия цветов", "После выбора показывается название цвета.", false),
         Toggle(CanvasViewModel.FEEDBACK_SOUNDS, "Звуки интерфейса", "Отмена, возврат, инструменты и панели сопровождаются щелчками.", false),
         Toggle(
             CanvasViewModel.TAP_ASSISTANCE, "Помощь при касании — начальная точка",
-            "A tap lands where the finger first touched, even if it drifts before lifting.", false,
+            "Касание попадает туда, где палец его начал, даже если сместился до отпускания.", false,
+        ),
+        Toggle(
+            CanvasViewModel.PALM_REJECTION, "Отказ ладони",
+            "Касание шире 25 мм считается ладонью и не рисует. Выключите, если пальцем рисовать не выходит: часть планшетов сообщает неверную плотность точек, и тогда любой палец кажется ладонью.", true,
         ),
     ),
 )

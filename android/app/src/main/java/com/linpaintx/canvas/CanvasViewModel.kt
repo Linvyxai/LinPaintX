@@ -2675,6 +2675,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         private set
 
+    /** Touch: a fingertip wider than [PALM_MM] across is taken for a palm and paints nothing. A
+     * screen whose dot pitch is reported wrong makes every fingertip look like a palm, so the whole
+     * test can be switched off. */
+    var palmRejection by mutableStateOf(interfacePrefs.getBoolean(PALM_REJECTION, true))
+
+        private set
+
 
 
     /** The companion's one-finger mode: a finger dragged on the canvas zooms it, or moves it. */
@@ -2708,6 +2715,8 @@ fun applyStabilizer(mode: Int, level: Int) {
         singleTouchCompanion = interfacePrefs.getBoolean(SINGLE_TOUCH_COMPANION, false)
 
         tapAssistance = interfacePrefs.getBoolean(TAP_ASSISTANCE, false)
+
+        palmRejection = interfacePrefs.getBoolean(PALM_REJECTION, true)
 
         if (!singleTouchCompanion) companionMode = CompanionMode.NONE
 
@@ -15528,6 +15537,9 @@ fun applyStabilizer(mode: Int, level: Int) {
         const val SINGLE_TOUCH_COMPANION = "single_touch_companion"
 
         const val TAP_ASSISTANCE = "tap_assistance"
+
+        /** Whether the palm test runs at all; see [com.linpaintx.canvas.touchMillimetres]. */
+        const val PALM_REJECTION = "palm_rejection"
 
 
 
