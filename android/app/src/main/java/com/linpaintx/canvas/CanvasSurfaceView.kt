@@ -9,6 +9,9 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.ui.geometry.Offset
 import androidx.input.motionprediction.MotionEventPredictor
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.linpaintx.core.CanvasSession
 import com.linpaintx.core.MobileException
 import com.linpaintx.core.PenSample
@@ -444,12 +447,35 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
         session?.let { penPressed(it, second, at.x, at.y) }
     }
 
+    /**
+     * The activity whose start means "back from the settings". `ComponentActivity.setContent` hands
+     * Compose the activity as its context, which the view sees; a wrapped context would leave this
+     * null and the canvas would simply never re-explain itself — a lost hint, not a broken drawing.
+     */
+    private val lifecycleOwner: LifecycleOwner?
+        get() = context as? LifecycleOwner
+
+    /**
+     * Coming back from the settings — where every reason a finger stays silent is cured — lets the
+     * canvas explain itself again: a person who turned a switch off must not be met by silence that
+     * is now, possibly, a different one. Held in a field: a view re-attached every time an artwork
+     * opens would otherwise add a fresh observer each visit.
+     */
+    private val settingsHeard = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_START) {
+            hoverTold = false
+            palmTold = false
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         vm.penKeyHeard = penKeyHeard
+        lifecycleOwner?.lifecycle?.addObserver(settingsHeard)
     }
 
     override fun onDetachedFromWindow() {
+        lifecycleOwner?.lifecycle?.removeObserver(settingsHeard)
         if (vm.penKeyHeard === penKeyHeard) vm.penKeyHeard = null
         super.onDetachedFromWindow()
     }
