@@ -109,6 +109,21 @@ pub fn apply_background_mask(
     procraft_engine::matting::apply_background_mask(&rgba, width, height, &mask, threshold, softness)
 }
 
+/// Points background removal at the bigger model kept in the file `path` (an IS-Net ONNX the app
+/// downloaded and checked itself). True when it loaded; until then, and if it didn't,
+/// [`background_mask`] keeps running the small model embedded in the app.
+#[uniffi::export]
+pub fn install_matting_model(path: String) -> bool {
+    procraft_engine::matting::use_matting_model(&path)
+}
+
+/// Whether the bigger model is what [`background_mask`] will run. The panel says which one found
+/// nothing, because the two disagree on exactly the photos that matter.
+#[uniffi::export]
+pub fn matting_model_installed() -> bool {
+    procraft_engine::matting::matting_model_installed()
+}
+
 /// What a row of a layer's options menu does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum LayerOption {

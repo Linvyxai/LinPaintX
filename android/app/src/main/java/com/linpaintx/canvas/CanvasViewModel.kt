@@ -507,6 +507,9 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         otherColour = listOf(KEPT_MASK_HUE, KEPT_MASK_SATURATION, KEPT_MASK_BRIGHTNESS).map { interfacePrefs.getFloat(it, 0f).coerceIn(0f, 1f) }.toFloatArray()
 
+        // a model downloaded once comes back on its own: the file is local, the engine just needs it
+        viewModelScope.launch { mattingModelInstalled = MattingModel.restore(getApplication()) }
+
     }
 
 
@@ -645,6 +648,61 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
     var backgroundRemovalBusy by mutableStateOf(false)
         private set
+
+    /**
+     * The detailed cut model: once the person has downloaded it, [MattingModel.restore] puts it
+     * back every start-up. False means the model shipped inside the app is what runs.
+     */
+    var mattingModelInstalled by mutableStateOf(false)
+        private set
+
+    var mattingModelDownloading by mutableStateOf(false)
+        private set
+
+    /** How far the download has come, of [MattingModel.BYTES]; 0 while it does not run. */
+    var mattingModelBytes by mutableStateOf(0L)
+        private set
+
+    /** What the last attempt could not do; empty when there is nothing to say. */
+    var mattingModelProblem by mutableStateOf("")
+        private set
+
+    /**
+     * Fetches the detailed model and turns the cut over to it. The mask kept from the old one is
+     * dropped: it is the very picture the new model finds and the old one missed, so leaving it
+     * cached would show the miss until the photo itself changed.
+     */
+    fun downloadMattingModel() {
+
+        if (mattingModelDownloading) return
+
+        mattingModelDownloading = true
+
+        mattingModelBytes = 0
+
+        mattingModelProblem = ""
+
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val installed = try {
+                MattingModel.download(app) { bytes -> mattingModelBytes = bytes }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                mattingModelDownloading = false
+                throw e
+            }
+            mattingModelDownloading = false
+            mattingModelInstalled = installed
+            if (installed) {
+                transformBackgroundMask = null
+                backgroundNotFound = false
+                if (removeBackground && transforming) reapplyBackgroundRemoval()
+                showNotice("Модель установлена: вырезание стало подробнее")
+            } else {
+                mattingModelProblem = "Скачать не удалось: сеть или память. Работает встроенная модель."
+            }
+        }
+
+    }
 
     fun changeRemoveBackground(on: Boolean) {
 

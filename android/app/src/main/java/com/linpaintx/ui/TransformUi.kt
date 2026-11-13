@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -688,6 +689,31 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     fontSize = 12.sp,
                     maxLines = 3,
                 )
+            }
+            // which model cuts: the small one is always there; the detailed one is a single, asked-for download
+            val totalMb = (com.linpaintx.canvas.MattingModel.BYTES / (1024 * 1024)).toInt()
+            Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (vm.mattingModelInstalled) "Вырезание: подробная модель" else "Вырезание: встроенная модель",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!vm.mattingModelInstalled) {
+                    if (vm.mattingModelDownloading) {
+                        Text("${(vm.mattingModelBytes / (1024 * 1024)).toInt()} из $totalMb МБ", color = Color(0xFFEDEDED), fontSize = 13.sp)
+                    } else {
+                        Text(
+                            "Скачать $totalMb МБ",
+                            color = Pc.Accent,
+                            fontSize = 13.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.downloadMattingModel() }.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+            }
+            if (vm.mattingModelProblem.isNotEmpty()) {
+                Text(vm.mattingModelProblem, color = Color(0xFFFFB0A8), fontSize = 12.sp, maxLines = 2)
             }
             OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
                 vm.changeBackgroundThreshold(it)
