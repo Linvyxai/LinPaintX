@@ -5,7 +5,9 @@
 //! file's own numbers. A set file is a zip of brushes, each in a folder of its own, with
 //! `brushset.plist` giving the set's name and the folders in order.
 
-use crate::brush::{BRUSH_BEHIND, Brush, GRAIN_HEIGHT, GRAIN_LINEAR_HEIGHT, Notches, PressureCurve, SIZE_CURVE};
+use crate::brush::{
+    BRUSH_BEHIND, Brush, GRAIN_HEIGHT, GRAIN_LINEAR_HEIGHT, Notches, PressureCurve, SIZE_CURVE, SIZE_SLIDER_TOP,
+};
 use crate::document::BlendMode;
 use crate::geom::Vec2;
 use crate::keyed::{Archive, Builder, Object};
@@ -687,7 +689,15 @@ fn read_in(zip: &ZipReader<'_>, prefix: &str) -> Option<BrushFile> {
         sliders: SLIDERS.map(|(size, opacity)| {
             let (size, opacity) = (f.num(size)?, f.num(opacity)?);
             (size.is_finite() && opacity.is_finite())
-                .then(|| [(size.clamp(0.0, 1.0) as f32).powf(1.0 / SIZE_CURVE), opacity.clamp(0.0, 1.0) as f32])
+                // the kept size is the place to the curve, so its band past 100% arrives as a
+                // number past 1: the ceiling is the slider's top taken to the same power (older
+                // files stop at 1.0 as they always did; a newer reader simply keeps the band)
+                .then(|| {
+                    [
+                        size.clamp(0.0, SIZE_SLIDER_TOP.powf(SIZE_CURVE) as f64).powf(1.0 / SIZE_CURVE as f64) as f32,
+                        opacity.clamp(0.0, 1.0) as f32,
+                    ]
+                })
         }),
         notches,
         thumbnail: zip.read(&format!("{prefix}QuickLook/Thumbnail.png")),
@@ -891,7 +901,7 @@ fn add_brush(zip: &mut ZipWriter, prefix: &str, brush: &Brush, author: &str, pic
     let start = [brush.setting("preview_size").clamp(0.0, 1.0).powf(1.0 / SIZE_CURVE), 1.0];
     for ((size, opacity), slider) in SLIDERS.iter().zip(brush.sliders) {
         let [place, alpha] = slider.unwrap_or(start);
-        put(size, Value::Real(f64::from(place.clamp(0.0, 1.0).powf(SIZE_CURVE))));
+        put(size, Value::Real(f64::from(place.clamp(0.0, SIZE_SLIDER_TOP).powf(SIZE_CURVE))));
         put(opacity, Value::Real(f64::from(alpha.clamp(0.0, 1.0))));
     }
     let refs: Vec<(&str, Value)> = fields.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();

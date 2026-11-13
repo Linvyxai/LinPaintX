@@ -664,7 +664,12 @@ impl State {
         }
         brush.notches = b.notches.notches();
         for (kept, slider) in brush.sliders.iter_mut().zip(&b.sliders) {
-            *kept = slider.filter(|s| s.iter().all(|v| (0.0..=1.0).contains(v)));
+            // the size may stand in the band above the brush's own maximum (see `SIZE_SLIDER_TOP`);
+            // an opacity stops at 1
+            *kept = slider.filter(|s| {
+                (0.0..=procraft_engine::brush::SIZE_SLIDER_TOP).contains(&s[0])
+                    && (0.0..=1.0).contains(&s[1])
+            });
         }
         brush.author = b.author.as_ref().map(|a| Author {
             name: a.name.clone(),
@@ -1302,7 +1307,12 @@ impl CanvasSession {
         for (tool, s, i, size, opacity) in sliders {
             let Some(&tool) = TOOLS.get(usize::from(tool)) else { continue };
             if st.holds((s, i)) && size.is_finite() && opacity.is_finite() {
-                let v = crate::Sliders { size: size.clamp(0.0, 1.0), opacity: opacity.clamp(0.0, 1.0) };
+                // the size keeps the band above the brush's own maximum (see `SIZE_SLIDER_TOP`):
+                // clamping it to 1 here would quietly undo a brush left at 180%
+                let v = crate::Sliders {
+                    size: size.clamp(0.0, procraft_engine::brush::SIZE_SLIDER_TOP),
+                    opacity: opacity.clamp(0.0, 1.0),
+                };
                 st.sliders.insert((tool, s, i), v);
             }
         }

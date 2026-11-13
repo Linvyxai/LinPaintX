@@ -1078,7 +1078,8 @@ impl CanvasSession {
                         drop(t);
                         let mut st = self.shared.lock();
                         let sliders = st.sliders_mut();
-                        sliders.size = (sliders.size * spread / last).clamp(0.0, 1.0);
+                        let top = procraft_engine::brush::SIZE_SLIDER_TOP;
+                        sliders.size = (sliders.size * spread / last).clamp(0.0, top);
                         out.push(TouchCommand::BrushChanged);
                     }
                 } else if id == t.stroke_pointer {

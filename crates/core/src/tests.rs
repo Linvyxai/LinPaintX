@@ -5008,7 +5008,9 @@ fn a_brush_files_sliders_start_where_it_left_them_and_go_back_out() {
         signature_png: None,
         secondary: None,
     };
-    let sliders = [Some([0.2, 0.6]), None, Some([0.7, 0.4])];
+    let sliders = [Some([0.2, 0.6]), None, Some([1.6, 0.4])];
+    // 1.6 is the band above a brush's own maximum (past the slider's 100%): the file and the
+    // library have to carry it as they carry any other size, not clamp it back to 1
     let file = brushfile::write(&Brush { name: "Sliders".to_owned(), sliders, ..Brush::round_pen() }, "", &pictures);
     let set = s.import_brushes(file).unwrap();
     // kept with the library until it is picked
@@ -5025,18 +5027,19 @@ fn a_brush_files_sliders_start_where_it_left_them_and_go_back_out() {
     // (written out, smudging's where it starts: its preview size, fully opaque)
     assert!(same([kept[0], None, kept[2]], sliders) && kept[1].is_some_and(|s| s[1] == 1.0), "{kept:?}");
     // each tool's sliders start where the file left them
-    for (tool, size, opacity) in [(ToolKind::Paint, 0.2, 0.6), (ToolKind::Erase, 0.7, 0.4)] {
+    for (tool, size, opacity) in [(ToolKind::Paint, 0.2, 0.6), (ToolKind::Erase, 1.6, 0.4)] {
         s.set_tool(tool);
         assert!(s.select_brush(set, 0));
         let info = s.info();
         assert!(near(info.size, size) && near(info.opacity, opacity), "{tool:?}: {} {}", info.size, info.opacity);
     }
-    // moved, they are written out where they stand; smudging's where it starts (fully opaque)
-    s.set_brush_size(0.5);
+    // moved, they are written out where they stand, the band included: 1.8 stays 1.8 through the
+    // file (an old app would read it as its own maximum — the format widened forwards, not back)
+    s.set_brush_size(1.8);
     let out = brushfile::read(&s.brush_as_file(set, 0).unwrap()).unwrap();
     let [paint, smudge, erase] = out.sliders.map(Option::unwrap);
     assert!(near(paint[0], 0.2) && near(paint[1], 0.6) && near(smudge[1], 1.0), "{:?}", out.sliders);
-    assert!(near(erase[0], 0.5) && near(erase[1], 0.4), "{:?}", out.sliders);
+    assert!(near(erase[0], 1.8) && near(erase[1], 0.4), "{:?}", out.sliders);
 }
 
 #[test]
