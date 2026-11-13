@@ -171,6 +171,7 @@ Lucide set beside them.
 | Folder | a folder, its tab up to the left |
 | Clear the colour history | a bin, its lid and two slots |
 | Keyboard | a keyboard, its keys and space bar cut out |
+| The backdrop's tone | a rounded square, its left half solid and its right half hollow, 2.4 of ink between them |
 
 ## Gesture controls
 

@@ -141,8 +141,8 @@ object PcIcons {
             viewport = 30f,
         )
     }
-    /** Nine small squares. */
-    val Checkerboard by lazy { ours("checkerboard", 44f, "M16 16L16 32L32 32L32 16L16 16ZM0 0L0 16L16 16L16 0L0 0ZM16 0L16 16L32 16L32 0L16 0ZM0 16L0 32L16 32L16 16L0 16ZM16 16L16 32L32 32L32 16L16 16Z") }
+    /** The backdrop behind transparency, in its two tones: one half of the field solid, the other hollow. */
+    val Checkerboard by lazy { ours("checkerboard", 44f, "M7.33 5.5H36.67A1.83 1.83 0 0 1 38.5 7.33V36.67A1.83 1.83 0 0 1 36.67 38.5H7.33A1.83 1.83 0 0 1 5.5 36.67V7.33A1.83 1.83 0 0 1 7.33 5.5Z M27.32 9.9H33.18A0.92 0.92 0 0 1 34.1 10.82V33.18A0.92 0.92 0 0 1 33.18 34.1H27.32A0.92 0.92 0 0 1 26.4 33.18V10.82A0.92 0.92 0 0 1 27.32 9.9Z") }
 
     val MenuGrid by lazy {
         val cells = (0 until 9).map { k ->
