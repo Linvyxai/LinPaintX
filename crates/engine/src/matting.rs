@@ -220,6 +220,182 @@ fn sample_at(at: f32, len: usize) -> (usize, usize, f32) {
     (i, (i + 1).min(len - 1), f)
 }
 
+/// How far apart two colours are, 0..1 of the full span: the mean of the three channel distances.
+fn colour_distance([ar, ag, ab]: [f32; 3], [br, bg, bb]: [f32; 3]) -> f32 {
+    ((ar - br).abs() + (ag - bg).abs() + (ab - bb).abs()) / (3.0 * 255.0)
+}
+
+fn rgb_at(rgba: &[u8], i: usize) -> [f32; 3] {
+    match rgba.get(i * 4..i * 4 + 3).map(<[u8; 3]>::try_from) {
+        Some(Ok([r, g, b])) => [r as f32, g as f32, b as f32],
+        _ => [0.0; 3],
+    }
+}
+
+/// The magic wand: from every seed it grows over the pixels joined to it by colour — a neighbour
+/// belongs while its colour is within `tolerance` (0..1 of the full span) of the seed's own. The
+/// result is a mask of the picture's own size, 255 in every picked region, 0 outside; None when the
+/// picture is short or a seed lies off it.
+///
+/// The seed's colour is the mean of the click and its eight neighbours: one noisy JPEG pixel must
+/// not decide what a whole region is.
+///
+/// Clicks add to each other: a person taps the sky, then the lake, and both go. Unlike the neural
+/// mask this one is full-size, so a click cut keeps its own edges — [`cut_wand_mask`] then feathers
+/// them without the 320-square trip the network's answer takes.
+pub fn wand_mask(rgba: &[u8], width: u32, height: u32, seeds: &[(u32, u32)], tolerance: f32) -> Option<Vec<u8>> {
+    let (w, h) = (width as usize, height as usize);
+    if w == 0 || h == 0 || rgba.len() < w * h * 4 {
+        return None;
+    }
+    let tol = tolerance.clamp(0.0, 1.0);
+    let mut mask = vec![0u8; w * h];
+    let mut queue = std::collections::VecDeque::new();
+    for &(sx, sy) in seeds {
+        if sx as usize >= w || sy as usize >= h {
+            return None;
+        }
+        let start = sy as usize * w + sx as usize;
+        if mask.get(start).copied().unwrap_or(0) == 255 {
+            continue; // this place already belongs to a region; growing it again adds nothing
+        }
+        let seed = seed_colour(rgba, w, h, sx as usize, sy as usize);
+        if let Some(cell) = mask.get_mut(start) {
+            *cell = 255;
+        }
+        queue.push_back(start);
+        while let Some(i) = queue.pop_front() {
+            let (y, x) = (i / w, i % w);
+            for j in [
+                y.checked_sub(1).map(|ny| ny * w + x),
+                (y + 1 < h).then(|| (y + 1) * w + x),
+                x.checked_sub(1).map(|nx| y * w + nx),
+                (x + 1 < w).then(|| y * w + x + 1),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if mask.get(j).copied().unwrap_or(0) != 0 {
+                    continue;
+                }
+                if colour_distance(rgb_at(rgba, j), seed) <= tol {
+                    if let Some(cell) = mask.get_mut(j) {
+                        *cell = 255;
+                    }
+                    queue.push_back(j);
+                }
+            }
+        }
+    }
+    Some(mask)
+}
+
+/// The colour a click stands for: the mean of the pixel and the eight around it, repeating edge
+/// pixels where they do not exist (a mean of fewer real samples, never a black one).
+fn seed_colour(rgba: &[u8], w: usize, h: usize, x: usize, y: usize) -> [f32; 3] {
+    let mut sum = [0.0f32; 3];
+    let mut n = 0.0f32;
+    for dy in -1isize..=1 {
+        for dx in -1isize..=1 {
+            let px = (x as isize + dx).clamp(0, w as isize - 1) as usize;
+            let py = (y as isize + dy).clamp(0, h as isize - 1) as usize;
+            for (cell, v) in sum.iter_mut().zip(rgb_at(rgba, py * w + px)) {
+                *cell += v;
+            }
+            n += 1.0;
+        }
+    }
+    let [sr, sg, sb] = sum;
+    [sr / n, sg / n, sb / n]
+}
+
+/// Removes the regions a [`wand_mask`] picked: their alpha goes to nothing, the rest of the
+/// picture keeps its own. `softness` (0..1) feathers the picked regions' edges outwards by up to
+/// eight picture pixels, a blur of the mask, so a click cut reads as the neural one does.
+pub fn cut_wand_mask(rgba: &[u8], width: u32, height: u32, mask: &[u8], softness: f32) -> Option<Vec<u8>> {
+    let (w, h) = (width as usize, height as usize);
+    if w == 0 || h == 0 || rgba.len() < w * h * 4 || mask.len() < w * h {
+        return None;
+    }
+    let feather = (softness.clamp(0.0, 1.0) * 8.0).round() as usize;
+    let mut out = rgba.to_vec();
+    if feather == 0 {
+        for (i, cell) in mask.iter().enumerate().take(w * h) {
+            if let Some(alpha) = out.get_mut(i * 4 + 3)
+                && *cell > 127
+            {
+                *alpha = 0;
+            }
+        }
+        return Some(out);
+    }
+    // two box passes make a near-Gaussian edge, and each line stays in cache: the blur is linear
+    // in the picture, not in its area times the radius
+    let mut blurred = vec![0.0f32; w * h];
+    let mut from = vec![0.0f32; w];
+    let mut to = vec![0.0f32; w];
+    for y in 0..h {
+        for (x, cell) in from.iter_mut().enumerate() {
+            *cell = mask.get(y * w + x).copied().unwrap_or(0) as f32 / 255.0;
+        }
+        box_pass(&from, &mut to, feather);
+        // the row it just blurred, at its own place in the picture: skip the finished rows first,
+        // and only then count columns - enumerating before the skip would index 	o past its end
+        for (x, cell) in blurred.iter_mut().skip(y * w).take(w).enumerate() {
+            if let Some(v) = to.get(x) {
+                *cell = *v;
+            }
+        }
+    }
+    let mut col = vec![0.0f32; h];
+    let mut col2 = vec![0.0f32; h];
+    for x in 0..w {
+        for (v, cell) in col.iter_mut().enumerate() {
+            *cell = *blurred.get(v * w + x).unwrap_or(&0.0);
+        }
+        box_pass(&col, &mut col2, feather);
+        for (v, cell) in col2.iter().enumerate().take(h) {
+            if let Some(slot) = blurred.get_mut(v * w + x) {
+                *slot = *cell;
+            }
+        }
+    }
+    // the blurred pick is the amount that goes: deep inside nothing stays, past the edge the
+    // original alpha comes back gradually, and the border of the picture is held, not bitten
+    for (i, &amount) in blurred.iter().enumerate().take(w * h) {
+        let keep = 1.0 - amount.clamp(0.0, 1.0);
+        if let Some(alpha) = out.get_mut(i * 4 + 3) {
+            *alpha = (*alpha as f32 * keep).round() as u8;
+        }
+    }
+    Some(out)
+}
+
+/// A box average of `from` into `to`, a window `radius` wide on each side; the window clamps at
+/// the ends, so a region touching the picture's border does not get a bite out of it.
+fn box_pass(from: &[f32], to: &mut [f32], radius: usize) {
+    let n = from.len();
+    if n == 0 {
+        return;
+    }
+    let mut prefix = vec![0.0f32; n + 1];
+    for (i, &v) in from.iter().enumerate() {
+        let running = prefix.get(i).copied().unwrap_or(0.0) + v;
+        if let Some(cell) = prefix.get_mut(i + 1) {
+            *cell = running;
+        }
+    }
+    for i in 0..n {
+        let lo = i.saturating_sub(radius);
+        let hi = (i + radius + 1).min(n);
+        if let (Some(lo_v), Some(hi_v)) = (prefix.get(lo), prefix.get(hi))
+            && let Some(cell) = to.get_mut(i)
+        {
+            *cell = (hi_v - lo_v) / (hi - lo) as f32;
+        }
+    }
+}
+
 /// A bilinear sample of `rgba`'s channel `c` at the corners (`y0`,`x0`) .. (`y1`,`x1`).
 fn sample_rgb(rgba: &[u8], w: usize, y0: usize, y1: usize, fy: f32, x0: usize, x1: usize, fx: f32, c: usize) -> f32 {
     let p = |y: usize, x: usize| rgba.get((y * w + x) * 4 + c).copied().unwrap_or(0) as f32 / 255.0;
@@ -275,6 +451,72 @@ mod tests {
         // and answers outside 0..1 are held to it, not wrapped
         assert_eq!(to_mask(&vec![7.0f32; 512 * 512], 512)[0], 255);
         assert_eq!(to_mask(&vec![-3.0f32; 512 * 512], 512)[0], 0);
+    }
+
+    #[test]
+    fn the_wand_grows_over_the_colour_it_was_told_to() {
+        // a picture of four quarters, each its own colour: a small tolerance keeps one quarter,
+        // a big one takes the whole picture through the touching neighbours
+        let (w, h) = (16usize, 16usize);
+        let mut rgba = vec![0u8; w * h * 4];
+        for y in 0..h {
+            for x in 0..w {
+                let c = match (y < 8, x < 8) {
+                    (true, true) => [220, 30, 30],
+                    (true, false) => [30, 220, 30],
+                    (false, true) => [30, 30, 220],
+                    (false, false) => [220, 220, 30],
+                };
+                let i = (y * w + x) * 4;
+                rgba[i..i + 3].copy_from_slice(&c);
+                rgba[i + 3] = 255;
+            }
+        }
+        let mask = wand_mask(&rgba, w as u32, h as u32, &[(4, 4)], 0.05).unwrap();
+        assert_eq!(mask.iter().filter(|v| **v == 255).count(), 8 * 8, "just the red quarter");
+        assert_eq!(mask[15 * w + 15], 0, "the far quarter stayed");
+        // a loose enough tolerance walks through the neighbours and takes everything
+        let mask = wand_mask(&rgba, w as u32, h as u32, &[(4, 4)], 1.0).unwrap();
+        assert!(mask.iter().all(|v| *v == 255));
+        // two clicks, two quarters
+        let mask = wand_mask(&rgba, w as u32, h as u32, &[(4, 4), (12, 4)], 0.05).unwrap();
+        assert_eq!(mask.iter().filter(|v| **v == 255).count(), 2 * 64);
+        // a repeated click changes nothing, and a click off the picture is refused, not grown
+        let same = wand_mask(&rgba, w as u32, h as u32, &[(4, 4), (4, 4)], 0.05).unwrap();
+        let one = wand_mask(&rgba, w as u32, h as u32, &[(4, 4)], 0.05).unwrap();
+        assert_eq!(same, one);
+        assert!(wand_mask(&rgba, w as u32, h as u32, &[(16, 4)], 0.05).is_none());
+    }
+
+    #[test]
+    fn the_wand_cut_only_touches_the_picked_alpha() {
+        // a picture whose top half is one colour and bottom half another, big enough that a
+        // feather of eight pixels stays a band along the edge rather than the whole of it
+        let (w, h) = (64usize, 64usize);
+        let mut rgba = vec![0u8; w * h * 4];
+        for (i, p) in rgba.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            let y = i / w;
+            p.copy_from_slice(&[if y < 32 { 200 } else { 20 }, 10, 30, 255]);
+        }
+        let mask = wand_mask(&rgba, w as u32, h as u32, &[(4, 2)], 0.05).unwrap();
+        let cut = cut_wand_mask(&rgba, w as u32, h as u32, &mask, 0.0).unwrap();
+        // hard edge: the picked half is gone, the rest keeps colour and alpha
+        for x in 0..w {
+            assert_eq!(cut[x * 4 + 3], 0, "picked row 0, column {x}");
+            assert_eq!(cut[(63 * w + x) * 4 + 3], 255, "kept row 63, column {x}");
+        }
+        for (a, b) in cut.iter().zip(rgba.iter()).skip((32 * w) * 4) {
+            assert_eq!(a, b, "the kept half is byte for byte the picture");
+        }
+        // feathering is a band, not a cliff: deep inside still nothing stays, right under the
+        // edge something stays, and eight pixels further down it is all of it again
+        let soft = cut_wand_mask(&rgba, w as u32, h as u32, &mask, 1.0).unwrap();
+        assert_eq!(soft[(4 * w + 4) * 4 + 3], 0, "deep inside the region is fully cut at any softness");
+        let just_below = soft[(33 * w + 4) * 4 + 3];
+        assert!(just_below > 0 && just_below < 255, "the feather reaches under the edge: {just_below}");
+        assert_eq!(soft[(48 * w + 4) * 4 + 3], 255, "and is done eight pixels on, where the blur window cannot reach");
+        // and a seed off the picture is refused before anything is grown
+        assert!(wand_mask(&rgba, w as u32, h as u32, &[(64, 0)], 0.5).is_none());
     }
 
     #[test]
