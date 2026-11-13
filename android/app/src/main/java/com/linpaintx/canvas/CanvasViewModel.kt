@@ -632,6 +632,13 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         private set
 
+    /**
+     * The last attempt found no subject at all: the model ran, and gave nothing to cut by. Said out
+     * loud because the alternative is a switch that visibly does nothing.
+     */
+    var backgroundNotFound by mutableStateOf(false)
+        private set
+
     private var transformBackgroundMask: ByteArray? = null
     private var backgroundRemovalJob: Job? = null
     private var backgroundRemovalRevision = 0L
@@ -692,6 +699,16 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
                 image to mask
             }
             if (revision != backgroundRemovalRevision || transformOriginal != original || !transforming) return@launch
+            // nothing found: the picture stays exactly as it is, transform and all. Rebuilding the
+            // layer for an unchanged picture would throw away where the person had it, for nothing —
+            // and rebuilding it under a near-empty mask would take the whole photo with it
+            if (removeBackground && (foundMask == null || !backgroundMaskFound(foundMask))) {
+                transformBackgroundMask = foundMask // ask the model once, not on every slider move
+                backgroundRemovalBusy = false
+                backgroundNotFound = true
+                return@launch
+            }
+            backgroundNotFound = false
             transformBackgroundMask = foundMask
             backgroundRemovalBusy = false
             val currentLayer = s.layers().firstOrNull { it.current } ?: return@launch
@@ -6659,12 +6676,19 @@ fun applyStabilizer(mode: Int, level: Int) {
         // the background is removed, if the user asked for it (the network runs off the main thread)
 
         var removalMask: ByteArray? = null
+        var backgroundMissing = false
         val placed = if (removeBackground) {
 
             withContext(Dispatchers.Default) {
 
-                removalMask = com.linpaintx.core.backgroundMask(image.rgba, image.width, image.height)
-                removalMask?.let { mask ->
+                val mask = com.linpaintx.core.backgroundMask(image.rgba, image.width, image.height)
+                // nothing found is not a cut: a near-empty mask would leave almost none of the photo
+                // on the layer. It goes in as it came and the reason is said, not left to be guessed
+                if (mask == null || !backgroundMaskFound(mask)) {
+                    backgroundMissing = true
+                    image
+                } else {
+                    removalMask = mask
                     com.linpaintx.core.applyBackgroundMask(
                         image.rgba,
                         image.width,
@@ -6672,12 +6696,17 @@ fun applyStabilizer(mode: Int, level: Int) {
                         mask,
                         backgroundThreshold,
                         backgroundSoftness,
-                    )
-                }?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) } ?: image
+                    )?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) } ?: image
+                }
 
             }
 
         } else image
+
+        if (backgroundMissing) {
+            backgroundNotFound = true
+            showNotice("Фон не найден: кадр вставлен без изменения.")
+        }
 
         // on a model it is placed on the surface, not in the texture
 
@@ -15861,4 +15890,19 @@ fun applyStabilizer(mode: Int, level: Int) {
 
     }
 
+}
+
+
+
+/**
+ * Whether the model's `mask` found something to cut by. A near-empty one has not: at the default
+ * threshold it leaves almost nothing of the picture (measured on a photo with no clear subject — 3
+ * cells of the 102 400 above a half, 0.2% of the picture left after the cut; photos with a subject
+ * gave 2 456 and 35 571). The switch must say so instead of wiping the photo silently.
+ */
+internal fun backgroundMaskFound(mask: ByteArray): Boolean {
+    // the engine's mask holds unsigned bytes; a Kotlin ByteArray sees 128..255 as negative, so a
+    // cell the network was sure about reads as -1 and would count as nothing found
+    val aboveHalf = mask.count { (it.toInt() and 0xFF) > 127 }
+    return aboveHalf * 2_000 >= mask.size
 }

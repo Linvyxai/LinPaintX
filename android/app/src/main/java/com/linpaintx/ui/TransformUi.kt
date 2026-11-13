@@ -680,6 +680,15 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
             Switch(vm.removeBackground, enabled = true)
         }
         if (vm.removeBackground) {
+            // said where the switch is, because the alternative is that nothing visibly happens
+            if (vm.backgroundNotFound) {
+                Text(
+                    "Фон не найден: модель не увидела на кадре объект. Кадр остался как был; попробуйте другой или выключите.",
+                    color = Color(0xFFFFB0A8),
+                    fontSize = 12.sp,
+                    maxLines = 3,
+                )
+            }
             OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
                 vm.changeBackgroundThreshold(it)
                 vm.reapplyBackgroundRemoval()
