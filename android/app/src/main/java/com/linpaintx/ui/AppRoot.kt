@@ -148,6 +148,12 @@ fun AppRoot(vm: CanvasViewModel) {
                         },
                     )
                 }
+                // a page that takes the whole screen covers the canvas, and everything that floats
+                // above the canvas covers it in turn: the timeline, the gallery / undo / redo /
+                // stabilizer row, and the panels' own bars make way while such a page is open, and
+                // come back when it closes
+                val pageOver = vm.canvasInfoOpen || vm.gestureControlsOpen || vm.cropRect != null || vm.timeLapseReplaying ||
+                    vm.animatedExport != null || vm.modelAnimatedExport != null || vm.studioOpen || vm.lightingStudioOpen
                 if (barsShown > 0f) {
                     // the bottom bar slides down off the screen and the side bar out to its side as they fade
                     val fade = Modifier.graphicsLayer { alpha = barsShown }
@@ -156,11 +162,13 @@ fun AppRoot(vm: CanvasViewModel) {
                     val height = with(androidx.compose.ui.platform.LocalDensity.current) { Pc.BarHeight.toPx() }
                     val bottomGlass = BarGlass(barsShown, androidx.compose.ui.geometry.Offset(0f, height * (1f - barsShown)))
                     TopBar(vm, Modifier.align(Alignment.BottomCenter).then(rememberFrost(0.dp, bottomGlass)).then(down).then(fade))
-                    TopLeftBar(
-                        vm,
-                        Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing).padding(8.dp)
-                            .graphicsLayer { alpha = barsShown }.zIndex(4f),
-                    )
+                    if (!pageOver) {
+                        TopLeftBar(
+                            vm,
+                            Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing).padding(8.dp)
+                                .graphicsLayer { alpha = barsShown }.zIndex(4f),
+                        )
+                    }
                     val sideBar = Pc.sideBarFit(maxHeight)
                     // a mode taking the screen slides it off its edge, and back when it ends
                     androidx.compose.animation.AnimatedVisibility(
@@ -184,9 +192,6 @@ fun AppRoot(vm: CanvasViewModel) {
                 }
                 NoticeBand(vm, Modifier.align(Alignment.BottomCenter).offset(y = -Pc.BarHeight))
                 DropBandUi(vm)
-                // a full-screen page covers the timeline, as it covers the canvas; the panels open over it
-                val pageOver = vm.canvasInfoOpen || vm.gestureControlsOpen || vm.cropRect != null || vm.timeLapseReplaying ||
-                    vm.animatedExport != null || vm.modelAnimatedExport != null
                 if (!vm.barsHidden && !pageOver) AnimationBar(vm)
                 // the bottom toolbars rise from below the screen, and drop away
                 androidx.compose.animation.AnimatedVisibility(
