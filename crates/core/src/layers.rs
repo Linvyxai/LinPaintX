@@ -124,6 +124,45 @@ pub fn matting_model_installed() -> bool {
     procraft_engine::matting::matting_model_installed()
 }
 
+/// Asks the cut for the installed (`big`) model or back for the built-in one; returns what will
+/// actually run. The heavy model is a choice even after it is downloaded — measured on the same
+/// photos its answer is often softer than the built-in's, and the report said so.
+#[uniffi::export]
+pub fn set_matting_choice(big: bool) -> bool {
+    procraft_engine::matting::set_matting_choice(big)
+}
+
+/// Which model is in charge of the cut right now.
+#[uniffi::export]
+pub fn matting_choice() -> bool {
+    procraft_engine::matting::matting_prefers_big()
+}
+
+/// The magic wand over a picture: the regions grown from the tapped points (`points` is their
+/// pixel pairs, `x0, y0, x1, y1, …`), kept within `tolerance` (0..1) of each tap's colour. The
+/// mask is the picture's own size, 255 where a tap's colour reached; None when the picture is
+/// short or a point lies off it. [`cut_wand_mask`] takes the picked regions' alpha away.
+#[uniffi::export]
+pub fn wand_mask(rgba: Vec<u8>, width: u32, height: u32, points: Vec<f32>, tolerance: f32) -> Option<Vec<u8>> {
+    if !points.len().is_multiple_of(2) {
+        return None;
+    }
+    let seeds: Vec<(u32, u32)> = points
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|[x, y]| (x.max(0.0) as u32, y.max(0.0) as u32))
+        .collect();
+    procraft_engine::matting::wand_mask(&rgba, width, height, &seeds, tolerance)
+}
+
+/// Applies a wand mask: the picked regions' alpha goes, the rest keeps its own, feathered by
+/// `softness` (0..1) across up to eight picture pixels.
+#[uniffi::export]
+pub fn cut_wand_mask(rgba: Vec<u8>, width: u32, height: u32, mask: Vec<u8>, softness: f32) -> Option<Vec<u8>> {
+    procraft_engine::matting::cut_wand_mask(&rgba, width, height, &mask, softness)
+}
+
 /// What a row of a layer's options menu does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum LayerOption {

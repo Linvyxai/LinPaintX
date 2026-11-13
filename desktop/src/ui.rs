@@ -1201,6 +1201,9 @@ impl Interface {
                 TouchCommand::TransformMoved { transform } => self.transform.moved(transform),
                 TouchCommand::TransformHeld { handle, x, y } => self.transform.held(handle, egui::pos2(x, y)),
                 TouchCommand::TransformLetGo { handle, x, y } => self.transform.let_go(handle, egui::pos2(x, y)),
+                // the click-cut is the phone's; a mouse clicks through its own cut tool instead, and
+                // nothing on desktop ever turns `set_wand_next` on
+                TouchCommand::WandTap { .. } => {}
                 TouchCommand::SelectionDrag { x0, y0, x1, y1 } => {
                     self.selection.dragged(session, egui::pos2(x0, y0), egui::pos2(x1, y1));
                 }

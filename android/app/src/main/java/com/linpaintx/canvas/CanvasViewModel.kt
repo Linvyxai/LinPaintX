@@ -508,7 +508,11 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         otherColour = listOf(KEPT_MASK_HUE, KEPT_MASK_SATURATION, KEPT_MASK_BRIGHTNESS).map { interfacePrefs.getFloat(it, 0f).coerceIn(0f, 1f) }.toFloatArray()
 
         // a model downloaded once comes back on its own: the file is local, the engine just needs it
-        viewModelScope.launch { mattingModelInstalled = MattingModel.restore(getApplication()) }
+        viewModelScope.launch {
+            mattingModelInstalled = MattingModel.restore(getApplication())
+            // and stays a choice: what runs is what the person left chosen, the built-in by default
+            syncMattingChoice()
+        }
 
     }
 
@@ -642,7 +646,28 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
     var backgroundNotFound by mutableStateOf(false)
         private set
 
+    /**
+     * The click-cut: while on, a tap inside the picture being transformed cuts away the colour
+     * region under it. The network finds the main subject; this is for the second background a
+     * person can point at but no model can guess — a pale wall, a mirrored table top.
+     */
+    var wandCut by mutableStateOf(interfacePrefs.getBoolean(WAND_CUT, false))
+        private set
+
+    /** How far a neighbour's colour may drift from the tap's to still be cut, 0..1 of the span. */
+    var wandTolerance by mutableFloatStateOf(interfacePrefs.getFloat(WAND_TOLERANCE, 0.25f))
+        private set
+
+    /** The tapped points, pairs of the picture's own pixels (x0, y0, x1, y1, …). */
+    var wandPoints by mutableStateOf<List<Float>>(emptyList())
+        private set
+
     private var transformBackgroundMask: ByteArray? = null
+
+    /** Whether the layer right now carries a cut made with wand points. Undoing the last point
+     * must give the picture back even where the network still finds nothing: the nothing-found
+     * early return would otherwise leave the cut of the point before on the layer. */
+    private var wandApplied = false
     private var backgroundRemovalJob: Job? = null
     private var backgroundRemovalRevision = 0L
 
@@ -654,6 +679,15 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
      * back every start-up. False means the model shipped inside the app is what runs.
      */
     var mattingModelInstalled by mutableStateOf(false)
+        private set
+
+    /**
+     * Whether the cut asks the downloaded heavy model. The built-in one is the default even after
+     * a download: measured on the same photos, the heavy model is often softer where the small one
+     * is confident, and the v0.0.14 report called that worse, not better. So it is chosen, never
+     * taken over.
+     */
+    var mattingBigChoice by mutableStateOf(interfacePrefs.getBoolean(MATTING_BIG, false))
         private set
 
     var mattingModelDownloading by mutableStateOf(false)
@@ -693,14 +727,36 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
             mattingModelDownloading = false
             mattingModelInstalled = installed
             if (installed) {
+                // the download does not change what runs: the choice does (see mattingBigChoice)
                 transformBackgroundMask = null
                 backgroundNotFound = false
+                syncMattingChoice()
                 if (removeBackground && transforming) reapplyBackgroundRemoval()
-                showNotice("Модель установлена: вырезание стало подробнее")
+                showNotice("Модель установлена: выбор — в панели вырезания")
             } else {
                 mattingModelProblem = "Скачать не удалось: сеть или память. Работает встроенная модель."
             }
         }
+
+    }
+
+    /** Puts the engine's model choice where the person's setting is; what will actually run. */
+    private fun syncMattingChoice(): Boolean =
+        com.linpaintx.core.setMattingChoice(mattingBigChoice && com.linpaintx.core.mattingModelInstalled())
+
+    /** Which model the cut asks for; the kept mask belongs to the other one and is dropped. */
+    fun chooseMattingModel(big: Boolean) {
+
+        if (mattingBigChoice == big) return
+
+        mattingBigChoice = big
+
+        interfacePrefs.edit().putBoolean(MATTING_BIG, big).apply()
+
+        syncMattingChoice()
+        transformBackgroundMask = null
+        backgroundNotFound = false
+        if (removeBackground && transforming) reapplyBackgroundRemoval()
 
     }
 
@@ -728,7 +784,76 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
     }
 
-    /** Re-runs the background removal on the picture as it came in, replacing the layer being transformed. */
+    /** Turns the click-cut on or off; the points of a finished cut are its own, and are dropped. */
+    fun changeWandCut(on: Boolean) {
+
+        wandCut = on
+
+        interfacePrefs.edit().putBoolean(WAND_CUT, on).apply()
+
+        session?.setWandNext(on)
+
+        if (!on && wandPoints.isNotEmpty()) {
+            wandPoints = emptyList()
+            reapplyBackgroundRemoval()
+        }
+
+    }
+
+    /** The colour distance a tap cuts to; the points already tapped grow again under it. */
+    fun changeWandTolerance(v: Float) {
+
+        wandTolerance = v
+
+        interfacePrefs.edit().putFloat(WAND_TOLERANCE, v).apply()
+
+        if (wandPoints.isNotEmpty()) reapplyBackgroundRemoval()
+
+    }
+
+    /** A tap in the picture, in its own pixels: a point more, and the cut runs again. */
+    fun wandTap(px: Float, py: Float) {
+
+
+        if (!wandCut) return
+
+        val original = transformOriginal ?: return
+
+        val x = px.roundToInt().coerceIn(0, original.width.toInt() - 1).toFloat()
+
+        val y = py.roundToInt().coerceIn(0, original.height.toInt() - 1).toFloat()
+
+        if (wandPoints.size >= 2 && wandPoints[wandPoints.size - 2] == x && wandPoints[wandPoints.size - 1] == y) {
+            return // the same point twice cuts the same region twice
+        }
+        wandPoints = wandPoints + listOf(x, y)
+        reapplyBackgroundRemoval()
+
+    }
+
+    fun undoWandPoint() {
+
+        if (wandPoints.size < 2) return
+
+        wandPoints = wandPoints.dropLast(2)
+        reapplyBackgroundRemoval()
+
+    }
+
+    fun clearWandPoints() {
+
+        if (wandPoints.isEmpty()) return
+
+        wandPoints = emptyList()
+        reapplyBackgroundRemoval()
+
+    }
+
+    /**
+     * Re-runs the background removal on the picture as it came in, replacing the layer being
+     * transformed. Tapped cuts, when there are any, run on the same picture over whatever the
+     * network did — or failed to do.
+     */
     fun reapplyBackgroundRemoval() {
 
         val original = transformOriginal ?: return
@@ -739,34 +864,54 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         backgroundRemovalJob?.cancel()
         backgroundRemovalJob = viewModelScope.launch {
             delay(32)
+            // the engine answers through whichever model the person left chosen
+            syncMattingChoice()
             backgroundRemovalBusy = removeBackground && transformBackgroundMask == null
             val cachedMask = transformBackgroundMask
+            // the points as the person sees them now; the work below describes exactly these
+            val points = wandPoints
+            val tolerance = wandTolerance
             val (placed, foundMask) = withContext(Dispatchers.Default) {
-                if (!removeBackground) return@withContext original to cachedMask
-                val mask = cachedMask
-                    ?: com.linpaintx.core.backgroundMask(original.rgba, original.width, original.height)
-                    ?: return@withContext original to null
-                val image = com.linpaintx.core.applyBackgroundMask(
-                    original.rgba,
-                    original.width,
-                    original.height,
-                    mask,
-                    backgroundThreshold,
-                    backgroundSoftness,
-                )?.let { com.linpaintx.core.ThumbnailImage(original.width, original.height, it) } ?: original
+                var image = original
+                var mask = cachedMask
+                if (removeBackground) {
+                    mask = mask ?: com.linpaintx.core.backgroundMask(original.rgba, original.width, original.height)
+                    // a mask that found nothing is kept as it came: the model asked once is the
+                    // model asked for every later movement of these sliders
+                    if (mask != null && backgroundMaskFound(mask)) {
+                        image = com.linpaintx.core.applyBackgroundMask(
+                            original.rgba,
+                            original.width,
+                            original.height,
+                            mask,
+                            backgroundThreshold,
+                            backgroundSoftness,
+                        )?.let { com.linpaintx.core.ThumbnailImage(original.width, original.height, it) } ?: original
+                    }
+                }
+                if (points.size >= 2) {
+                    image = com.linpaintx.core.wandMask(image.rgba, image.width, image.height, points, tolerance)
+                        ?.let { picked ->
+                            com.linpaintx.core.cutWandMask(image.rgba, image.width, image.height, picked, backgroundSoftness)
+                                ?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) }
+                        } ?: image
+                }
                 image to mask
             }
             if (revision != backgroundRemovalRevision || transformOriginal != original || !transforming) return@launch
-            // nothing found: the picture stays exactly as it is, transform and all. Rebuilding the
-            // layer for an unchanged picture would throw away where the person had it, for nothing —
-            // and rebuilding it under a near-empty mask would take the whole photo with it
-            if (removeBackground && (foundMask == null || !backgroundMaskFound(foundMask))) {
+            // nothing found and no taps to go on: the picture stays exactly as it is, transform and
+            // all. Rebuilding the layer for an unchanged picture would throw away where the person
+            // had it, for nothing — and rebuilding it under a near-empty mask would take the photo
+            if (
+                removeBackground && (foundMask == null || !backgroundMaskFound(foundMask)) &&
+                points.size < 2 && !wandApplied
+            ) {
                 transformBackgroundMask = foundMask // ask the model once, not on every slider move
                 backgroundRemovalBusy = false
                 backgroundNotFound = true
                 return@launch
             }
-            backgroundNotFound = false
+            backgroundNotFound = removeBackground && (foundMask == null || !backgroundMaskFound(foundMask))
             transformBackgroundMask = foundMask
             backgroundRemovalBusy = false
             val currentLayer = s.layers().firstOrNull { it.current } ?: return@launch
@@ -775,6 +920,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
             transformBox = null
             s.deleteLayer(currentLayer.id)
             if (s.insertImage(placed, currentLayer.private) != null) {
+                wandApplied = points.size >= 2
                 transformOriginal = original
                 toggleTransform()
                 refresh()
@@ -6739,6 +6885,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             withContext(Dispatchers.Default) {
 
+                syncMattingChoice()
                 val mask = com.linpaintx.core.backgroundMask(image.rgba, image.width, image.height)
                 // nothing found is not a cut: a near-empty mask would leave almost none of the photo
                 // on the layer. It goes in as it came and the reason is said, not left to be guessed
@@ -6801,6 +6948,7 @@ fun applyStabilizer(mode: Int, level: Int) {
             // the picture as it came in, so the transform can re-apply the removal on it
             transformOriginal = image
             transformBackgroundMask = removalMask
+            wandPoints = emptyList()
 
             toggleTransform()
 
@@ -14177,6 +14325,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         transformBox = s.transformBegin()
 
+        // the click-cut only has pixels to answer for while the transform holds them
+        session?.setWandNext(wandCut && transformKind != TransformKind.WARP)
+
         // nothing there to move: it says so and stays out of transform
 
         if (transformBox == null) {
@@ -15651,6 +15802,12 @@ fun applyStabilizer(mode: Int, level: Int) {
         const val BACKGROUND_THRESHOLD = "background_threshold"
 
         const val BACKGROUND_SOFTNESS = "background_softness"
+
+        const val WAND_CUT = "wand_cut"
+
+        const val WAND_TOLERANCE = "wand_tolerance"
+
+        const val MATTING_BIG = "matting_big"
 
 
 

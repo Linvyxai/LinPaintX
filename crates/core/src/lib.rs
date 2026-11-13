@@ -132,9 +132,9 @@ pub use hues::{HueControl, RING_HUES, SLIDER_HUES, hue_at, hue_position, hue_sto
 pub use keys::{KeyCombo, KeyDrag, KeyShortcut, ShortcutGroup, ShortcutRow, key_shortcut, key_shortcut_list};
 pub use layers::{
     BlendModeInfo, Blocked, HiddenBy, LayerInfo, LayerOption, LayerOptionRow, LayerType, ThumbnailImage,
-    apply_background_mask, background_mask, blend_modes, brush_blend_modes, combine_blend_modes,
-    install_matting_model, grain_blend_modes, layers_for, matting_model_installed, remove_background, set_layer_budget,
-    set_resident_budget,
+    apply_background_mask, background_mask, blend_modes, brush_blend_modes, combine_blend_modes, cut_wand_mask,
+    install_matting_model, grain_blend_modes, layers_for, matting_choice, matting_model_installed, remove_background,
+    set_layer_budget, set_matting_choice, set_resident_budget, wand_mask,
 };
 pub use liquify::liquify_reach;
 pub use modes::{ModeButton, ModeSwitch, Modes, mode_switch};

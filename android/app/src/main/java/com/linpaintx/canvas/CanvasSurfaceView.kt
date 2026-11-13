@@ -291,6 +291,8 @@ class CanvasSurfaceView(context: Context, private val vm: CanvasViewModel) : Sur
                 if (c.handle == TransformHandle.Rotate || c.handle == TransformHandle.TurnBox) vm.transformLetGo = c.handle to Offset(c.x, c.y)
             }
             is TouchCommand.TransformNumeric -> vm.transformNumeric = CanvasViewModel.TransformNumeric(c.angle, Offset(c.x, c.y), c.right)
+            // the click-cut: a tap the transform reported as a point of the picture
+            is TouchCommand.WandTap -> vm.wandTap(c.x, c.y)
             // the selection tool's touch: a shape dragged out, a colour selection's threshold slid, the
             // freehand path drawn, a selection made
             is TouchCommand.SelectionDrag -> vm.shapeDrag = Offset(c.x0, c.y0) to Offset(c.x1, c.y1)

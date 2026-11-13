@@ -3,6 +3,7 @@
 //! small U2-NetP is embedded; a bigger IS-Net can be installed from a file the app downloaded
 //! (see [`use_matting_model`]), which finds a subject in exactly the pictures U2-NetP gives up on.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use tract_onnx::prelude::*;
@@ -46,8 +47,27 @@ fn plan() -> Option<Arc<Matting>> {
 /// The installed model, once [`use_matting_model`] has compiled one.
 static BIG: OnceLock<Mutex<Option<Arc<Matting>>>> = OnceLock::new();
 
+/// Whether the person asked the cut to use the installed model. The default is the small one even
+/// where a big one is present: measured on the same pictures, IS-Net's 512 answer is often softer
+/// than U2-NetP's confident blob, and the v0.0.14 report called the change for the worse. A model
+/// that downloads itself must never also install itself into charge.
+static BIG_WANTED: AtomicBool = AtomicBool::new(false);
+
 fn big_slot() -> &'static Mutex<Option<Arc<Matting>>> {
     BIG.get_or_init(|| Mutex::new(None))
+}
+
+/// Asks (or refuses) the installed model for the cut; returns whether the installed model is what
+/// will now answer — false with a request no installed model can serve, or after clearing back to
+/// the built-in. The built-in keeps working either way.
+pub fn set_matting_choice(big: bool) -> bool {
+    BIG_WANTED.store(big && matting_model_installed(), Ordering::Relaxed);
+    BIG_WANTED.load(Ordering::Relaxed)
+}
+
+/// Whether the installed model is the one in charge right now.
+pub fn matting_prefers_big() -> bool {
+    BIG_WANTED.load(Ordering::Relaxed) && matting_model_installed()
 }
 
 /// Points background removal at the model kept in `path`: the file is read and its plan compiled
@@ -91,7 +111,7 @@ pub fn remove_background(rgba: &[u8], width: u32, height: u32, threshold: f32, s
 /// tune the cut and feather live without running the network again for every slider movement.
 /// Whichever model runs — installed or embedded — the mask comes back in this one shape.
 pub fn background_mask(rgba: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
-    let installed = big_slot().lock().ok().and_then(|slot| slot.clone());
+    let installed = matting_prefers_big().then(|| big_slot().lock().ok().and_then(|slot| slot.clone())).flatten();
     match installed {
         // an installed model that fails on one picture falls back rather than losing the cut
         // outright: the small model is still here
@@ -528,6 +548,19 @@ mod tests {
         let rgba = vec![128u8; 32 * 32 * 4];
         let Some(mask) = background_mask(&rgba, 32, 32) else { return }; // no u2netp either
         assert_eq!(mask.len(), SIDE * SIDE, "the small model still answered, as before");
+    }
+
+    #[test]
+    fn the_heavy_model_is_a_choice_not_a_takeover() {
+        // nothing installed here: asking for the big model cannot get it into charge, and the
+        // default answer is always the built-in one — which is what the v0.0.14 report asked for
+        assert!(!set_matting_choice(true), "no installed model to prefer");
+        assert!(!matting_prefers_big());
+        set_matting_choice(false);
+        assert!(!matting_prefers_big());
+        let rgba = vec![128u8; 32 * 32 * 4];
+        let Some(mask) = background_mask(&rgba, 32, 32) else { return };
+        assert_eq!(mask.len(), SIDE * SIDE, "the built-in model answered while nothing is chosen");
     }
 
     #[test]

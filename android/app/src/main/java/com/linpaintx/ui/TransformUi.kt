@@ -690,11 +690,12 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     maxLines = 3,
                 )
             }
-            // which model cuts: the small one is always there; the detailed one is a single, asked-for download
+            // which model cuts: the small one is always there; the detailed one is a single,
+            // asked-for download — and stays an asked-for choice afterwards, see the chips below
             val totalMb = (com.linpaintx.canvas.MattingModel.BYTES / (1024 * 1024)).toInt()
             Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (vm.mattingModelInstalled) "Вырезание: подробная модель" else "Вырезание: встроенная модель",
+                    "Вырезание: " + if (vm.mattingModelInstalled && vm.mattingBigChoice) "подробная модель" else "встроенная модель",
                     color = Color.White,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -712,8 +713,65 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     }
                 }
             }
+            if (vm.mattingModelInstalled) {
+                // the heavy model came with the download and took over; the report was that it
+                // does the pictures worse than the built-in one — so which of them answers is now
+                // said here, once, and kept
+                val builtIn = !vm.mattingBigChoice
+                Row(Modifier.fillMaxWidth()) {
+                    Box(
+                        Modifier.weight(1f).height(34.dp).padding(end = 3.dp).clip(RoundedCornerShape(17.dp))
+                            .background(if (builtIn) Pc.Accent else Color(0x22FFFFFF)).clickable { vm.chooseMattingModel(false) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Встроенная", color = Color.White, fontSize = 13.sp, maxLines = 1)
+                    }
+                    Box(
+                        Modifier.weight(1f).height(34.dp).padding(start = 3.dp).clip(RoundedCornerShape(17.dp))
+                            .background(if (!builtIn) Pc.Accent else Color(0x22FFFFFF)).clickable { vm.chooseMattingModel(true) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Подробная", color = Color.White, fontSize = 13.sp, maxLines = 1)
+                    }
+                }
+            }
             if (vm.mattingModelProblem.isNotEmpty()) {
                 Text(vm.mattingModelProblem, color = Color(0xFFFFB0A8), fontSize = 12.sp, maxLines = 2)
+            }
+            // the click-cut: the network finds the subject, but it cannot know that the pale wall
+            // behind is meant to go too — so a tap says where
+            Row(
+                Modifier.fillMaxWidth().height(36.dp).clickable { vm.changeWandCut(!vm.wandCut) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Вырезать по касанию", color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                Switch(vm.wandCut, enabled = true)
+            }
+            if (vm.wandCut) {
+                if (vm.transformKind == TransformKind.WARP) {
+                    // the core says so too: in a warp a tap drags the mesh, and it must not look broken
+                    Text("В деформации касания двигают сетку, а не режут.", color = Color(0xFFFFB0A8), fontSize = 12.sp, maxLines = 2)
+                }
+                OptionSlider("Допуск цвета", vm.wandTolerance, "${(vm.wandTolerance * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
+                    vm.changeWandTolerance(it)
+                }
+                Row(Modifier.fillMaxWidth().height(30.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Точек: ${vm.wandPoints.size / 2}", color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    if (vm.wandPoints.isNotEmpty()) {
+                        Text(
+                            "Убрать последнюю",
+                            color = Pc.Accent,
+                            fontSize = 13.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.undoWandPoint() }.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                        Text(
+                            "Очистить",
+                            color = Pc.Accent,
+                            fontSize = 13.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { vm.clearWandPoints() }.padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                }
             }
             OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
                 vm.changeBackgroundThreshold(it)

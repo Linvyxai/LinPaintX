@@ -6865,6 +6865,46 @@ fn a_kept_view_that_leaves_the_canvas_off_the_page_is_not_used() {
 }
 
 #[test]
+fn a_tap_while_the_click_cut_is_on_cuts_in_stead_of_nudging() {
+    use crate::TouchCommand;
+    let Some(s) = session(100, 100) else { return };
+    // two wide dots, then their pixels up on the box: the window is the canvas here, and with a
+    // brush this big the middle of the box is further from every node than a node's own reach
+    s.set_brush_size(0.95);
+    s.stroke_begin(PointerKind::Finger, vec![sample(20.0, 50.0, 0.0)]);
+    s.stroke_end(vec![]);
+    s.stroke_begin(PointerKind::Finger, vec![sample(80.0, 50.0, 100.0)]);
+    s.stroke_end(vec![]);
+    let b = s.transform_begin().unwrap();
+    s.set_touch_transforming(Some(crate::touch::TransformTouch { advanced_mesh: false }));
+    // zoomed to twice the canvas: a node's reach, measured in window pixels, now leaves the
+    // middle of the box as content — which is how it reads on a phone screen too
+    s.view_gesture(50.0, 50.0, 0.0, 0.0, 2.0, 0.0);
+    // as it has always been: a tap off the nodes nudges a pixel towards it
+    // the middle of a box this size is further from every node than a node's own reach
+    s.touch_down(1, PointerKind::Finger, vec![sample(50.0, 50.0, 200.0)]);
+    let cmds = s.touch_up(1, vec![sample(50.0, 50.0, 250.0)]);
+    assert!(
+        matches!(cmds.last(), Some(TouchCommand::TransformMoved { .. })),
+        "the last command is not a nudge: {cmds:?}"
+    );
+    // the click-cut on: the same tap is a cut instead, where it fell in the picture's own pixels
+    s.set_wand_next(true);
+    s.touch_down(1, PointerKind::Finger, vec![sample(50.0, 50.0, 600.0)]);
+    let cmds = s.touch_up(1, vec![sample(50.0, 50.0, 650.0)]);
+    let point = match cmds.last() {
+        Some(TouchCommand::WandTap { x, y }) => [*x, *y],
+        other => panic!("the last command is not a cut: {other:?}"),
+    };
+    // inside the box's own width and height
+    assert!(point[0] >= 0.0 && point[0] <= b.width, "{point:?} of {}", b.width);
+    assert!(point[1] >= 0.0 && point[1] <= b.height, "{point:?} of {}", b.height);
+    // and the switch reads back as the app left it
+    s.set_wand_next(false);
+    assert!(!s.wand_next());
+}
+
+#[test]
 fn the_clone_source_starts_in_the_middle_is_dragged_and_follows_the_brush() {
     use crate::adjust_menu::Adjustment;
     let Some(s) = session(100, 100) else { return };

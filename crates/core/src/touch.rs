@@ -301,6 +301,12 @@ pub enum TouchCommand {
         y: f32,
         right: bool,
     },
+    /// The click-cut is on and a tap fell inside the picture being transformed: `x`, `y` are in
+    /// the picture's own pixels (the original, as it came in), where a colour region is to be cut.
+    WandTap {
+        x: f32,
+        y: f32,
+    },
     /// The selection tool: a rectangle or ellipse being dragged out between two window points; a
     /// colour selection's threshold slid (shown with [`CanvasSession::show_colour_selection`]
     /// while not `done`, kept for the next when it is); the freehand path changed (see
@@ -445,6 +451,10 @@ pub(crate) struct Touches {
     rapid_due: Option<f64>,
     /// The modify button: tapped, the next touch picks a colour; held, touches do what it sets.
     pick_next: bool,
+    /// The click-cut is on: a tap inside the picture being transformed cuts the colour it
+    /// pointed at (see [`TouchCommand::WandTap`]) instead of nudging. It stays on until turned
+    /// off, so several regions can be tapped one after another.
+    wand_next: bool,
     modify_held: bool,
     modify_used: bool,
     /// The touch made while the modify button is held, and what it does.
@@ -566,6 +576,7 @@ impl Default for Touches {
             quickshape_due: None,
             rapid_due: None,
             pick_next: false,
+            wand_next: false,
             modify_held: false,
             modify_used: false,
             modify_pointer: None,
@@ -727,8 +738,18 @@ impl CanvasSession {
         self.touches().pick_next = on;
     }
 
+    /// The click-cut's switch: while on, a tap inside the picture being transformed cuts the
+    /// colour it pointed at, and stays on for the next tap.
+    pub fn set_wand_next(&self, on: bool) {
+        self.touches().wand_next = on;
+    }
+
     pub fn pick_next(&self) -> bool {
         self.touches().pick_next
+    }
+
+    pub fn wand_next(&self) -> bool {
+        self.touches().wand_next
     }
 
     /// The modify button is held (or let go). Let go, true if a touch used it meanwhile (so its
@@ -1974,6 +1995,7 @@ impl CanvasSession {
                 let (handle, grabbed, tapped) = (t.transform_handle, t.transform_grabbed, now - t.tap_start <= TAP_MS);
                 let at = last_of(&samples).map_or(t.down_at, |s| (s.x, s.y));
                 let how = t.transforming;
+                let wand_on = t.wand_next;
                 t.transform_grabbed = false;
                 drop(t);
                 if cancelled {
@@ -1984,8 +2006,13 @@ impl CanvasSession {
                     out.push(TouchCommand::TransformMoved { transform: self.transform_release() });
                     out.push(TouchCommand::TransformLetGo { handle, x: at.0, y: at.1 });
                 } else if tapped && handle == crate::TransformHandle::Move {
-                    // a tap off the nodes nudges the content a pixel towards it
-                    out.push(TouchCommand::TransformMoved { transform: self.transform_nudge(at.0, at.1) });
+                    // a tap off the nodes nudges the content a pixel towards it — or, while the
+                    // click-cut is on and the tap fell on the picture, cuts the colour under it
+                    let hit = wand_on.then(|| self.wand_point_in_picture(at.0, at.1)).flatten();
+                    match hit {
+                        Some(point) => out.push(TouchCommand::WandTap { x: point[0], y: point[1] }),
+                        None => out.push(TouchCommand::TransformMoved { transform: self.transform_nudge(at.0, at.1) }),
+                    }
                 } else if tapped && how.is_some() {
                     // a tap on a node types its numbers beside it: the rotate node its angle, the
                     // others the size

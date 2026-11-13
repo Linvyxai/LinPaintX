@@ -282,9 +282,38 @@ impl State {
     pub(crate) fn window_to_canvas(&self, x: f32, y: f32) -> Option<Vec2> {
         self.view?.screen_to_canvas(Vec2::new(x, y)).filter(|p| p.is_finite())
     }
+
+    /// Where on the picture being transformed the window point (`x`, `y`) fell, in the picture's
+    /// own pixels counted from its top-left corner. None while nothing is transformed, and none
+    /// when the point misses the content — then a tap stays the nudge it always was.
+    ///
+    /// The content quad is where the corners got to; the source quad is the rectangle the pixels
+    /// came from, so the tap is read back through the homography between them. A warped
+    /// transform draws its mesh, not this map, and the click-cut does not claim those pixels:
+    /// it keeps off (the app leaves the switch where a warp cannot answer for it).
+    pub(crate) fn transform_point_in_picture(&self, x: f32, y: f32) -> Option<[f32; 2]> {
+        let t = self.transform.as_ref().filter(|_| self.transform_mode != TransformMode::Warp)?;
+        let at = self.window_to_canvas(x, y)?;
+        if !on_quad(t.content(), at) {
+            return None;
+        }
+        let to_source = Homography::quad_to_quad(t.content(), t.source())?.apply(at)?;
+        if !on_quad(t.source(), to_source) {
+            return None;
+        }
+        let (x0, y0) = (t.source()[0].x, t.source()[0].y);
+        Some([to_source.x - x0, to_source.y - y0])
+    }
 }
 
 impl CanvasSession {
+    /// Where on the picture being transformed a lifted window tap fell, in the picture's own
+    /// pixels; None when nothing is transformed, the mode maps no pixels back (a warp), or the
+    /// tap missed the content — then the touch goes on being the nudge it always was.
+    pub(crate) fn wand_point_in_picture(&self, x: f32, y: f32) -> Option<[f32; 2]> {
+        self.shared.lock().transform_point_in_picture(x, y)
+    }
+
     /// Whether two fingers at these window points take what the box holds: any of them on it,
     /// though never a warp's, whose fingers move the canvas.
     pub(crate) fn fingers_on_box(&self, fingers: impl Iterator<Item = (f32, f32)>) -> bool {
