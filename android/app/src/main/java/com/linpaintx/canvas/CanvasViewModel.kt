@@ -10599,6 +10599,14 @@ fun applyStabilizer(mode: Int, level: Int) {
 
 
 
+    /**
+     * How far the size slider runs. 1 is the brush's own maximum — where the track ends; above it the
+     * brush keeps growing towards half the canvas, which is what the app allows and what the panel
+     * counts in per cent. The number comes from the engine rather than being repeated here, so the
+     * slider cannot offer a value the stroke would ignore.
+     */
+    val sizeSliderTop: Float get() = session?.sizeSliderTop() ?: 1f
+
     fun changeSize(value: Float) {
 
         size = value

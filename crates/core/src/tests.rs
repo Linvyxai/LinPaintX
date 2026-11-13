@@ -3962,6 +3962,40 @@ fn layers_at_a_point_are_listed_top_first() {
 }
 
 #[test]
+fn the_size_slider_grows_past_the_brush_towards_half_the_canvas() {
+    // a phone's canvas, as reported in the complaint that a brush should be able to cover half of it.
+    // `session(..)` in this file builds a square canvas and takes its second number as the window,
+    // so the canvas is made here: only the document's shape matters to what this checks
+    let s = CanvasSession::new(1080, 2400);
+    let reach = (1080.0f32 * 1080.0 + 2400.0 * 2400.0).sqrt() / 2.0;
+    // where the track ends: the brush's own maximum
+    s.set_brush_size(1.0);
+    let at_end = s.info().brush_diameter;
+    assert!(
+        at_end > 0.0 && at_end < reach / 2.0,
+        "the brush's maximum {at_end} is not the modest thing the slider has always been"
+    );
+    // the band above it runs on towards the canvas
+    s.set_brush_size(1.5);
+    let middle = s.info().brush_diameter;
+    assert!(middle > at_end && middle < reach, "{middle} is not between {at_end} and {reach}");
+    s.set_brush_size(2.0);
+    let top = s.info().brush_diameter;
+    assert!((top - reach).abs() < 1.0, "{top} against half the diagonal {reach}");
+    // further than the top asks for nothing more
+    s.set_brush_size(9.0);
+    assert!((s.info().brush_diameter - reach).abs() < 1.0);
+    // and below the end the slider is what it always was
+    s.set_brush_size(0.5);
+    assert!(s.info().brush_diameter < at_end);
+    // a small canvas asks for a small top: the band is the canvas, not a fixed number of pixels
+    let small = CanvasSession::new(200, 200);
+    small.set_brush_size(2.0);
+    assert!(small.info().brush_diameter <= reach, "{} past the big canvas", small.info().brush_diameter);
+    assert!((small.info().brush_diameter - 200.0 * std::f32::consts::SQRT_2 / 2.0).abs() < 1.0);
+}
+
+#[test]
 fn brushes_can_keep_their_size_on_the_screen() {
     let Some(s) = session(100, 100) else { return };
     let on_canvas = s.info().brush_diameter;

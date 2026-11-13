@@ -269,6 +269,11 @@ impl PressureCurves {
 /// The size slider's curve: the size it sets is its place to this power.
 pub const SIZE_CURVE: f32 = 2.2;
 
+/// How far the size slider runs: 1.0 is the brush's own maximum, and the band above it grows past
+/// that towards half the canvas (see [`Brush::diameter_upto`]). The app's slider, its keypad and
+/// its percent readout all ask for this instead of each keeping their own copy of the number.
+pub const SIZE_SLIDER_TOP: f32 = 2.0;
+
 /// A stamp's opacity is its flow, pressure, tilt and speed together, through the brush's opacity
 /// range, to this power: light touches fall away fast.
 pub const FLOW_POWER: f32 = 2.5;
@@ -788,10 +793,30 @@ impl Brush {
     /// Stamp diameter (canvas px) for a size slider at 0..1: the slider to the power
     /// [`SIZE_CURVE`] (so small sizes get most of it), from the least size to the most.
     pub fn diameter(&self, slider: f32) -> f32 {
-        let s = if slider.is_finite() { slider.clamp(0.0, 1.0) } else { 0.5 };
+        self.diameter_upto(slider, self.most_size() * self.size_unit())
+    }
+
+    /// The same, but with a size slider that may run past 1: what it reaches above the brush's own
+    /// maximum grows towards `limit` instead of towards what the spacing allows.
+    ///
+    /// A brush's `max_size` is its own working maximum, and the slider's 100% is that, not the most
+    /// the app could ever draw: a round pen stops at 120 px while the spacing would let it reach
+    /// thousands, and the report was that this is not enough — a brush should be able to cover half
+    /// the canvas. So the slider's second half, 1..2, runs from `biggest()` to `limit`, keeping the
+    /// brush's own scale untouched below 100%: what a person set as the brush's maximum still reads
+    /// and behaves as it did. `limit` is the canvas, not the brush: half its diagonal, so a stroke
+    /// begun at the top of that band covers the screen.
+    pub fn diameter_upto(&self, slider: f32, limit: f32) -> f32 {
+        let s = if slider.is_finite() { slider } else { 0.5 };
         let most = self.biggest();
-        let least = self.min_size.min(most);
-        (least + (most - least) * s.powf(SIZE_CURVE)).max(0.5)
+        if s <= 1.0 {
+            let s = s.clamp(0.0, 1.0);
+            let least = self.min_size.min(most);
+            return (least + (most - least) * s.powf(SIZE_CURVE)).max(0.5);
+        }
+        let past = (s - 1.0).clamp(0.0, 1.0);
+        let reach = limit.max(most);
+        (most + (reach - most) * past).max(0.5)
     }
 
     /// The most size drawn (canvas pixels): the brush's own, held to what its spacing allows.
@@ -971,6 +996,31 @@ mod tests {
         assert_eq!((s, o), (1.0, 1.0));
         let (s0, _) = b.pressure_factors(0.0);
         assert!((s0 - 0.15).abs() < 1e-5);
+    }
+
+    #[test]
+    fn the_band_above_the_brushs_own_maximum_grows_towards_the_canvas() {
+        let b = Brush::round_pen();
+        let most = b.biggest();
+        let limit = 2000.0;
+        // below 100% nothing changed: the same reading the brush has always had
+        for s in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            assert_eq!(b.diameter_upto(s, limit), b.diameter(s), "at {s}");
+        }
+        // the top of the band reaches the canvas, and the middle is the middle of the way
+        assert_eq!(b.diameter_upto(2.0, limit), limit);
+        assert!((b.diameter_upto(1.5, limit) - (most + (limit - most) / 2.0)).abs() < 1e-3);
+        // and it grows, never shrinks, however far the slider is taken
+        let mut last = b.diameter_upto(1.0, limit);
+        for s in [1.1, 1.3, 1.6, 1.9, 2.0, 2.5, 9.0] {
+            let at = b.diameter_upto(s, limit);
+            assert!(at >= last, "{s}: {at} below {last}");
+            assert!(at <= limit, "{s}: {at} past the canvas");
+            last = at;
+        }
+        // a canvas smaller than the brush's own maximum takes nothing away from the brush
+        assert_eq!(b.diameter_upto(1.5, 10.0), most);
+        assert_eq!(b.diameter_upto(f32::NAN, limit), b.diameter_upto(0.5, limit));
     }
 
     #[test]

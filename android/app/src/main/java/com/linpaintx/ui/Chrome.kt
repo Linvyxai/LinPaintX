@@ -375,7 +375,7 @@ fun SideBar(vm: CanvasViewModel, modifier: Modifier = Modifier, right: Boolean =
                 drawPath(body, Pc.SideBar)
             },
     ) {
-        BrushSlider(vm.size, vm::changeSize, Modifier.offset(x(SliderLeft, Pc.SliderWidth), SizeTrackTop).then(rememberFrost(Pc.SliderCorner, track)), panel(vm, CanvasViewModel.SliderPanel.SIZE), vm.sizeNotches, trackHeight)
+        BrushSlider(vm.size, vm::changeSize, Modifier.offset(x(SliderLeft, Pc.SliderWidth), SizeTrackTop).then(rememberFrost(Pc.SliderCorner, track)), panel(vm, CanvasViewModel.SliderPanel.SIZE), vm.sizeNotches, trackHeight, top = vm.sizeSliderTop)
         // the modify button: the next touch on the canvas picks a colour
         Box(
             Modifier.offset(x(5.dp, 40.dp), 191.dp - shorter).size(40.dp, 41.dp).pointerInput(Unit) {
@@ -496,14 +496,37 @@ private fun SliderPanel(vm: CanvasViewModel, which: CanvasViewModel.SliderPanel,
     }
 }
 
+/// Where a drag takes a slider's value: `from` where it stands, `dy` how far the finger moved down
+/// (so up is positive growth) over `travel` pixels of track, kept within `0..=top`.
+///
+/// `top` is 1 for a slider that ends where its track ends; the size slider passes more, and the
+/// value then climbs while the thumb has nowhere left to go — the band past the brush's own maximum
+/// (see [`BrushSlider`]).
+internal fun sliderDrag(from: Float, dy: Float, travel: Float, top: Float): Float =
+    if (travel <= 0f) from else (from - dy / travel).coerceIn(0f, top)
+
 /**
  * An upright slider moved by dragging anywhere on it: the thumb follows the finger (relative,
  * not jump-to-touch), 1 at the top. Moved, its [panel] shows while it moves; held still, it stays up.
  * Its [notches] (saved values) show as marks on the track; a value dragged near one is pulled onto
  * it, and a tap on one goes there. On a notch, the thumb shows a blue bar.
+ *
+ * [top] is how far the value may go: 1 for the sliders that end where the track ends. A size slider
+ * passes more, and past 100% the thumb has nowhere left to go — it stays at the top of the track with
+ * a line drawn above it while the finger keeps dragging on, because the brush's own maximum is the end
+ * of the track, not the end of what the app can draw. Notches belong to the track, so they only pull
+ * the value in below 100%.
  */
 @Composable
-fun BrushSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier, panel: SliderPanelHooks? = null, notches: List<Float> = emptyList(), height: Dp = Pc.SliderHeight) {
+fun BrushSlider(
+    value: Float,
+    onChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    panel: SliderPanelHooks? = null,
+    notches: List<Float> = emptyList(),
+    height: Dp = Pc.SliderHeight,
+    top: Float = 1f,
+) {
     val current by rememberUpdatedState(value)
     val change by rememberUpdatedState(onChange)
     val hooks by rememberUpdatedState(panel)
@@ -512,7 +535,7 @@ fun BrushSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Mo
         marks.filter { kotlin.math.abs(it - v) < reach }.minByOrNull { kotlin.math.abs(it - v) }
     Box(
         modifier.size(Pc.SliderWidth, height)
-            .pointerInput(height) {
+            .pointerInput(height, top) {
                 val travel = (height - Pc.ThumbHeight - Pc.ThumbInset * 2).toPx()
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -539,8 +562,8 @@ fun BrushSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Mo
                             if (!moved) hooks?.show(false)
                             moved = true
                             last = c.position.y
-                            raw = (raw - dy / travel).coerceIn(0f, 1f)
-                            change(near(raw) ?: raw)
+                            raw = sliderDrag(raw, dy, travel, top)
+                            change(if (raw >= 1f) raw else near(raw) ?: raw)
                         }
                         c.consume()
                         return true
@@ -562,7 +585,9 @@ fun BrushSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Mo
             .drawBehind {
                 val inset = Pc.ThumbInset.toPx()
                 val thumb = Size(Pc.ThumbWidth.toPx(), Pc.ThumbHeight.toPx())
-                val at = Offset((size.width - thumb.width) / 2f, inset + (size.height - thumb.height - inset * 2) * (1f - value))
+                // past 100% the knob has no room left to move, so it stays at the top of the track
+                // and the value climbs on; the line drawn above it says which of the two is happening
+                val at = Offset((size.width - thumb.width) / 2f, inset + (size.height - thumb.height - inset * 2) * (1f - value.coerceIn(0f, 1f)))
                 val knob = RoundRect(at.x, at.y, at.x + thumb.width, at.y + thumb.height, CornerRadius(thumb.height / 2f))
                 // the track has a window where the thumb is, so the thumb shows over the bar alone;
                 // a lighter rim runs round it
@@ -589,6 +614,11 @@ fun BrushSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Mo
                     drawRoundRect(NotchMark, Offset((size.width - bar.width) / 2f, y - bar.height / 2f), bar, CornerRadius(bar.height / 2f))
                 }
                 drawPath(Path().apply { addRoundRect(knob) }, Pc.SliderThumb)
+                // past 100% a line above the knob: the knob itself has no room left to say it, and
+                // the panel's percent is the number for that
+                if (value > 1f) {
+                    drawLine(Pc.Accent, Offset(at.x, at.y - Pc.ThumbInset.toPx() / 2f), Offset(at.x + thumb.width, at.y - Pc.ThumbInset.toPx() / 2f), 2.dp.toPx(), cap = StrokeCap.Round)
+                }
                 if (notches.any { kotlin.math.abs(it - value) < 1e-4f }) {
                     drawRoundRect(Pc.Accent, Offset((size.width - bar.width) / 2f, at.y + (thumb.height - bar.height) / 2f), bar, CornerRadius(bar.height / 2f))
                 }

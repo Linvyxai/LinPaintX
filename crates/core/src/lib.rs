@@ -762,7 +762,7 @@ impl State {
         } else {
             brush.opacity(sliders.opacity)
         };
-        let diameter = brush.diameter(sliders.size);
+        let diameter = brush.diameter_upto(sliders.size, self.size_reach());
         let mut style = StrokeStyle::for_brush(
             &brush,
             tool.stroke_tool(),
@@ -820,7 +820,7 @@ impl State {
         } else {
             second.opacity(sliders.opacity)
         };
-        let diameter = second.diameter(sliders.size);
+        let diameter = second.diameter_upto(sliders.size, self.size_reach());
         let alpha_lock = self.doc.layer(layer).is_some_and(|l| l.alpha_lock);
         let mut style =
             StrokeStyle::for_brush(&second, tool.stroke_tool(), self.color, opacity, alpha_lock).as_second();
@@ -867,7 +867,15 @@ impl State {
         Sliders { size, ..DEFAULT_SLIDERS }
     }
 
-    /// Brush `index` of `set` (`brush`) holding where its sliders stand for each tool it has been
+    /// Where a size slider's second half leads: half the canvas's diagonal, so a brush can be as
+    /// wide as half the screen. Below 100% the brush's own scale is untouched (see
+    /// [`procraft_engine::brush::Brush::diameter_upto`]).
+    fn size_reach(&self) -> f32 {
+        let (w, h) = (self.doc.width() as f32, self.doc.height() as f32);
+        (w * w + h * h).sqrt() / 2.0
+    }
+
+    /// The brush `index` of `set` (`brush`) holding where its sliders stand for each tool it has
     /// used with, to be written out.
     pub(crate) fn with_sliders(&self, brush: &Brush, set: usize, index: usize) -> Brush {
         let mut brush = brush.clone();
@@ -1970,11 +1978,19 @@ impl CanvasSession {
         self.shared.lock().color.to_vec()
     }
 
-    /// The current tool's size slider, 0..1.
+    /// The current tool's size slider: 0..1 within the brush's own maximum, 1..2 past it towards
+    /// half the canvas (see [`Brush::diameter_upto`] and `set_brush_size`'s clamping here).
     pub fn set_brush_size(&self, slider: f32) {
         if slider.is_finite() {
-            self.shared.lock().sliders_mut().size = slider.clamp(0.0, 1.0);
+            self.shared.lock().sliders_mut().size = slider.clamp(0.0, procraft_engine::brush::SIZE_SLIDER_TOP);
         }
+    }
+
+    /// The size slider's top: the number `set_brush_size` stops at, for the app's slider, keypad and
+    /// percent readout to share rather than each repeating it. (The impl block above is the UniFFI
+    /// export; the attribute belongs there, not on one method.)
+    pub fn size_slider_top(&self) -> f32 {
+        procraft_engine::brush::SIZE_SLIDER_TOP
     }
 
     /// The current tool's opacity slider, 0..1.
@@ -2131,7 +2147,7 @@ impl CanvasSession {
             tool: st.tool,
             size: sliders.size,
             opacity: sliders.opacity,
-            brush_diameter: st.brush(st.tool).diameter(sliders.size) * st.brush_scale(),
+            brush_diameter: st.brush(st.tool).diameter_upto(sliders.size, st.size_reach()) * st.brush_scale(),
             // an open shape is kept, then undone
             can_undo: st.canvas.as_ref().is_some_and(Canvas::can_undo)
                 || st.crop_undo.is_some()

@@ -187,10 +187,15 @@ impl State {
         };
         self.strokes = self.strokes.wrapping_add(1);
         let seed = self.strokes.wrapping_mul(0x9e37_79b9);
-        let mut builder = StrokeBuilder::with_seed(brush.clone(), brush.diameter(sliders.size), pointer.into(), seed)
-            .with_input(self.input.clone())
-            .on_view_turned(self.view.map_or(0.0, |v| v.rotation()))
-            .seen_at(self.view.map_or(1.0, |v| v.zoom()) / self.display_scale);
+        let mut builder = StrokeBuilder::with_seed(
+            brush.clone(),
+            brush.diameter_upto(sliders.size, self.size_reach()),
+            pointer.into(),
+            seed,
+        )
+        .with_input(self.input.clone())
+        .on_view_turned(self.view.map_or(0.0, |v| v.rotation()))
+        .seen_at(self.view.map_or(1.0, |v| v.zoom()) / self.display_scale);
         let canvas_samples = self.to_canvas(samples);
         if let (Some(source), None, Some(first)) = (self.clone_source, self.clone_offset, canvas_samples.first()) {
             let offset = source - first.pos;

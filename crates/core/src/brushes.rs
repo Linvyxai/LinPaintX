@@ -245,11 +245,12 @@ impl CanvasSession {
     }
 
     /// Whether the slider's panel offers to save its value: not when it is on a notch or the
-    /// slider holds [`NOTCH_MOST`] already.
+    /// slider holds [`NOTCH_MOST`] already, and not past 100%: a notch is a mark on the track, and
+    /// the track ends where the brush's own maximum is (see `set_brush_size`'s band above it).
     pub fn can_save_slider_notch(&self, size: bool) -> bool {
         let info = self.info();
         let value = if size { info.size } else { info.opacity };
-        self.slider_notch_at(size, value).is_none() && self.slider_notches(size).len() < NOTCH_MOST
+        value <= 1.0 && self.slider_notch_at(size, value).is_none() && self.slider_notches(size).len() < NOTCH_MOST
     }
 
     /// The slider panel's button: saves the slider's value as a notch, or takes away the notch it
