@@ -657,6 +657,17 @@ private val SliderStart = 21.5.dp
 private val SliderEnd = 15.dp
 private val SliderRest get() = if (Pc.light) Color(0xFFDDDDDD) else Color(0xFF5A5A5A)
 
+/** One choice in the removal panel: what cuts the picture — the small model inside, Google's segmenter, or the downloaded one. */
+@Composable
+private fun MattingModelChip(text: String, chosen: Boolean, modifier: Modifier, pick: () -> Unit) {
+    Box(
+        modifier.height(34.dp).clip(RoundedCornerShape(17.dp)).background(if (chosen) Pc.Accent else Color(0x22FFFFFF)).clickable { pick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = Color.White, fontSize = 12.sp, maxLines = 1)
+    }
+}
+
 /** The background-removal controls while a photo is being transformed, re-applying it on the picture as it came in. */
 @Composable
 fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
@@ -690,12 +701,20 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     maxLines = 3,
                 )
             }
-            // which model cuts: the small one is always there; the detailed one is a single,
-            // asked-for download — and stays an asked-for choice afterwards, see the chips below
+            // which model cuts: the small one is always there, Google's segmenter where the
+            // device has it, and the downloaded detailed one beside both as an asked-for extra
             val totalMb = (com.linpaintx.canvas.MattingModel.BYTES / (1024 * 1024)).toInt()
+            val googleState = vm.mattingGoogleState
+            val label = when {
+                vm.mattingModel == com.linpaintx.canvas.CanvasViewModel.MODEL_GOOGLE &&
+                    googleState == com.linpaintx.canvas.MattingMlKit.State.WAITING -> "модель Google готовится"
+                vm.mattingModel == com.linpaintx.canvas.CanvasViewModel.MODEL_GOOGLE -> "модель Google"
+                vm.mattingModel == com.linpaintx.canvas.CanvasViewModel.MODEL_DETAILED -> "подробная модель"
+                else -> "встроенная модель"
+            }
             Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Вырезание: " + if (vm.mattingModelInstalled && vm.mattingBigChoice) "подробная модель" else "встроенная модель",
+                    "Вырезание: $label",
                     color = Color.White,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -713,27 +732,33 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     }
                 }
             }
-            if (vm.mattingModelInstalled) {
-                // the heavy model came with the download and took over; the report was that it
-                // does the pictures worse than the built-in one — so which of them answers is now
-                // said here, once, and kept
-                val builtIn = !vm.mattingBigChoice
-                Row(Modifier.fillMaxWidth()) {
-                    Box(
-                        Modifier.weight(1f).height(34.dp).padding(end = 3.dp).clip(RoundedCornerShape(17.dp))
-                            .background(if (builtIn) Pc.Accent else Color(0x22FFFFFF)).clickable { vm.chooseMattingModel(false) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Встроенная", color = Color.White, fontSize = 13.sp, maxLines = 1)
-                    }
-                    Box(
-                        Modifier.weight(1f).height(34.dp).padding(start = 3.dp).clip(RoundedCornerShape(17.dp))
-                            .background(if (!builtIn) Pc.Accent else Color(0x22FFFFFF)).clickable { vm.chooseMattingModel(true) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Подробная", color = Color.White, fontSize = 13.sp, maxLines = 1)
-                    }
+            // which one answers: google where the device has it (the report asked for Google's
+            // own), the built-in always, and the detailed one once downloaded
+            Row(Modifier.fillMaxWidth()) {
+                val google = com.linpaintx.canvas.CanvasViewModel.MODEL_GOOGLE
+                val builtIn = com.linpaintx.canvas.CanvasViewModel.MODEL_BUILT_IN
+                val detailed = com.linpaintx.canvas.CanvasViewModel.MODEL_DETAILED
+                MattingModelChip("Встроенная", vm.mattingModel == builtIn, Modifier.weight(1f)) { vm.chooseMattingModel(builtIn) }
+                Spacer(Modifier.width(6.dp))
+                if (googleState != com.linpaintx.canvas.MattingMlKit.State.UNAVAILABLE) {
+                    MattingModelChip("Google", vm.mattingModel == google, Modifier.weight(1f)) { vm.chooseMattingModel(google) }
+                    Spacer(Modifier.width(6.dp))
                 }
+                if (vm.mattingModelInstalled) {
+                    MattingModelChip("Подробная", vm.mattingModel == detailed, Modifier.weight(1f)) { vm.chooseMattingModel(detailed) }
+                }
+            }
+            if (vm.mattingModel == com.linpaintx.canvas.CanvasViewModel.MODEL_GOOGLE &&
+                googleState == com.linpaintx.canvas.MattingMlKit.State.WAITING
+            ) {
+                // Play Services is fetching the module; saying which model answers beats a switch
+                // that looks like it did something and did not
+                Text(
+                    "Google готовит модуль — пока режет встроенная модель; когда он придёт, кадр пересчитается.",
+                    color = Color(0xFFEDEDED),
+                    fontSize = 12.sp,
+                    maxLines = 3,
+                )
             }
             if (vm.mattingModelProblem.isNotEmpty()) {
                 Text(vm.mattingModelProblem, color = Color(0xFFFFB0A8), fontSize = 12.sp, maxLines = 2)
@@ -773,9 +798,15 @@ fun BackgroundRemovalPanel(vm: CanvasViewModel, modifier: Modifier = Modifier) {
                     }
                 }
             }
-            OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
-                vm.changeBackgroundThreshold(it)
-                vm.reapplyBackgroundRemoval()
+            // Google's segmenter already answers "subject or not"; the neural models take the cut
+            // from this slider, and both share the softness below
+            if (vm.mattingModel != com.linpaintx.canvas.CanvasViewModel.MODEL_GOOGLE ||
+                googleState != com.linpaintx.canvas.MattingMlKit.State.READY
+            ) {
+                OptionSlider("Порог", vm.backgroundThreshold, "${(vm.backgroundThreshold * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
+                    vm.changeBackgroundThreshold(it)
+                    vm.reapplyBackgroundRemoval()
+                }
             }
             OptionSlider("Мягкость краёв", vm.backgroundSoftness, "${(vm.backgroundSoftness * 100).roundToInt()}%", 288.dp, labelColor = Color.White) {
                 vm.changeBackgroundSoftness(it)

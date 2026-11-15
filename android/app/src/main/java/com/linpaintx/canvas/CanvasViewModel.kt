@@ -682,12 +682,25 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     /**
-     * Whether the cut asks the downloaded heavy model. The built-in one is the default even after
-     * a download: measured on the same photos, the heavy model is often softer where the small one
-     * is confident, and the v0.0.14 report called that worse, not better. So it is chosen, never
-     * taken over.
+     * Which model cuts: "builtIn" (the small U²-NetP inside the app), "detailed" (the IS-Net file
+     * the person downloaded) or "google" (Google's own subject segmenter, ML Kit). The default is
+     * google where it runs — the report asked for exactly that — and builtIn elsewhere, with the
+     * choice kept between openings. "detailed" never takes over: measured, its fast answer is often
+     * softer than the small model's confident one.
      */
-    var mattingBigChoice by mutableStateOf(interfacePrefs.getBoolean(MATTING_BIG, false))
+    var mattingModel by mutableStateOf(
+        interfacePrefs.getString(MATTING_MODEL, null)
+            ?: if (MattingMlKit.state != MattingMlKit.State.UNAVAILABLE) MODEL_GOOGLE else MODEL_BUILT_IN,
+    )
+        private set
+
+    /** Google's answer and the very picture it belongs to, so it is never applied to another. */
+    private class GoogleAnswer(val picture: ByteArray, val cut: MattingMlKit.Cut)
+
+    private var mlkitAnswer: GoogleAnswer? = null
+
+    /** Where Google's module stands, mirrored so the panel says it and redraws when it changes. */
+    var mattingGoogleState by mutableStateOf(MattingMlKit.state)
         private set
 
     var mattingModelDownloading by mutableStateOf(false)
@@ -727,7 +740,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
             mattingModelDownloading = false
             mattingModelInstalled = installed
             if (installed) {
-                // the download does not change what runs: the choice does (see mattingBigChoice)
+                // the download does not change what runs: the choice does (see mattingModel)
                 transformBackgroundMask = null
                 backgroundNotFound = false
                 syncMattingChoice()
@@ -740,23 +753,76 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
     }
 
-    /** Puts the engine's model choice where the person's setting is; what will actually run. */
+    /**
+     * Asks Play Services for Google's module when that is the chosen model. The download is one
+     * time and runs in the background: until it lands the built-in model cuts, and the panel says
+     * so instead of pretending Google answered. A device that can never run it goes back to the
+     * built-in model for good, so the panel keeps a choice that works.
+     */
+    private fun prepareGoogle() {
+
+        if (mattingModel != MODEL_GOOGLE) return
+
+        MattingMlKit.prepare { state ->
+
+            // the same state again means nothing changed: the download is still on its way, or a
+            // repeated call found it ready. Redrawing on that would call this again, forever
+            if (state == mattingGoogleState) return@prepare
+
+            mattingGoogleState = state
+            mlkitAnswer = null
+
+            if (state == MattingMlKit.State.UNAVAILABLE) {
+                // this device will not have it now; keep a choice that works instead of a dead
+                // switch. The saved choice stays Google, so the next start tries the module again
+                // rather than a first-run wait deciding for good
+                mattingModel = MODEL_BUILT_IN
+            }
+
+            if (removeBackground && transforming) reapplyBackgroundRemoval()
+
+        }
+
+    }
+
+    /** Puts the engine's detailed-model choice where the person's setting is; what will run. */
     private fun syncMattingChoice(): Boolean =
-        com.linpaintx.core.setMattingChoice(mattingBigChoice && com.linpaintx.core.mattingModelInstalled())
+        com.linpaintx.core.setMattingChoice(mattingModel == MODEL_DETAILED && com.linpaintx.core.mattingModelInstalled())
 
-    /** Which model the cut asks for; the kept mask belongs to the other one and is dropped. */
-    fun chooseMattingModel(big: Boolean) {
+    /** Which model the cut asks for; masks belong to their own model and are both dropped. */
+    fun chooseMattingModel(which: String) {
 
-        if (mattingBigChoice == big) return
+        if (mattingModel == which) return
 
-        mattingBigChoice = big
+        mattingModel = which
 
-        interfacePrefs.edit().putBoolean(MATTING_BIG, big).apply()
+        interfacePrefs.edit().putString(MATTING_MODEL, which).apply()
 
         syncMattingChoice()
         transformBackgroundMask = null
+        mlkitAnswer = null
         backgroundNotFound = false
+        mattingModelProblem = ""
+        prepareGoogle()
         if (removeBackground && transforming) reapplyBackgroundRemoval()
+
+    }
+
+    /**
+     * Google's answer for exactly this picture, asked once and kept while the picture stands; null
+     * when Google is not the model that runs, so the caller cuts with the built-in one instead.
+     */
+    private suspend fun googleAnswer(rgba: ByteArray, width: Int, height: Int): MattingMlKit.Cut? {
+
+        if (mattingModel != MODEL_GOOGLE || MattingMlKit.state != MattingMlKit.State.READY) return null
+
+        mlkitAnswer?.let { if (it.picture === rgba) return it.cut }
+
+        val cut = MattingMlKit.mask(rgba, width, height)
+
+        mlkitAnswer = GoogleAnswer(rgba, cut)
+
+        return cut
 
     }
 
@@ -765,6 +831,8 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         removeBackground = on
 
         interfacePrefs.edit().putBoolean(REMOVE_BACKGROUND, on).apply()
+
+        if (on) prepareGoogle()
 
     }
 
@@ -860,6 +928,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         val s = session ?: return
 
+        prepareGoogle()
         val revision = ++backgroundRemovalRevision
         backgroundRemovalJob?.cancel()
         backgroundRemovalJob = viewModelScope.launch {
@@ -871,22 +940,48 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
             // the points as the person sees them now; the work below describes exactly these
             val points = wandPoints
             val tolerance = wandTolerance
-            val (placed, foundMask) = withContext(Dispatchers.Default) {
+            var googleFailed = false
+            val (placed, foundMask, googleCut) = withContext(Dispatchers.Default) {
                 var image = original
                 var mask = cachedMask
+                var googleCut = false
                 if (removeBackground) {
-                    mask = mask ?: com.linpaintx.core.backgroundMask(original.rgba, original.width, original.height)
-                    // a mask that found nothing is kept as it came: the model asked once is the
-                    // model asked for every later movement of these sliders
-                    if (mask != null && backgroundMaskFound(mask)) {
-                        image = com.linpaintx.core.applyBackgroundMask(
-                            original.rgba,
-                            original.width,
-                            original.height,
-                            mask,
-                            backgroundThreshold,
-                            backgroundSoftness,
-                        )?.let { com.linpaintx.core.ThumbnailImage(original.width, original.height, it) } ?: original
+                    when (val google = googleAnswer(original.rgba, original.width.toInt(), original.height.toInt())) {
+                        null -> {
+                            mask = mask ?: com.linpaintx.core.backgroundMask(original.rgba, original.width, original.height)
+                            // a mask that found nothing is kept as it came: the model asked once is the
+                            // model asked for every later movement of these sliders
+                            if (mask != null && backgroundMaskFound(mask)) {
+                                image = com.linpaintx.core.applyBackgroundMask(
+                                    original.rgba,
+                                    original.width,
+                                    original.height,
+                                    mask,
+                                    backgroundThreshold,
+                                    backgroundSoftness,
+                                )?.let { com.linpaintx.core.ThumbnailImage(original.width, original.height, it) } ?: original
+                            }
+                        }
+                        is MattingMlKit.Cut.Found -> {
+                            // Google's segmenter needs no threshold: its mask is the subject, and the
+                            // panel's softness still feathers it through the cut function the wand uses
+                            googleCut = true
+                            mask = null
+                            val inverted = ByteArray(google.mask.size) { (255 - (google.mask[it].toInt() and 0xFF)).toByte() }
+                            image = com.linpaintx.core.cutWandMask(
+                                original.rgba,
+                                original.width,
+                                original.height,
+                                inverted,
+                                backgroundSoftness,
+                            )?.let { com.linpaintx.core.ThumbnailImage(original.width, original.height, it) } ?: original
+                        }
+                        // Google's answer stands even when it is "nothing here" or a failed run:
+                        // cutting with another model would show a cut the panel does not name
+                        else -> {
+                            mask = null
+                            googleFailed = google is MattingMlKit.Cut.Failed
+                        }
                     }
                 }
                 if (points.size >= 2) {
@@ -896,22 +991,24 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
                                 ?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) }
                         } ?: image
                 }
-                image to mask
+                Triple(image, mask, googleCut)
             }
             if (revision != backgroundRemovalRevision || transformOriginal != original || !transforming) return@launch
+            if (googleFailed) mattingModelProblem = "Google не смог выделить объект на этом кадре."
             // nothing found and no taps to go on: the picture stays exactly as it is, transform and
             // all. Rebuilding the layer for an unchanged picture would throw away where the person
             // had it, for nothing — and rebuilding it under a near-empty mask would take the photo
-            if (
-                removeBackground && (foundMask == null || !backgroundMaskFound(foundMask)) &&
-                points.size < 2 && !wandApplied
-            ) {
+            val nothingFound = removeBackground && !googleCut && (foundMask == null || !backgroundMaskFound(foundMask))
+            // the built-in model's miss is not the last word while Google's module is on its way:
+            // it will cut this same picture when it lands, so nothing is claimed about it yet
+            val googlePending = mattingModel == MODEL_GOOGLE && MattingMlKit.state == MattingMlKit.State.WAITING
+            if (nothingFound && points.size < 2 && !wandApplied) {
                 transformBackgroundMask = foundMask // ask the model once, not on every slider move
                 backgroundRemovalBusy = false
-                backgroundNotFound = true
+                backgroundNotFound = !googleFailed && !googlePending
                 return@launch
             }
-            backgroundNotFound = removeBackground && (foundMask == null || !backgroundMaskFound(foundMask))
+            backgroundNotFound = nothingFound && !googleFailed && !googlePending
             transformBackgroundMask = foundMask
             backgroundRemovalBusy = false
             val currentLayer = s.layers().firstOrNull { it.current } ?: return@launch
@@ -6881,34 +6978,70 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         var removalMask: ByteArray? = null
         var backgroundMissing = false
+        var googleAnswered = false
+        var googleFailed = false
         val placed = if (removeBackground) {
+
+            prepareGoogle()
 
             withContext(Dispatchers.Default) {
 
                 syncMattingChoice()
-                val mask = com.linpaintx.core.backgroundMask(image.rgba, image.width, image.height)
-                // nothing found is not a cut: a near-empty mask would leave almost none of the photo
-                // on the layer. It goes in as it came and the reason is said, not left to be guessed
-                if (mask == null || !backgroundMaskFound(mask)) {
-                    backgroundMissing = true
-                    image
-                } else {
-                    removalMask = mask
-                    com.linpaintx.core.applyBackgroundMask(
-                        image.rgba,
-                        image.width,
-                        image.height,
-                        mask,
-                        backgroundThreshold,
-                        backgroundSoftness,
-                    )?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) } ?: image
+                val google = googleAnswer(image.rgba, image.width.toInt(), image.height.toInt())
+                googleAnswered = google != null
+                when (google) {
+                    is MattingMlKit.Cut.Found -> {
+                        val inverted = ByteArray(google.mask.size) { (255 - (google.mask[it].toInt() and 0xFF)).toByte() }
+                        com.linpaintx.core.cutWandMask(
+                            image.rgba,
+                            image.width,
+                            image.height,
+                            inverted,
+                            backgroundSoftness,
+                        )?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) } ?: image
+                    }
+                    null -> {
+                        val mask = com.linpaintx.core.backgroundMask(image.rgba, image.width, image.height)
+                        // nothing found is not a cut: a near-empty mask would leave almost none of the
+                        // photo on the layer. It goes in as it came and the reason is said, not guessed
+                        if (mask == null || !backgroundMaskFound(mask)) {
+                            backgroundMissing = true
+                            image
+                        } else {
+                            removalMask = mask
+                            com.linpaintx.core.applyBackgroundMask(
+                                image.rgba,
+                                image.width,
+                                image.height,
+                                mask,
+                                backgroundThreshold,
+                                backgroundSoftness,
+                            )?.let { com.linpaintx.core.ThumbnailImage(image.width, image.height, it) } ?: image
+                        }
+                    }
+                    // Google looked and its answer stands: the frame goes in as it came, and what
+                    // happened to it is said instead of cutting it with a model the panel does not name
+                    MattingMlKit.Cut.Nothing -> {
+                        backgroundMissing = true
+                        image
+                    }
+                    is MattingMlKit.Cut.Failed -> {
+                        googleFailed = true
+                        image
+                    }
                 }
 
             }
 
         } else image
 
-        if (backgroundMissing) {
+        if (googleFailed) mattingModelProblem = "Google не смог выделить объект на этом кадре."
+
+        // a cut the chosen model has not answered yet is not a "not found": Google's module may
+        // still be on its way and will recut the frame, so nothing is claimed about it here
+        val googlePending = mattingModel == MODEL_GOOGLE && MattingMlKit.state == MattingMlKit.State.WAITING
+
+        if (backgroundMissing && !googlePending && !googleFailed) {
             backgroundNotFound = true
             showNotice("Фон не найден: кадр вставлен без изменения.")
         }
@@ -6951,6 +7084,15 @@ fun applyStabilizer(mode: Int, level: Int) {
             wandPoints = emptyList()
 
             toggleTransform()
+
+            // the module can land while the picture is being placed, after the model that answered
+            // had already cut it: ask again now that Google can, or the panel would say Google
+            // while the frame is the other model's
+            if (removeBackground && !googleAnswered && mattingModel == MODEL_GOOGLE &&
+                MattingMlKit.state == MattingMlKit.State.READY
+            ) {
+                reapplyBackgroundRemoval()
+            }
 
         }
 
@@ -14371,6 +14513,7 @@ fun applyStabilizer(mode: Int, level: Int) {
         transformOriginal = null
 
         transformBackgroundMask = null
+        mlkitAnswer = null
         backgroundRemovalJob?.cancel()
         backgroundRemovalBusy = false
 
@@ -15807,7 +15950,13 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         const val WAND_TOLERANCE = "wand_tolerance"
 
-        const val MATTING_BIG = "matting_big"
+        const val MATTING_MODEL = "matting_model"
+
+        const val MODEL_BUILT_IN = "built_in"
+
+        const val MODEL_DETAILED = "detailed"
+
+        const val MODEL_GOOGLE = "google"
 
 
 

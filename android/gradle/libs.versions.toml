@@ -10,6 +10,8 @@ motionprediction = "1.0.0"
 # UniFFI's Kotlin bindings call the Rust library through JNA (Apache-2.0)
 jna = "5.19.1"
 junit = "4.13.2"
+# Google's own subject segmenter for the cut-out (ML Kit, play-services client)
+mlkitSubject = "16.0.0-beta1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -20,6 +22,7 @@ androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", versi
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+play-services-mlkit-subject-segmentation = { group = "com.google.android.gms", name = "play-services-mlkit-subject-segmentation", version.ref = "mlkitSubject" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

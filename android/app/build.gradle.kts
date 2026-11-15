@@ -202,5 +202,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.input.motionprediction)
     implementation(libs.jna) { artifact { type = "aar" } }
+    implementation(libs.play.services.mlkit.subject.segmentation)
     testImplementation(libs.junit)
 }
