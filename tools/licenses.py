@@ -23,13 +23,15 @@ DESKTOP_OUT = os.path.join(ROOT, 'desktop', 'licenses.txt')
 DESKTOP_TARGETS = ['x86_64-pc-windows-msvc', 'aarch64-apple-darwin', 'x86_64-unknown-linux-gnu']
 LICENCE_FILE = re.compile(r'^(licen[cs]e|copying|notice|unlicense)', re.IGNORECASE)
 
-# The Android side, from app/build.gradle.kts and what those pull in.
+# The Android side, from app/build.gradle.kts and what those pull in. A third value is the
+# licence, for the entries that are not under the Apache License 2.0 the rest are.
 ANDROID = [
     ('Android Jetpack (AndroidX core, activity, lifecycle, input motion prediction)', 'https://developer.android.com/jetpack'),
     ('Jetpack Compose (UI, Material 3)', 'https://developer.android.com/jetpack/compose'),
     ('Kotlin standard library and kotlinx.coroutines', 'https://kotlinlang.org'),
     ('JetBrains annotations, JSpecify, Guava ListenableFuture', 'https://github.com/google/guava'),
     ('JNA (Java Native Access), used under the Apache License 2.0 of its dual licence', 'https://github.com/java-native-access/jna'),
+    ('ML Kit Subject Segmentation (the thin client; Google Play Services downloads and keeps the model)', 'https://developers.google.com/ml-kit/terms', 'Google ML Kit Terms of Service'),
 ]
 
 
@@ -203,8 +205,10 @@ def main():
                     'domain); their authors are listed in assets/environments/README.md.', '']
     lines += crate_lines(crates, shared)
     lines += ['== Android libraries ==', '']
-    for name, url in ANDROID:
-        lines += [f'{name}: Apache License 2.0', url, '']
+    for entry in ANDROID:
+        name, url = entry[0], entry[1]
+        licence = entry[2] if len(entry) > 2 else 'Apache License 2.0'
+        lines += [f'{name}: {licence}', url, '']
     write(OUT, lines, shared)
     print(f'{len(crates)} crates, {len(ANDROID)} Android groups -> {os.path.relpath(OUT, ROOT)}')
 
