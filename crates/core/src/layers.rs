@@ -109,35 +109,6 @@ pub fn apply_background_mask(
     procraft_engine::matting::apply_background_mask(&rgba, width, height, &mask, threshold, softness)
 }
 
-/// Points background removal at the bigger model kept in the file `path` (an IS-Net ONNX the app
-/// downloaded and checked itself). True when it loaded; until then, and if it didn't,
-/// [`background_mask`] keeps running the small model embedded in the app.
-#[uniffi::export]
-pub fn install_matting_model(path: String) -> bool {
-    procraft_engine::matting::use_matting_model(&path)
-}
-
-/// Whether the bigger model is what [`background_mask`] will run. The panel says which one found
-/// nothing, because the two disagree on exactly the photos that matter.
-#[uniffi::export]
-pub fn matting_model_installed() -> bool {
-    procraft_engine::matting::matting_model_installed()
-}
-
-/// Asks the cut for the installed (`big`) model or back for the built-in one; returns what will
-/// actually run. The heavy model is a choice even after it is downloaded — measured on the same
-/// photos its answer is often softer than the built-in's, and the report said so.
-#[uniffi::export]
-pub fn set_matting_choice(big: bool) -> bool {
-    procraft_engine::matting::set_matting_choice(big)
-}
-
-/// Which model is in charge of the cut right now.
-#[uniffi::export]
-pub fn matting_choice() -> bool {
-    procraft_engine::matting::matting_prefers_big()
-}
-
 /// The magic wand over a picture: the regions grown from the tapped points (`points` is their
 /// pixel pairs, `x0, y0, x1, y1, …`), kept within `tolerance` (0..1) of each tap's colour. The
 /// mask is the picture's own size, 255 where a tap's colour reached; None when the picture is

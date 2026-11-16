@@ -1,10 +1,8 @@
 //! Automatic background removal: a neural network finds a picture's main subject, and the rest
 //! (the background) is made transparent. Runs entirely on the CPU, in Rust (no C++ runtime). The
-//! small U2-NetP is embedded; a bigger IS-Net can be installed from a file the app downloaded
-//! (see [`use_matting_model`]), which finds a subject in exactly the pictures U2-NetP gives up on.
+//! small U2-NetP is embedded with the engine.
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 use tract_onnx::prelude::*;
 
@@ -13,16 +11,6 @@ const MODEL: &[u8] = include_bytes!("../models/u2netp.onnx");
 
 /// The side the network works at: its input, and the mask it gives back.
 const SIDE: usize = 320;
-
-/// The installed model's working square, and which of its outputs is the fused answer.
-///
-/// The IS-Net export takes any square pinned to it; 512 — not the 1024 it shipped at — because a
-/// phone measures it in seconds rather than tens of them, and on the five test photos every
-/// subject still cleared the empty-mask line by a wide margin. Its output 0 is a side map at a
-/// fraction of the size (reading it turns every photo into "no subject found"); the fused answer
-/// is the seventh, as rembg's own session numbers it.
-const BIG_SIDE: usize = 512;
-const BIG_OUTPUT: usize = 6;
 
 /// The compiled model, ready to run (the slow part: a second on a tablet).
 type Matting = tract_onnx::tract_core::plan::SimplePlan<TypedFact, Box<dyn TypedOp>>;
@@ -44,60 +32,6 @@ fn plan() -> Option<Arc<Matting>> {
         .clone()
 }
 
-/// The installed model, once [`use_matting_model`] has compiled one.
-static BIG: OnceLock<Mutex<Option<Arc<Matting>>>> = OnceLock::new();
-
-/// Whether the person asked the cut to use the installed model. The default is the small one even
-/// where a big one is present: measured on the same pictures, IS-Net's 512 answer is often softer
-/// than U2-NetP's confident blob, and the v0.0.14 report called the change for the worse. A model
-/// that downloads itself must never also install itself into charge.
-static BIG_WANTED: AtomicBool = AtomicBool::new(false);
-
-fn big_slot() -> &'static Mutex<Option<Arc<Matting>>> {
-    BIG.get_or_init(|| Mutex::new(None))
-}
-
-/// Asks (or refuses) the installed model for the cut; returns whether the installed model is what
-/// will now answer — false with a request no installed model can serve, or after clearing back to
-/// the built-in. The built-in keeps working either way.
-pub fn set_matting_choice(big: bool) -> bool {
-    BIG_WANTED.store(big && matting_model_installed(), Ordering::Relaxed);
-    BIG_WANTED.load(Ordering::Relaxed)
-}
-
-/// Whether the installed model is the one in charge right now.
-pub fn matting_prefers_big() -> bool {
-    BIG_WANTED.load(Ordering::Relaxed) && matting_model_installed()
-}
-
-/// Points background removal at the model kept in `path`: the file is read and its plan compiled
-/// now, so the first photo doesn't pay for it. True when it loaded (an IS-Net export with
-/// symbolic dimensions; anything else leaves the embedded U2-NetP in charge).
-pub fn use_matting_model(path: &str) -> bool {
-    let compiled = (|| -> Option<Arc<Matting>> {
-        // SimplePlan::new already hands back the Arc, and `run` asks for one
-        let bytes = std::fs::read(path).ok()?;
-        let mut model = tract_onnx::onnx().model_for_read(&mut bytes.as_slice()).ok()?;
-        let fact = InferenceFact::dt_shape(f32::datum_type(), tvec!(1usize, 3, BIG_SIDE, BIG_SIDE));
-        model.set_input_fact(0, fact).ok()?;
-        let typed = model.into_typed().ok()?;
-        tract_onnx::tract_core::plan::SimplePlan::new(typed).ok()
-    })();
-    match (compiled, big_slot().lock()) {
-        (Some(model), Ok(mut slot)) => {
-            *slot = Some(model);
-            true
-        }
-        _ => false,
-    }
-}
-
-/// Whether [`use_matting_model`] installed a model; the app says which one found nothing, because
-/// the two disagree on exactly the photos that matter.
-pub fn matting_model_installed() -> bool {
-    big_slot().lock().is_ok_and(|slot| slot.is_some())
-}
-
 /// Removes the background of a straight (non-premultiplied) RGBA8 picture, `width` × `height`, by
 /// multiplying its alpha by the saliency mask. `threshold` is where the cut lands (0 keeps
 /// almost everything, 1 cuts almost everything); `softness` is how wide the feather is around it
@@ -109,21 +43,9 @@ pub fn remove_background(rgba: &[u8], width: u32, height: u32, threshold: f32, s
 
 /// Runs the neural network once and returns its 320×320 saliency mask. Keeping this mask lets a UI
 /// tune the cut and feather live without running the network again for every slider movement.
-/// Whichever model runs — installed or embedded — the mask comes back in this one shape.
 pub fn background_mask(rgba: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
-    let installed = matting_prefers_big().then(|| big_slot().lock().ok().and_then(|slot| slot.clone())).flatten();
-    match installed {
-        // an installed model that fails on one picture falls back rather than losing the cut
-        // outright: the small model is still here
-        Some(model) => run_model(&model, rgba, width, height, BIG_SIDE, BIG_OUTPUT).or_else(|| {
-            let small = plan()?;
-            run_model(&small, rgba, width, height, SIDE, 0)
-        }),
-        None => {
-            let small = plan()?;
-            run_model(&small, rgba, width, height, SIDE, 0)
-        }
-    }
+    let model = plan()?;
+    run_model(&model, rgba, width, height, SIDE, 0)
 }
 
 /// A model's answer as the app's 320×320 mask: preprocessed at `side`, its output `output` taken
@@ -172,8 +94,8 @@ fn run_model(
 }
 
 /// The network's square answer, 0 background .. 1 subject, taken down to the 320×320 the cut
-/// reads: a copy when the model worked at 320, and bilinear otherwise (a bigger model's extra
-/// resolution would not survive the cut's own upsample anyway; what matters is what it found).
+/// reads: a copy when the model worked at 320, and bilinear otherwise (extra resolution would not
+/// survive the cut's own upsample anyway; what matters is what it found).
 fn to_mask(values: &[f32], side: usize) -> Vec<u8> {
     let as_byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     if side == SIDE {
@@ -537,30 +459,6 @@ mod tests {
         assert_eq!(soft[(48 * w + 4) * 4 + 3], 255, "and is done eight pixels on, where the blur window cannot reach");
         // and a seed off the picture is refused before anything is grown
         assert!(wand_mask(&rgba, w as u32, h as u32, &[(64, 0)], 0.5).is_none());
-    }
-
-    #[test]
-    fn a_file_that_is_not_the_model_leaves_the_embedded_one_in_charge() {
-        // no IS-Net file on this machine: the engine's promise is that a wrong file refuses,
-        // without panic and without taking the working model away
-        assert!(!use_matting_model("no/such/file.onnx"));
-        assert!(!matting_model_installed());
-        let rgba = vec![128u8; 32 * 32 * 4];
-        let Some(mask) = background_mask(&rgba, 32, 32) else { return }; // no u2netp either
-        assert_eq!(mask.len(), SIDE * SIDE, "the small model still answered, as before");
-    }
-
-    #[test]
-    fn the_heavy_model_is_a_choice_not_a_takeover() {
-        // nothing installed here: asking for the big model cannot get it into charge, and the
-        // default answer is always the built-in one — which is what the v0.0.14 report asked for
-        assert!(!set_matting_choice(true), "no installed model to prefer");
-        assert!(!matting_prefers_big());
-        set_matting_choice(false);
-        assert!(!matting_prefers_big());
-        let rgba = vec![128u8; 32 * 32 * 4];
-        let Some(mask) = background_mask(&rgba, 32, 32) else { return };
-        assert_eq!(mask.len(), SIDE * SIDE, "the built-in model answered while nothing is chosen");
     }
 
     #[test]

@@ -20,6 +20,7 @@ import java.nio.FloatBuffer
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 /**
  * Background removal by Google's own segmenter (ML Kit Subject Segmentation): every subject in the
@@ -40,7 +41,7 @@ object MattingMlKit {
 
     private const val RETRY_MS = 10_000L
 
-    /** A confidence above this is subject: below it the segmenter is guessing about the edge. */
+    /** A confidence at or above this is subject: below it the segmenter is guessing about the edge. */
     internal const val SUBJECT_CONFIDENCE = 0.5f
 
     /** Where the module stands. */
@@ -113,8 +114,8 @@ object MattingMlKit {
 
     /** What the segmenter answered about one picture. */
     sealed interface Cut {
-        /** The subjects' union as a full-size mask, 255 where a subject is. */
-        class Found(val mask: ByteArray) : Cut
+        /** Every subject's confidence, 0..255, their union over the whole picture. */
+        class Found(val confidence: ByteArray) : Cut
 
         /** It looked and found no subject: there is nothing on this picture to cut out. */
         data object Nothing : Cut
@@ -124,10 +125,12 @@ object MattingMlKit {
     }
 
     /**
-     * Asks the segmenter about the picture. "Nothing to cut" and "could not answer" are different
-     * answers, so the panel never reports a broken run as a picture without a subject.
+     * Asks the segmenter about the picture and keeps its confidence, not a cut: the caller picks
+     * the threshold, so tuning it never runs the network again. "Nothing to cut" and "could not
+     * answer" are different answers, so the panel never reports a broken run as a picture without
+     * a subject.
      */
-    suspend fun mask(rgba: ByteArray, width: Int, height: Int): Cut = withContext(Dispatchers.IO) {
+    suspend fun confidence(rgba: ByteArray, width: Int, height: Int): Cut = withContext(Dispatchers.IO) {
         if (state != State.READY) return@withContext Cut.Failed("module is not ready")
         var bitmap: Bitmap? = null
         try {
@@ -139,9 +142,9 @@ object MattingMlKit {
             val result = Tasks.await(segmenter.process(InputImage.fromBitmap(picture, 0)), 60, TimeUnit.SECONDS)
             val subjects = result.subjects.orEmpty()
             if (subjects.isEmpty()) return@withContext Cut.Nothing
-            val mask = ByteArray(width * height)
-            for (subject in subjects) add(subject, mask, width, height)
-            if (mask.none { it.toInt() != 0 }) Cut.Nothing else Cut.Found(mask)
+            val confidence = ByteArray(width * height)
+            for (subject in subjects) add(subject, confidence, width, height)
+            if (confidence.none { it.toInt() != 0 }) Cut.Nothing else Cut.Found(confidence)
         } catch (e: Exception) {
             Log.i(TAG, "cut failed: " + e.javaClass.simpleName + ": " + e.message)
             Cut.Failed(e.javaClass.simpleName + ": " + e.message)
@@ -151,14 +154,15 @@ object MattingMlKit {
     }
 
     /** Pours one subject's confidence mask into the union, wherever the subject lies. */
-    private fun add(subject: Subject, mask: ByteArray, width: Int, height: Int) {
-        val confidence = subject.confidenceMask ?: return
-        pour(confidence, subject.startX, subject.startY, subject.width, subject.height, mask, width, height)
+    private fun add(subject: Subject, confidence: ByteArray, width: Int, height: Int) {
+        val mask = subject.confidenceMask ?: return
+        pour(mask, subject.startX, subject.startY, subject.width, subject.height, confidence, width, height)
     }
 
     /**
-     * Copies a subject's box of confidences into the full-size mask, dropping whatever falls
-     * outside the picture — a subject touching an edge comes back with a box that does.
+     * Copies a subject's box of confidences into the full-size union, dropping whatever falls
+     * outside the picture — a subject touching an edge comes back with a box that does. Where two
+     * subjects overlap, the surer one wins.
      */
     internal fun pour(
         confidence: FloatBuffer,
@@ -166,7 +170,7 @@ object MattingMlKit {
         top: Int,
         boxW: Int,
         boxH: Int,
-        mask: ByteArray,
+        out: ByteArray,
         width: Int,
         height: Int,
     ) {
@@ -178,9 +182,19 @@ object MattingMlKit {
             for (x in 0 until boxW) {
                 val column = left + x
                 if (column !in 0 until width) continue
-                if (confidence.get(source + x) > SUBJECT_CONFIDENCE) mask[target + column] = 255.toByte()
+                val value = (confidence.get(source + x).coerceIn(0f, 1f) * 255f).roundToInt()
+                if (value > (out[target + column].toInt() and 0xFF)) out[target + column] = value.toByte()
             }
         }
+    }
+
+    /**
+     * The subject mask a threshold asks for: 255 where the confidence reaches it, 0 elsewhere. The
+     * threshold is where the cut lands — lower keeps more of the picture, higher cuts more.
+     */
+    internal fun subjectMask(confidence: ByteArray, threshold: Float): ByteArray {
+        val cut = (threshold.coerceIn(0f, 1f) * 255f).roundToInt()
+        return ByteArray(confidence.size) { if ((confidence[it].toInt() and 0xFF) >= cut) 255.toByte() else 0 }
     }
 
     /** The error code a download attempt ended with, or null when the module is here. */

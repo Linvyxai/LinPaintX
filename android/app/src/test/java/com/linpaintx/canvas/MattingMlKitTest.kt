@@ -33,38 +33,55 @@ class MattingMlKitTest {
     @Test
     fun theSubjectsBoxLandsWhereItSitsInThePicture() {
         // a 2x2 subject at (1,1) of a 4x3 picture: the union is the picture's own coordinates,
-        // because everything downstream (invert, feather, cut) works in them
-        val mask = ByteArray(4 * 3)
-        MattingMlKit.pour(buffer(1f, 1f, 1f, 1f), 1, 1, 2, 2, mask, 4, 3)
-        val marked = mask.withIndex().filter { it.value.toInt() != 0 }.map { it.index }
+        // because everything downstream (threshold, invert, feather, cut) works in them
+        val confidence = ByteArray(4 * 3)
+        MattingMlKit.pour(buffer(1f, 1f, 1f, 1f), 1, 1, 2, 2, confidence, 4, 3)
+        val marked = confidence.withIndex().filter { it.value.toInt() != 0 }.map { it.index }
         assertEquals(listOf(5, 6, 9, 10), marked)
-        assertTrue(mask.all { (it.toInt() and 0xFF) == 0 || (it.toInt() and 0xFF) == 255 })
+        assertTrue(confidence.all { (it.toInt() and 0xFF) == 0 || (it.toInt() and 0xFF) == 255 })
     }
 
     @Test
-    fun aConfidenceOnTheFenceIsNotSubject() {
-        // the edge of a subject is where the model is least sure; 0.5 exactly is left out so the
-        // mask is the same on every run instead of tipping either way
-        val mask = ByteArray(2)
-        MattingMlKit.pour(buffer(0.5f, 0.5001f), 0, 0, 2, 1, mask, 2, 1)
-        assertEquals(0, mask[0].toInt())
-        assertEquals(255, mask[1].toInt() and 0xFF)
+    fun theConfidenceIsKeptSoTheThresholdCanMove() {
+        // the segmenter's answer is kept as it is (0..255), not cut here: the threshold is the
+        // caller's, so moving the slider never runs the network again
+        val confidence = ByteArray(3)
+        MattingMlKit.pour(buffer(0f, 0.5f, 1f), 0, 0, 3, 1, confidence, 3, 1)
+        assertEquals(listOf(0, 128, 255), confidence.map { it.toInt() and 0xFF })
+        // and the threshold is where the cut lands: 0.5 keeps the half, a hair above drops it,
+        // 0 keeps everything and 1 keeps only the surest
+        assertEquals(listOf(0, 255, 255), MattingMlKit.subjectMask(confidence, 0.5f).map { it.toInt() and 0xFF })
+        assertEquals(listOf(0, 0, 255), MattingMlKit.subjectMask(confidence, 0.51f).map { it.toInt() and 0xFF })
+        assertEquals(listOf(255, 255, 255), MattingMlKit.subjectMask(confidence, 0f).map { it.toInt() and 0xFF })
+        assertEquals(listOf(0, 0, 255), MattingMlKit.subjectMask(confidence, 1f).map { it.toInt() and 0xFF })
+    }
+
+    @Test
+    fun theSurerSubjectWinsWhereTwoOverlap() {
+        // two subjects over the same cell: the union keeps the more confident one, so a subject
+        // the segmenter barely saw cannot drag down one it is sure of
+        val confidence = ByteArray(1)
+        MattingMlKit.pour(buffer(0.3f), 0, 0, 1, 1, confidence, 1, 1)
+        MattingMlKit.pour(buffer(0.8f), 0, 0, 1, 1, confidence, 1, 1)
+        assertEquals(204, confidence[0].toInt() and 0xFF)
+        MattingMlKit.pour(buffer(0.1f), 0, 0, 1, 1, confidence, 1, 1)
+        assertEquals(204, confidence[0].toInt() and 0xFF)
     }
 
     @Test
     fun aSubjectTouchingTheEdgeIsClippedNotDropped() {
         // a subject that runs past the picture comes back with a box that does; the part inside
         // the picture still has to be marked, and nothing may be written outside it
-        val mask = ByteArray(3 * 2)
-        MattingMlKit.pour(buffer(*FloatArray(9) { 1f }), -1, -1, 3, 3, mask, 3, 2)
-        assertEquals(listOf(0, 1, 3, 4), mask.withIndex().filter { it.value.toInt() != 0 }.map { it.index })
+        val confidence = ByteArray(3 * 2)
+        MattingMlKit.pour(buffer(*FloatArray(9) { 1f }), -1, -1, 3, 3, confidence, 3, 2)
+        assertEquals(listOf(0, 1, 3, 4), confidence.withIndex().filter { it.value.toInt() != 0 }.map { it.index })
     }
 
     @Test
     fun aBoxEntirelyOutsideWritesNothing() {
-        val mask = ByteArray(4)
-        MattingMlKit.pour(buffer(1f, 1f), 10, 10, 2, 1, mask, 2, 2)
-        assertTrue(mask.all { it.toInt() == 0 })
+        val confidence = ByteArray(4)
+        MattingMlKit.pour(buffer(1f, 1f), 10, 10, 2, 1, confidence, 2, 2)
+        assertTrue(confidence.all { it.toInt() == 0 })
     }
 
     private fun buffer(vararg values: Float): FloatBuffer =

@@ -960,8 +960,6 @@ private fun licences(context: Context): String {
     return "Шрифт интерфейса Inter создан авторами проекта Inter.\n\n${asset("fonts/Inter-OFL.txt")}\n\n" +
         "Приложение использует значки Lucide (lucide.dev), созданные Lucide Icons и участниками проекта.\n\n${asset("icons/LICENSE-lucide.txt")}" +
         "\n\nВстроенная модель вырезания фона — U²-NetP (apache.org/licenses/LICENSE-2.0), авторы Xuebin Qin и участники проекта U-2-Net." +
-        "\n\nПодробная модель вырезания — IS-Net general-use (Apache-2.0, авторы Xuebin Qin и участники проекта DIS); она не входит в приложение" +
-        " и догружается по запросу: github.com/Linvyxai/LinPaintX/releases/tag/matting-isnet-1" +
         "\n\nМодель Google для выделения объектов — ML Kit Subject Segmentation (тонкий клиент Google Play Services," +
         " developers.google.com/ml-kit/terms); веса модуля Google доставляет на устройство, сама модель работает локально."
 }

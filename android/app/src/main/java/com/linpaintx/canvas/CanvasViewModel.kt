@@ -507,13 +507,6 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         otherColour = listOf(KEPT_MASK_HUE, KEPT_MASK_SATURATION, KEPT_MASK_BRIGHTNESS).map { interfacePrefs.getFloat(it, 0f).coerceIn(0f, 1f) }.toFloatArray()
 
-        // a model downloaded once comes back on its own: the file is local, the engine just needs it
-        viewModelScope.launch {
-            mattingModelInstalled = MattingModel.restore(getApplication())
-            // and stays a choice: what runs is what the person left chosen, the built-in by default
-            syncMattingChoice()
-        }
-
     }
 
 
@@ -646,6 +639,10 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
     var backgroundNotFound by mutableStateOf(false)
         private set
 
+    /** What the last cut could not do — Google failed on this frame; empty when there is nothing to say. */
+    var mattingProblem by mutableStateOf("")
+        private set
+
     /**
      * The click-cut: while on, a tap inside the picture being transformed cuts away the colour
      * region under it. The network finds the main subject; this is for the second background a
@@ -675,23 +672,22 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     /**
-     * The detailed cut model: once the person has downloaded it, [MattingModel.restore] puts it
-     * back every start-up. False means the model shipped inside the app is what runs.
-     */
-    var mattingModelInstalled by mutableStateOf(false)
-        private set
-
-    /**
-     * Which model cuts: "builtIn" (the small U²-NetP inside the app), "detailed" (the IS-Net file
-     * the person downloaded) or "google" (Google's own subject segmenter, ML Kit). The default is
-     * google where it runs — the report asked for exactly that — and builtIn elsewhere, with the
-     * choice kept between openings. "detailed" never takes over: measured, its fast answer is often
-     * softer than the small model's confident one.
+     * Which model cuts: "builtIn" (the small U²-NetP inside the app) or "google" (Google's own
+     * subject segmenter, ML Kit). The default is google where it runs — the report asked for
+     * exactly that — and builtIn elsewhere, with the choice kept between openings.
      */
     var mattingModel by mutableStateOf(
         interfacePrefs.getString(MATTING_MODEL, null)
             ?: if (MattingMlKit.state != MattingMlKit.State.UNAVAILABLE) MODEL_GOOGLE else MODEL_BUILT_IN,
     )
+        private set
+
+    /**
+     * Google's cut with the panel's own settings rather than the app's: the threshold decides
+     * where the cut lands and the feather how soft its edge is. Off is the app's own way — a fixed
+     * confidence line, no sliders — and the two are the same until the person moves one.
+     */
+    var googleTuned by mutableStateOf(interfacePrefs.getBoolean(GOOGLE_TUNED, false))
         private set
 
     /** Google's answer and the very picture it belongs to, so it is never applied to another. */
@@ -702,56 +698,6 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
     /** Where Google's module stands, mirrored so the panel says it and redraws when it changes. */
     var mattingGoogleState by mutableStateOf(MattingMlKit.state)
         private set
-
-    var mattingModelDownloading by mutableStateOf(false)
-        private set
-
-    /** How far the download has come, of [MattingModel.BYTES]; 0 while it does not run. */
-    var mattingModelBytes by mutableStateOf(0L)
-        private set
-
-    /** What the last attempt could not do; empty when there is nothing to say. */
-    var mattingModelProblem by mutableStateOf("")
-        private set
-
-    /**
-     * Fetches the detailed model and turns the cut over to it. The mask kept from the old one is
-     * dropped: it is the very picture the new model finds and the old one missed, so leaving it
-     * cached would show the miss until the photo itself changed.
-     */
-    fun downloadMattingModel() {
-
-        if (mattingModelDownloading) return
-
-        mattingModelDownloading = true
-
-        mattingModelBytes = 0
-
-        mattingModelProblem = ""
-
-        viewModelScope.launch {
-            val app = getApplication<Application>()
-            val installed = try {
-                MattingModel.download(app) { bytes -> mattingModelBytes = bytes }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                mattingModelDownloading = false
-                throw e
-            }
-            mattingModelDownloading = false
-            mattingModelInstalled = installed
-            if (installed) {
-                // the download does not change what runs: the choice does (see mattingModel)
-                transformBackgroundMask = null
-                backgroundNotFound = false
-                syncMattingChoice()
-                if (removeBackground && transforming) reapplyBackgroundRemoval()
-                showNotice("Модель установлена: выбор — в панели вырезания")
-            } else {
-                mattingModelProblem = "Скачать не удалось: сеть или память. Работает встроенная модель."
-            }
-        }
-
-    }
 
     /**
      * Asks Play Services for Google's module when that is the chosen model. The download is one
@@ -785,11 +731,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
     }
 
-    /** Puts the engine's detailed-model choice where the person's setting is; what will run. */
-    private fun syncMattingChoice(): Boolean =
-        com.linpaintx.core.setMattingChoice(mattingModel == MODEL_DETAILED && com.linpaintx.core.mattingModelInstalled())
-
-    /** Which model the cut asks for; masks belong to their own model and are both dropped. */
+    /** Which model the cut asks for; the mask belongs to its own model and is dropped. */
     fun chooseMattingModel(which: String) {
 
         if (mattingModel == which) return
@@ -798,15 +740,34 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         interfacePrefs.edit().putString(MATTING_MODEL, which).apply()
 
-        syncMattingChoice()
         transformBackgroundMask = null
         mlkitAnswer = null
         backgroundNotFound = false
-        mattingModelProblem = ""
         prepareGoogle()
         if (removeBackground && transforming) reapplyBackgroundRemoval()
 
     }
+
+    /**
+     * Google's two ways: the app's own cut, or the panel's settings. Switching re-cuts with the
+     * mode's threshold, but the two are the same line until the person moves the slider, so the
+     * switch itself changes nothing on its own.
+     */
+    fun chooseGoogleTuned(tuned: Boolean) {
+
+        if (googleTuned == tuned) return
+
+        googleTuned = tuned
+
+        interfacePrefs.edit().putBoolean(GOOGLE_TUNED, tuned).apply()
+
+        if (removeBackground && transforming) reapplyBackgroundRemoval()
+
+    }
+
+    /** Where Google's cut lands: the app's fixed line, or the panel's threshold in the tuned mode. */
+    private fun googleMask(confidence: ByteArray): ByteArray =
+        MattingMlKit.subjectMask(confidence, if (googleTuned) backgroundThreshold else MattingMlKit.SUBJECT_CONFIDENCE)
 
     /**
      * Google's answer for exactly this picture, asked once and kept while the picture stands; null
@@ -818,7 +779,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
 
         mlkitAnswer?.let { if (it.picture === rgba) return it.cut }
 
-        val cut = MattingMlKit.mask(rgba, width, height)
+        val cut = MattingMlKit.confidence(rgba, width, height)
 
         mlkitAnswer = GoogleAnswer(rgba, cut)
 
@@ -933,8 +894,6 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
         backgroundRemovalJob?.cancel()
         backgroundRemovalJob = viewModelScope.launch {
             delay(32)
-            // the engine answers through whichever model the person left chosen
-            syncMattingChoice()
             backgroundRemovalBusy = removeBackground && transformBackgroundMask == null
             val cachedMask = transformBackgroundMask
             // the points as the person sees them now; the work below describes exactly these
@@ -963,11 +922,13 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
                             }
                         }
                         is MattingMlKit.Cut.Found -> {
-                            // Google's segmenter needs no threshold: its mask is the subject, and the
-                            // panel's softness still feathers it through the cut function the wand uses
+                            // Google's own confidence, cut where the mode says (its fixed line, or
+                            // the panel's threshold); the softness still feathers it through the
+                            // cut function the wand uses
                             googleCut = true
                             mask = null
-                            val inverted = ByteArray(google.mask.size) { (255 - (google.mask[it].toInt() and 0xFF)).toByte() }
+                            val subject = googleMask(google.confidence)
+                            val inverted = ByteArray(subject.size) { (255 - (subject[it].toInt() and 0xFF)).toByte() }
                             image = com.linpaintx.core.cutWandMask(
                                 original.rgba,
                                 original.width,
@@ -994,7 +955,7 @@ class CanvasViewModel(app: Application) : AndroidViewModel(app) {
                 Triple(image, mask, googleCut)
             }
             if (revision != backgroundRemovalRevision || transformOriginal != original || !transforming) return@launch
-            if (googleFailed) mattingModelProblem = "Google не смог выделить объект на этом кадре."
+            mattingProblem = if (googleFailed) "Google не смог выделить объект на этом кадре." else ""
             // nothing found and no taps to go on: the picture stays exactly as it is, transform and
             // all. Rebuilding the layer for an unchanged picture would throw away where the person
             // had it, for nothing — and rebuilding it under a near-empty mask would take the photo
@@ -6986,12 +6947,12 @@ fun applyStabilizer(mode: Int, level: Int) {
 
             withContext(Dispatchers.Default) {
 
-                syncMattingChoice()
                 val google = googleAnswer(image.rgba, image.width.toInt(), image.height.toInt())
                 googleAnswered = google != null
                 when (google) {
                     is MattingMlKit.Cut.Found -> {
-                        val inverted = ByteArray(google.mask.size) { (255 - (google.mask[it].toInt() and 0xFF)).toByte() }
+                        val subject = googleMask(google.confidence)
+                        val inverted = ByteArray(subject.size) { (255 - (subject[it].toInt() and 0xFF)).toByte() }
                         com.linpaintx.core.cutWandMask(
                             image.rgba,
                             image.width,
@@ -7035,7 +6996,7 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         } else image
 
-        if (googleFailed) mattingModelProblem = "Google не смог выделить объект на этом кадре."
+        mattingProblem = if (googleFailed) "Google не смог выделить объект на этом кадре." else ""
 
         // a cut the chosen model has not answered yet is not a "not found": Google's module may
         // still be on its way and will recut the frame, so nothing is claimed about it here
@@ -15952,9 +15913,9 @@ fun applyStabilizer(mode: Int, level: Int) {
 
         const val MATTING_MODEL = "matting_model"
 
-        const val MODEL_BUILT_IN = "built_in"
+        const val GOOGLE_TUNED = "google_tuned"
 
-        const val MODEL_DETAILED = "detailed"
+        const val MODEL_BUILT_IN = "built_in"
 
         const val MODEL_GOOGLE = "google"
 
